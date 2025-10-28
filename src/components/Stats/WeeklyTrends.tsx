@@ -1,13 +1,59 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { supabase, DailyTarget, Entry } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { calculateDailySummary } from '../../utils/calculations';
+
+interface Entry {
+  id: string;
+  user_id: string;
+  date: string;
+  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  food_name: string;
+  serving_size_g: number;
+  calories_kcal: number;
+  protein_g: number;
+  fat_g: number;
+  carbs_g: number;
+  fiber_g: number;
+  created_at: string;
+}
+
+interface DailyTarget {
+  id: string;
+  user_id: string;
+  date: string;
+  calories_kcal: number;
+  protein_g: number;
+  fat_g: number;
+  carbs_g: number;
+  fiber_g: number;
+  goal_id: string;
+}
+
+interface MacroSummary {
+  calories_kcal: number;
+  protein_g: number;
+  fat_g: number;
+  carbs_g: number;
+}
+
+interface DailySummary {
+  date: string;
+  consumed: MacroSummary;
+  target: MacroSummary;
+  status: 'under' | 'ok' | 'over';
+}
+
+type WeekDataItem = {
+  date: string;
+  summary: DailySummary | null;
+}
 
 export function WeeklyTrends() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [weekData, setWeekData] = useState<any[]>([]);
+  const [weekData, setWeekData] = useState<WeekDataItem[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -84,7 +130,7 @@ export function WeeklyTrends() {
     );
   }
 
-  const validDays = weekData.filter((d) => d.summary !== null);
+  const validDays = weekData.filter((d): d is WeekDataItem & { summary: DailySummary } => d.summary !== null);
   const avgCalories =
     validDays.length > 0
       ? Math.round(validDays.reduce((sum, d) => sum + d.summary.consumed.calories_kcal, 0) / validDays.length)
@@ -100,6 +146,11 @@ export function WeeklyTrends() {
     ok: validDays.filter((d) => d.summary.status === 'ok').length,
     over: validDays.filter((d) => d.summary.status === 'over').length,
   };
+
+  const maxCalories = Math.max(
+    ...validDays.map((d) => Math.max(d.summary.consumed.calories_kcal, d.summary.target.calories_kcal)),
+    2000
+  );
 
   return (
     <div className="bg-white rounded-lg shadow-md">
@@ -138,7 +189,108 @@ export function WeeklyTrends() {
         </div>
 
         <div>
-          <h3 className="text-sm  text-gray-900 mb-3">Historique</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-4">Graphique des calories</h3>
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="relative h-64">
+              {/* Axe Y avec graduations */}
+              <div className="absolute left-0 top-0 h-full w-16 flex flex-col justify-between text-xs text-gray-500 py-2">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="flex items-center">
+                    <span className="mr-2">{Math.round((maxCalories * (5 - i)) / 5)}</span>
+                    <div className="flex-1 border-t border-gray-200" />
+                  </div>
+                ))}
+              </div>
+
+              <div className="absolute inset-0 flex items-end justify-between gap-2 pb-6 pl-16 pr-4">
+                {weekData.map((day) => {
+                  const height = day.summary
+                    ? (day.summary.consumed.calories_kcal / maxCalories) * 100
+                    : 0;
+                  const targetHeight = day.summary
+                    ? (day.summary.target.calories_kcal / maxCalories) * 100
+                    : 0;
+
+                  const getBarColor = (consumed: number, target: number) => {
+                    if (!target) return 'bg-gray-300';
+                    const percentage = (consumed / target) * 100;
+                    if (percentage >= 95 && percentage <= 105) return 'bg-green-500'; // À l'objectif (±5%)
+                    if (percentage < 95) {
+                      if (percentage < 75) return 'bg-orange-600'; // Très en dessous
+                      return 'bg-orange-400'; // En dessous
+                    }
+                    if (percentage > 105) {
+                      if (percentage > 125) return 'bg-red-600'; // Très au-dessus
+                      return 'bg-red-400'; // Au-dessus
+                    }
+                    return 'bg-gray-300';
+                  };
+
+                  const statusColor = day.summary
+                    ? getBarColor(day.summary.consumed.calories_kcal, day.summary.target.calories_kcal)
+                    : 'bg-gray-300';
+
+                  const tooltipContent = day.summary
+                    ? `Consommé: ${Math.round(day.summary.consumed.calories_kcal)} kcal\nObjectif: ${Math.round(day.summary.target.calories_kcal)} kcal`
+                    : 'Pas de données';
+
+                  return (
+                    <div key={day.date} className="flex-1 flex flex-col items-center gap-1 relative group">
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-pre-line">
+                        {tooltipContent}
+                      </div>
+                      <div className="w-full relative" style={{ height: 'calc(100% - 24px)' }}>
+                        {/* Ligne de grille verticale */}
+                        <div className="absolute inset-0 border-l border-gray-200" />
+                        
+                        {day.summary && (
+                          <>
+                            <div
+                              className="absolute bottom-0 w-full border-t-2 border-dashed border-blue-400"
+                              style={{ bottom: `${targetHeight}%` }}
+                            />
+                            <div
+                              className={`absolute bottom-0 w-full ${statusColor} rounded-t transition-all duration-300 hover:opacity-80`}
+                              style={{ height: `${height}%` }}
+                            />
+                          </>
+                        )}
+                        {!day.summary && (
+                          <div className="absolute bottom-0 w-full h-2 bg-gray-200 rounded-t" />
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-600 font-medium capitalize">
+                        {new Date(day.date).toLocaleDateString('fr-FR', { weekday: 'short' })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center gap-6 mt-4 text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded" />
+                <span className="text-gray-600">À l'objectif</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-orange-400 rounded" />
+                <span className="text-gray-600">En dessous</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-500 rounded" />
+                <span className="text-gray-600">Au-dessus</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 border-t-2 border-dashed border-blue-400" />
+                <span className="text-gray-600">Objectif</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Historique détaillé</h3>
           <div className="space-y-2">
             {weekData.map((day) => {
               const date = new Date(day.date);
@@ -157,7 +309,7 @@ export function WeeklyTrends() {
                 );
               }
 
-              const statusConfig = {
+              const statusConfig: Record<'under' | 'ok' | 'over', { bg: string; text: string; label: string }> = {
                 under: { bg: 'bg-orange-50', text: 'text-orange-600', label: 'Sous' },
                 ok: { bg: 'bg-green-50', text: 'text-green-600', label: 'OK' },
                 over: { bg: 'bg-red-50', text: 'text-red-600', label: 'Au-dessus' },

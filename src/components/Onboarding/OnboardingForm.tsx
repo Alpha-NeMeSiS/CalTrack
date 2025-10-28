@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { calculateCompleteTargets, calculateBMR, calculateTDEE, calculateOptimalDeficitOrSurplus } from '../../utils/calculations';
+import {
+  calculateCompleteTargets,
+  calculateBMR,
+  calculateTDEE,
+  calculateOptimalDeficitOrSurplus,
+  UserProfile,
+  GoalParams,
+} from '../../utils/calculations';
 
 interface FormData {
   sexe: 'M' | 'F';
@@ -14,6 +21,35 @@ interface FormData {
   deficit_or_surplus_pct: number;
   target_weight_kg?: number;
   duration_weeks?: number;
+}
+
+interface Profile {
+  id: string;
+  email: string;
+  sexe: 'M' | 'F';
+  date_naissance: string;
+  taille_cm: number;
+  poids_kg: number;
+  body_fat_pct?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Goal {
+  id: string;
+  user_id: string;
+  type: 'loss' | 'maintain' | 'gain';
+  activity_level: number;
+  method: 'mifflin' | 'katch';
+  deficit_or_surplus_pct: number;
+  protein_g_per_kg: number;
+  fat_g_per_kg_min: number;
+  is_active: boolean;
+  target_weight_kg?: number | null;
+  duration_weeks?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  created_at: string;
 }
 
 export function OnboardingForm() {
@@ -54,7 +90,7 @@ export function OnboardingForm() {
         taille_cm: formData.taille_cm,
         poids_kg: formData.poids_kg,
         body_fat_pct: formData.body_fat_pct || null,
-      });
+      } as Profile);
 
       if (profileError) throw profileError;
 
@@ -78,7 +114,7 @@ export function OnboardingForm() {
           duration_weeks: formData.duration_weeks || null,
           start_date: formData.duration_weeks ? today : null,
           end_date: endDate,
-        })
+        } as Goal)
         .select()
         .single();
 
@@ -91,7 +127,7 @@ export function OnboardingForm() {
           taille_cm: formData.taille_cm,
           poids_kg: formData.poids_kg,
           body_fat_pct: formData.body_fat_pct,
-        },
+        } as UserProfile,
         {
           type: formData.goal_type,
           activity_level: formData.activity_level,
@@ -99,7 +135,7 @@ export function OnboardingForm() {
           deficit_or_surplus_pct: formData.deficit_or_surplus_pct,
           protein_g_per_kg: 2.0,
           fat_g_per_kg_min: 0.8,
-        }
+        } as GoalParams
       );
 
       const { error: targetError } = await supabase.from('daily_targets').insert({
