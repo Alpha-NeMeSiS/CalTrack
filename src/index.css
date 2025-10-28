@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+	/* Palette */
+	--kaizen-50: #f3fbf8;
+	--kaizen-100: #e6f7ef;
+	--kaizen-200: #bfeedd;
+	--kaizen-300: #99e5cc;
+	--kaizen-400: #4fd3ad;
+	--kaizen-500: #19b887;
+	--kaizen-600: #158f6f;
+	--kaizen-700: #106a53;
+	--shonen-50: #fff8f5;
+	--shonen-100: #ffece1;
+	--shonen-300: #ffb185;
+	--shonen-500: #ff6b35;
+	--accent: #ff6b35;
+    --kaizen-1000: #1d1d1d8c;   
+
+	/* Shared tokens */
+	--radius-lg: 1rem;
+	--glass-bg: rgba(255,255,255,0.62);
+}
+
+/* Base styles to drive the Kaizen + Shonen look */
+@layer base {
+	html, body, #root {
+		height: 100%;
+		background: linear-gradient(180deg, var(--kaizen-50) 0%, #ffffff 100%);
+		color: #0f172a;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+
+	body {
+		font-family: Inter, 'Noto Sans JP', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+	}
+
+	h1, h2, h3, h4 {
+		font-family: 'Bangers', 'Noto Sans JP', system-ui;
+		letter-spacing: 0.5px;
+		color: var(--shonen-700);
+	}
+
+	a {
+		color: var(--kaizen-500);
+		text-decoration: none;
+	}
+
+	/* Small utility components that reflect the theme */
+	.btn-kaizen {
+		@apply inline-flex items-center justify-center px-4 py-2 rounded-full text-white font-semibold shadow-md transition-transform;
+		background: linear-gradient(90deg, var(--kaizen-500), #0fb07a);
+	}
+
+	.btn-shonen-accent {
+		@apply inline-flex items-center justify-center px-3 py-1.5 rounded-md text-white font-bold;
+		background: linear-gradient(90deg, var(--shonen-300), var(--shonen-500));
+		box-shadow: 0 6px 18px rgba(255,107,53,0.12);
+	}
+
+	.card-kaizen {
+		@apply rounded-xl p-4 shadow-lg border;
+		background: var(--glass-bg);
+		border-color: rgba(255,255,255,0.28);
+		backdrop-filter: blur(6px);
+	}
+
+	/* Emphasized small badge */
+	.badge-energy {
+		@apply inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold;
+		background: rgba(255,107,53,0.12);
+		color: var(--shonen-500);
+	}
+}
+
+/* Additional utilities available via Tailwind class names */
+@layer components {
+	.focus-punch:focus {
+		animation: punch 600ms ease-in-out;
+	}
+}
+
+/* Keep Tailwind utilities afterwards */
