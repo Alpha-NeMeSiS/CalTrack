@@ -7,8 +7,8 @@ interface MacroCardProps {
 }
 
 export function MacroCard({ label, consumed, target, unit, color }: MacroCardProps) {
-  const percentage = Math.min((consumed / target) * 100, 100);
-  const remaining = Math.max(target - consumed, 0);
+  const percentage = target > 0 ? Math.min((consumed / target) * 100, 100) : 0;
+  const remaining = Math.max((target || 0) - consumed, 0);
 
   return (
     <div className="bg-white p-4 rounded-lg border border-kaizen-1000">

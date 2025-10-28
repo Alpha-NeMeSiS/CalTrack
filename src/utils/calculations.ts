@@ -23,6 +23,7 @@ export interface MacroTargets {
   protein_g: number;
   fat_g: number;
   carbs_g: number;
+  fiber_g?: number;
 }
 
 export function calculateAge(dateNaissance: string): number {
@@ -92,6 +93,7 @@ export function calculateMacros(
     protein_g: Math.round(protein_g * 10) / 10,
     fat_g: Math.round(fat_g * 10) / 10,
     carbs_g: Math.round(carbs_g * 10) / 10,
+    fiber_g: 25,
   };
 }
 
@@ -115,25 +117,28 @@ export interface DailySummary {
     protein_g: number;
     fat_g: number;
     carbs_g: number;
+    fiber_g: number;
   };
   target: {
     calories_kcal: number;
     protein_g: number;
     fat_g: number;
     carbs_g: number;
+    fiber_g?: number;
   };
   delta: {
     calories_kcal: number;
     protein_g: number;
     fat_g: number;
     carbs_g: number;
+    fiber_g: number;
   };
   status: 'under' | 'ok' | 'over';
 }
 
 export function calculateDailySummary(
-  entries: Array<{ kcal: number; protein_g: number; fat_g: number; carbs_g: number }>,
-  target: { calories_kcal: number; protein_g: number; fat_g: number; carbs_g: number },
+  entries: Array<{ kcal: number; protein_g: number; fat_g: number; carbs_g: number; fiber_g?: number }>,
+  target: { calories_kcal: number; protein_g: number; fat_g: number; carbs_g: number; fiber_g?: number },
   date: string
 ): DailySummary {
   const consumed = entries.reduce(
@@ -142,8 +147,9 @@ export function calculateDailySummary(
       protein_g: acc.protein_g + entry.protein_g,
       fat_g: acc.fat_g + entry.fat_g,
       carbs_g: acc.carbs_g + entry.carbs_g,
+      fiber_g: acc.fiber_g + (entry.fiber_g || 0),
     }),
-    { calories_kcal: 0, protein_g: 0, fat_g: 0, carbs_g: 0 }
+    { calories_kcal: 0, protein_g: 0, fat_g: 0, carbs_g: 0, fiber_g: 0 }
   );
 
   const delta = {
@@ -151,6 +157,7 @@ export function calculateDailySummary(
     protein_g: Math.round((consumed.protein_g - target.protein_g) * 10) / 10,
     fat_g: Math.round((consumed.fat_g - target.fat_g) * 10) / 10,
     carbs_g: Math.round((consumed.carbs_g - target.carbs_g) * 10) / 10,
+    fiber_g: Math.round((consumed.fiber_g - (target.fiber_g || 0)) * 10) / 10,
   };
 
   const caloriesDiffPct = (Math.abs(delta.calories_kcal) / target.calories_kcal) * 100;
@@ -167,6 +174,7 @@ export function calculateDailySummary(
       protein_g: Math.round(consumed.protein_g * 10) / 10,
       fat_g: Math.round(consumed.fat_g * 10) / 10,
       carbs_g: Math.round(consumed.carbs_g * 10) / 10,
+      fiber_g: Math.round(consumed.fiber_g * 10) / 10,
     },
     target,
     delta,

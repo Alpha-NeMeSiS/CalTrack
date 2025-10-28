@@ -36,6 +36,7 @@ interface MacroSummary {
   protein_g: number;
   fat_g: number;
   carbs_g: number;
+  fiber_g?: number;
 }
 
 interface DailySummary {
@@ -203,16 +204,12 @@ export function WeeklyTrends() {
               </div>
 
               <div className="absolute inset-0 flex items-end justify-between gap-2 pb-6 pl-16 pr-4">
-                {weekData.map((day) => {
-                  const height = day.summary
-                    ? (day.summary.consumed.calories_kcal / maxCalories) * 100
-                    : 0;
-                  const targetHeight = day.summary
-                    ? (day.summary.target.calories_kcal / maxCalories) * 100
-                    : 0;
+                {(() => {
+                  // Render bars using pixel heights to avoid percentage layout issues
+                  const CHART_HEIGHT_PX = 200; // px usable height for bars
 
                   const getBarColor = (consumed: number, target: number) => {
-                    if (!target) return 'bg-gray-300';
+                    if (!target || target <= 0) return 'bg-gray-300';
                     const percentage = (consumed / target) * 100;
                     if (percentage >= 95 && percentage <= 105) return 'bg-green-500'; // À l'objectif (±5%)
                     if (percentage < 95) {
@@ -226,45 +223,61 @@ export function WeeklyTrends() {
                     return 'bg-gray-300';
                   };
 
-                  const statusColor = day.summary
-                    ? getBarColor(day.summary.consumed.calories_kcal, day.summary.target.calories_kcal)
-                    : 'bg-gray-300';
+                  return weekData.map((day) => {
+                    const consumed = day.summary?.consumed.calories_kcal ?? 0;
+                    const target = day.summary?.target.calories_kcal ?? 0;
 
-                  const tooltipContent = day.summary
-                    ? `Consommé: ${Math.round(day.summary.consumed.calories_kcal)} kcal\nObjectif: ${Math.round(day.summary.target.calories_kcal)} kcal`
-                    : 'Pas de données';
+                    // Height in pixels (min 6px so it's visible)
+                    const heightPx = day.summary
+                      ? Math.max(6, Math.round((consumed / Math.max(1, maxCalories)) * CHART_HEIGHT_PX))
+                      : 6;
 
-                  return (
-                    <div key={day.date} className="flex-1 flex flex-col items-center gap-1 relative group">
-                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-pre-line">
-                        {tooltipContent}
+                    const targetPx = day.summary
+                      ? Math.round((target / Math.max(1, maxCalories)) * CHART_HEIGHT_PX)
+                      : 0;
+
+                    const statusColor = day.summary ? getBarColor(consumed, target) : 'bg-gray-300';
+
+                    const tooltipContent = day.summary
+                      ? `Consommé: ${Math.round(consumed)} kcal\nObjectif: ${Math.round(target)} kcal\n(${Math.round((consumed / Math.max(1, target || 1)) * 100)}%)\nFibre: ${Math.round(day.summary.consumed.fiber_g || 0)} g / ${Math.round(day.summary.target.fiber_g || 0)} g`
+                      : 'Pas de données';
+
+                    return (
+                      <div key={day.date} className="flex-1 flex flex-col items-center gap-1 relative group">
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-pre-line">
+                          {tooltipContent}
+                        </div>
+
+                        <div className="w-full relative flex items-end justify-center" style={{ height: `${CHART_HEIGHT_PX}px` }}>
+                          {/* vertical grid line */}
+                          <div className="absolute inset-0 border-l border-gray-200" />
+
+                          {day.summary ? (
+                            <>
+                              <div
+                                className="absolute bottom-0 w-full border-t-2 border-dashed border-blue-400"
+                                style={{ bottom: `${targetPx}px` }}
+                                title={`Objectif: ${Math.round(target)} kcal`}
+                              />
+
+                              <div
+                                className={`relative w-full ${statusColor} rounded-t transition-all duration-300 hover:opacity-80 flex items-end justify-center`}
+                                style={{ height: `${heightPx}px` }}
+                                title={`${Math.round(consumed)} kcal`}
+                              />
+                            </>
+                          ) : (
+                            <div className="absolute bottom-0 w-full h-2 bg-gray-200 rounded-t" />
+                          )}
+                        </div>
+
+                        <div className="text-xs text-gray-600 font-medium capitalize">
+                          {new Date(day.date).toLocaleDateString('fr-FR', { weekday: 'short' })}
+                        </div>
                       </div>
-                      <div className="w-full relative" style={{ height: 'calc(100% - 24px)' }}>
-                        {/* Ligne de grille verticale */}
-                        <div className="absolute inset-0 border-l border-gray-200" />
-                        
-                        {day.summary && (
-                          <>
-                            <div
-                              className="absolute bottom-0 w-full border-t-2 border-dashed border-blue-400"
-                              style={{ bottom: `${targetHeight}%` }}
-                            />
-                            <div
-                              className={`absolute bottom-0 w-full ${statusColor} rounded-t transition-all duration-300 hover:opacity-80`}
-                              style={{ height: `${height}%` }}
-                            />
-                          </>
-                        )}
-                        {!day.summary && (
-                          <div className="absolute bottom-0 w-full h-2 bg-gray-200 rounded-t" />
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-600 font-medium capitalize">
-                        {new Date(day.date).toLocaleDateString('fr-FR', { weekday: 'short' })}
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             </div>
 
@@ -324,10 +337,11 @@ export function WeeklyTrends() {
                     <div className="text-xs text-gray-600">{dateStr}</div>
                   </div>
 
-                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4">
                     <div className="text-sm text-gray-700">
                       <span className="font-semibold">{Math.round(day.summary.consumed.calories_kcal)}</span>
                       <span className="text-gray-500"> / {Math.round(day.summary.target.calories_kcal)} kcal</span>
+                      <div className="text-xs text-gray-500 mt-1">Fibre: <span className="font-semibold">{Math.round(day.summary.consumed.fiber_g || 0)} g</span> / {Math.round(day.summary.target.fiber_g || 0)} g</div>
                     </div>
                     <div className={`px-2 py-1 rounded text-xs font-medium ${config.text}`}>
                       {config.label}

@@ -179,7 +179,7 @@ export function Dashboard() {
             />
           </div>
 
-          <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-4 gap-4">
             <MacroCard
               label="Protéines"
               consumed={summary.consumed.protein_g}
@@ -200,6 +200,13 @@ export function Dashboard() {
               target={summary.target.carbs_g}
               unit="g"
               color="bg-kaizen-300"
+            />
+            <MacroCard
+              label="Fibres"
+              consumed={summary.consumed.fiber_g}
+              target={summary.target.fiber_g ?? 25}
+              unit="g"
+              color="bg-emerald-400"
             />
           </div>
         </div>
