@@ -8,9 +8,9 @@ export function Header() {
     <header className="sticky top-0 z-10 card-kaizen border-b border-white/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-kaizen-400 to-kaizen-600 rounded-lg flex items-center justify-center ring-2 ring-white/20">
-              <span className="text-white text-xl">C</span>
+          <div className="flex items-center">
+            <div className="w-20 h-10 rounded-full overflow-hidden  flex items-center justify-center bg-white/10">
+              <img src="src/components/Ressource/Image/logo.png" alt="CalTrack Logo" />
             </div>
             <div>
               <h1 className="text-xl text-shonen-700">CalTrack</h1>
