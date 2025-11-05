@@ -1,6 +1,6 @@
 import { LogOut, User } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-
+import logo from '../../Image/logo.png';
 export function Header() {
   const { profile, signOut } = useAuth();
 
@@ -9,8 +9,8 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <div className="w-20 h-10 rounded-full overflow-hidden  flex items-center justify-center bg-white/10">
-              <img src="public/Image/logo.png" alt="CalTrack Logo" />
+            <div className="w-20 h-10 rounded-full overflow-hidden  flex items-center justify-center bg-white/10">             
+              <img src={logo} alt="CalTrack Logo" className="w-16 h-16 object-contain" />
             </div>
             <div>
               <h1 className="text-xl text-shonen-700">CalTrack</h1>
