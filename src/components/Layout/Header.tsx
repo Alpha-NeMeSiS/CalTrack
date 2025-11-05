@@ -10,7 +10,7 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <div className="w-20 h-10 rounded-full overflow-hidden  flex items-center justify-center bg-white/10">
-              <img src="Ressource/Image/logo.png" alt="CalTrack Logo" />
+              <img src="public/Image/logo.png" alt="CalTrack Logo" />
             </div>
             <div>
               <h1 className="text-xl text-shonen-700">CalTrack</h1>
