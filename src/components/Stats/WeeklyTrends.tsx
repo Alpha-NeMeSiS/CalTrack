@@ -4,6 +4,16 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { calculateDailySummary } from '../../utils/calculations';
 
+interface Goal {
+  id: string;
+  user_id: string;
+  type: 'loss' | 'maintain' | 'gain';
+  is_active: boolean;
+  start_date: string;
+  end_date: string;
+  duration_weeks: number;
+}
+
 interface Entry {
   id: string;
   user_id: string;
@@ -55,6 +65,7 @@ export function WeeklyTrends() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [weekData, setWeekData] = useState<WeekDataItem[]>([]);
+  const [monthData, setMonthData] = useState<WeekDataItem[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -68,10 +79,13 @@ export function WeeklyTrends() {
     setLoading(true);
     try {
       const today = new Date();
+      const monthAgo = new Date(today);
+      monthAgo.setDate(today.getDate() - 30);
+
       const weekAgo = new Date(today);
       weekAgo.setDate(today.getDate() - 6);
 
-      const startDate = weekAgo.toISOString().split('T')[0];
+      const startDate = monthAgo.toISOString().split('T')[0];
       const endDate = today.toISOString().split('T')[0];
 
       const [targetsResult, entriesResult] = await Promise.all([
@@ -97,10 +111,11 @@ export function WeeklyTrends() {
       const targets = targetsResult.data || [];
       const entries = entriesResult.data || [];
 
-      const data = [];
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(weekAgo);
-        date.setDate(weekAgo.getDate() + i);
+      // Données pour le graphique (7 derniers jours)
+      const weekData = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
 
         const dayTarget = targets.find((t) => t.date === dateStr);
@@ -108,13 +123,32 @@ export function WeeklyTrends() {
 
         if (dayTarget) {
           const summary = calculateDailySummary(dayEntries, dayTarget, dateStr);
-          data.push({ date: dateStr, summary });
+          weekData.push({ date: dateStr, summary });
         } else {
-          data.push({ date: dateStr, summary: null });
+          weekData.push({ date: dateStr, summary: null });
         }
       }
 
-      setWeekData(data);
+      // Données pour l'historique détaillé (30 derniers jours)
+      const monthData = [];
+      for (let i = 0; i < 30; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+
+        const dayTarget = targets.find((t) => t.date === dateStr);
+        const dayEntries = entries.filter((e) => e.date === dateStr);
+
+        if (dayTarget) {
+          const summary = calculateDailySummary(dayEntries, dayTarget, dateStr);
+          monthData.push({ date: dateStr, summary });
+        } else {
+          monthData.push({ date: dateStr, summary: null });
+        }
+      }
+
+      setWeekData(weekData);
+      setMonthData(monthData);
     } catch (error) {
       console.error('Error loading week data:', error);
     } finally {
@@ -156,39 +190,10 @@ export function WeeklyTrends() {
   return (
     <div className="bg-white rounded-lg shadow-md">
       <div className="p-6 border-b border-gray-200">
-        <h2 className="text-xl text-gray-900">Tendances 7 jours</h2>
+        <h2 className="text-xl text-gray-900">Tendances et historique</h2>
       </div>
 
       <div className="p-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="text-sm text-blue-600 font-medium mb-1">Moyenne calories</div>
-            <div className="text-2xl font-bold text-blue-900">{avgCalories}</div>
-            <div className="text-xs text-blue-600 mt-1">Objectif : {avgTarget} kcal</div>
-          </div>
-
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="text-sm text-gray-600 font-medium mb-1">Écart moyen</div>
-            <div className="flex items-center gap-2">
-              <div className={`text-2xl font-bold ${avgDelta < 0 ? 'text-orange-600' : avgDelta > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {avgDelta > 0 ? '+' : ''}{avgDelta}
-              </div>
-              {avgDelta < -50 && <TrendingDown className="w-5 h-5 text-orange-600" />}
-              {avgDelta > 50 && <TrendingUp className="w-5 h-5 text-red-600" />}
-              {Math.abs(avgDelta) <= 50 && <Minus className="w-5 h-5 text-green-600" />}
-            </div>
-            <div className="text-xs text-gray-600 mt-1">kcal/jour</div>
-          </div>
-
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="text-sm text-green-600 font-medium mb-1">Jours suivis</div>
-            <div className="text-2xl font-bold text-green-900">{validDays.length}/7</div>
-            <div className="text-xs text-green-600 mt-1">
-              {statusCount.ok} jour{statusCount.ok > 1 ? 's' : ''} à l'objectif
-            </div>
-          </div>
-        </div>
-
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-4">Graphique des calories</h3>
           <div className="bg-gray-50 p-4 rounded-lg">
@@ -303,9 +308,9 @@ export function WeeklyTrends() {
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Historique détaillé</h3>
-          <div className="space-y-2">
-            {weekData.map((day) => {
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Historique détaillé (30 jours)</h3>
+          <div className="space-y-2 h-[400px] overflow-y-auto pr-2 scrollbar scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400 scrollbar-track-transparent">
+            {monthData.map((day) => {
               const date = new Date(day.date);
               const dayName = date.toLocaleDateString('fr-FR', { weekday: 'short' });
               const dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
@@ -338,15 +343,22 @@ export function WeeklyTrends() {
                   </div>
 
                     <div className="flex items-center gap-4">
-                    <div className="text-sm text-gray-700">
-                      <span className="font-semibold">{Math.round(day.summary.consumed.calories_kcal)}</span>
-                      <span className="text-gray-500"> / {Math.round(day.summary.target.calories_kcal)} kcal</span>
-                      <div className="text-xs text-gray-500 mt-1">Fibre: <span className="font-semibold">{Math.round(day.summary.consumed.fiber_g || 0)} g</span> / {Math.round(day.summary.target.fiber_g || 0)} g</div>
+                      <div className="text-sm text-gray-700">
+                        <div className="flex items-baseline gap-1">
+                          <span className="font-semibold">{Math.round(day.summary.consumed.calories_kcal)}</span>
+                          <span className="text-gray-500"> / {Math.round(day.summary.target.calories_kcal)} kcal</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
+                          <div>P: <span className="font-semibold">{Math.round(day.summary.consumed.protein_g)} g</span> / {Math.round(day.summary.target.protein_g)} g</div>
+                          <div>L: <span className="font-semibold">{Math.round(day.summary.consumed.fat_g)} g</span> / {Math.round(day.summary.target.fat_g)} g</div>
+                          <div>G: <span className="font-semibold">{Math.round(day.summary.consumed.carbs_g)} g</span> / {Math.round(day.summary.target.carbs_g)} g</div>
+                          <div>F: <span className="font-semibold">{Math.round(day.summary.consumed.fiber_g || 0)} g</span> / {Math.round(day.summary.target.fiber_g || 0)} g</div>
+                        </div>
+                      </div>
+                      <div className={`px-2 py-1 rounded text-xs font-medium ${config.text} self-start mt-1`}>
+                        {config.label}
+                      </div>
                     </div>
-                    <div className={`px-2 py-1 rounded text-xs font-medium ${config.text}`}>
-                      {config.label}
-                    </div>
-                  </div>
                 </div>
               );
             })}
