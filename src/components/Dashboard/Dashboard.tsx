@@ -23,6 +23,135 @@ export function Dashboard() {
     }
   }, [user, selectedDate]);
 
+  // Ensure there is a daily_target for the given date. If missing but an active
+  // goal covers the date, try to derive target values (copy from a target inside
+  // the goal range, or use numeric fields on the goal if present) and upsert the
+  // resulting daily_target. Return the resulting DailyTarget or null.
+  async function ensureDailyTargetForDate(userId: string, dateStr: string): Promise<DailyTarget | null> {
+    try {
+      // 1) check existing target
+      const existingRes = await supabase
+        .from('daily_targets')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('date', dateStr)
+        .maybeSingle();
+
+      if (existingRes.error) {
+        console.error('Error querying existing daily_target:', existingRes.error);
+        return null;
+      }
+      if (existingRes.data) return existingRes.data as DailyTarget;
+
+      // 2) find an active goal that covers the date
+      const goalRes = await supabase
+        .from('goals')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .lte('start_date', dateStr)
+        .gte('end_date', dateStr)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (goalRes.error) {
+        console.error('Error querying active goal:', goalRes.error);
+        return null;
+      }
+      const goal = goalRes.data as Goal | null;
+      if (!goal) return null;
+
+      // 3) priority 1: try to find a daily_target inside the goal range (e.g. first day)
+      const rangeTargetRes = await supabase
+        .from('daily_targets')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('goal_id', goal.id)
+        .gte('date', goal.start_date || '')
+        .lte('date', goal.end_date || '')
+        .order('date', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (!rangeTargetRes.error && rangeTargetRes.data) {
+        const src = rangeTargetRes.data as DailyTarget;
+        const payload = {
+          user_id: userId,
+          date: dateStr,
+          calories_kcal: src.calories_kcal,
+          protein_g: src.protein_g,
+          fat_g: src.fat_g,
+          carbs_g: src.carbs_g,
+          fiber_g: src.fiber_g,
+          goal_id: goal.id,
+        } as const;
+
+        // Try insert first; if conflict happens (race), fall back to update
+        const insertRes = await supabase.from('daily_targets').insert(payload);
+        if (insertRes.error) {
+          // try update as fallback
+          console.warn('Insert failed for derived daily_target, attempting update:', insertRes.error.message || insertRes.error);
+          const updateRes = await supabase
+            .from('daily_targets')
+            .update(payload)
+            .eq('user_id', userId)
+            .eq('date', dateStr);
+          if (updateRes.error) {
+            console.error('Error updating derived daily_target after insert conflict:', updateRes.error);
+            return null;
+          }
+          const updated = Array.isArray(updateRes.data) ? updateRes.data[0] : updateRes.data;
+          return (updated || null) as DailyTarget | null;
+        }
+        const created = Array.isArray(insertRes.data) ? insertRes.data[0] : insertRes.data;
+        return (created || null) as DailyTarget | null;
+      }
+
+      // 4) priority 2: try to use numeric fields present on the goal itself
+      const maybeGoalRecord = goal as unknown as Record<string, unknown>;
+      const calories = typeof maybeGoalRecord['calories_kcal'] === 'number' ? (maybeGoalRecord['calories_kcal'] as number) : undefined;
+      const protein = typeof maybeGoalRecord['protein_g'] === 'number' ? (maybeGoalRecord['protein_g'] as number) : undefined;
+      const fat = typeof maybeGoalRecord['fat_g'] === 'number' ? (maybeGoalRecord['fat_g'] as number) : undefined;
+      const carbs = typeof maybeGoalRecord['carbs_g'] === 'number' ? (maybeGoalRecord['carbs_g'] as number) : undefined;
+      const fiber = typeof maybeGoalRecord['fiber_g'] === 'number' ? (maybeGoalRecord['fiber_g'] as number) : undefined;
+
+      if (calories !== undefined && protein !== undefined && fat !== undefined && carbs !== undefined) {
+        const payload = {
+          user_id: userId,
+          date: dateStr,
+          calories_kcal: calories,
+          protein_g: protein,
+          fat_g: fat,
+          carbs_g: carbs,
+          fiber_g: fiber ?? 0,
+          goal_id: goal.id,
+        } as const;
+
+        const insertRes = await supabase.from('daily_targets').insert(payload);
+        if (insertRes.error) {
+          console.warn('Insert failed for derived daily_target from goal fields, attempting update:', insertRes.error.message || insertRes.error);
+          const updateRes = await supabase.from('daily_targets').update(payload).eq('user_id', userId).eq('date', dateStr);
+          if (updateRes.error) {
+            console.error('Error updating derived daily_target after insert conflict (goal fields):', updateRes.error);
+            return null;
+          }
+          const updated = Array.isArray(updateRes.data) ? updateRes.data[0] : updateRes.data;
+          return (updated || null) as DailyTarget | null;
+        }
+
+        const created = Array.isArray(insertRes.data) ? insertRes.data[0] : insertRes.data;
+        return (created || null) as DailyTarget | null;
+      }
+
+      // If we can't derive anything, return null
+      return null;
+    } catch (err) {
+      console.error('Unexpected error in ensureDailyTargetForDate:', err);
+      return null;
+    }
+  }
+
   const loadDayData = async () => {
     if (!user) return;
 
@@ -55,7 +184,13 @@ export function Dashboard() {
       if (entriesResult.error) throw entriesResult.error;
       if (goalResult.error) throw goalResult.error;
 
-      setTarget(targetResult.data);
+      // If target missing, try to derive/create one based on an active goal covering the date
+      let finalTarget: DailyTarget | null = targetResult.data || null;
+      if (!finalTarget) {
+        finalTarget = await ensureDailyTargetForDate(user.id, selectedDate);
+      }
+
+      setTarget(finalTarget);
       setEntries(entriesResult.data || []);
       setActiveGoal(goalResult.data);
     } catch (error) {
