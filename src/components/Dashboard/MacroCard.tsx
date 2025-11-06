@@ -1,3 +1,4 @@
+// Carte affichant la consommation vs objectif pour un macronutriment
 interface MacroCardProps {
   label: string;
   consumed: number;
@@ -7,7 +8,9 @@ interface MacroCardProps {
 }
 
 export function MacroCard({ label, consumed, target, unit, color }: MacroCardProps) {
+  // Pourcentage rempli de la barre (clampé entre 0 et 100)
   const percentage = target > 0 ? Math.min((consumed / target) * 100, 100) : 0;
+  // Quantité restante avant d'atteindre l'objectif
   const remaining = Math.max((target || 0) - consumed, 0);
 
   return (

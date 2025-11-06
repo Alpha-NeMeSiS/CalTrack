@@ -1,7 +1,11 @@
+// Contexte d'authentification
+// Ce fichier expose un AuthProvider et un hook useAuth pour accéder à l'utilisateur,
+// au profil et aux méthodes d'auth (signIn, signUp, signOut, refreshProfile).
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase, Profile } from '../lib/supabase';
 
+// Type du contexte d'authentification exposé aux composants
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
@@ -15,10 +19,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // États locaux pour l'utilisateur, le profil et le chargement
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Au montage, récupérer la session et écouter les changements d'état d'auth
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -29,6 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
+    // Souscrire aux changements d'auth (connexion/déconnexion)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       (async () => {
         setUser(session?.user ?? null);
@@ -44,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Charge le profil utilisateur depuis la table 'profiles'
   const loadProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -62,12 +70,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Forcer le rechargement du profil courant
   const refreshProfile = async () => {
     if (user) {
       await loadProfile(user.id);
     }
   };
 
+  // Inscription avec email/mot de passe via Supabase
   const signUp = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signUp({
@@ -82,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Connexion avec email/mot de passe via Supabase
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -96,11 +107,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Déconnexion
   const signOut = async () => {
     await supabase.auth.signOut();
     setProfile(null);
   };
 
+  // Fournit le contexte aux composants enfants
   return (
     <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut, refreshProfile }}>
       {children}
@@ -108,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Hook pratique pour consommer le contexte d'auth
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

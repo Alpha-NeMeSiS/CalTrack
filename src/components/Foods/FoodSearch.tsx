@@ -1,3 +1,5 @@
+// Composant de recherche d'aliments
+// Fournit une recherche côté client avec un léger debounce et retourne les aliments trouvés
 import { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { supabase, Food } from '../../lib/supabase';
@@ -24,6 +26,7 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
     return () => clearTimeout(timer);
   }, [search]);
 
+  // Requête vers la table 'foods' pour récupérer les correspondances
   const searchFoods = async (query: string) => {
     setLoading(true);
     try {

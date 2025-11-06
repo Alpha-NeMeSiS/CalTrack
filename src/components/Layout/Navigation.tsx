@@ -1,3 +1,5 @@
+// Barre de navigation principale
+// Permet de naviguer entre les vues: Tableau de bord, Tendances et Paramètres
 import { Home, TrendingUp, Settings as SettingsIcon } from 'lucide-react';
 
 interface NavigationProps {

@@ -1,3 +1,5 @@
+// Page des paramètres utilisateur
+// Contient les onglets Profil et Objectif, ainsi que la logique de sauvegarde
 import { useState, useEffect } from 'react';
 import { User, Target, Save } from 'lucide-react';
 import { supabase, Goal } from '../../lib/supabase';
@@ -5,12 +7,16 @@ import { useAuth } from '../../contexts/AuthContext';
 import { calculateBMR, calculateTDEE, calculateOptimalDeficitOrSurplus, calculateCompleteTargets } from '../../utils/calculations';
 
 export function Settings() {
+  // Récupère l'utilisateur, le profil et la fonction pour rafraîchir le profil
   const { user, profile, refreshProfile } = useAuth();
+
+  // États d'interface
   const [activeTab, setActiveTab] = useState<'profile' | 'goal'>('profile');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
+  // Données locales du profil (formulaire)
   const [profileData, setProfileData] = useState({
     sexe: profile?.sexe || 'M',
     date_naissance: profile?.date_naissance || '',
@@ -19,6 +25,7 @@ export function Settings() {
     body_fat_pct: profile?.body_fat_pct || undefined,
   });
 
+  // Objectif actif et données du formulaire d'objectif
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
   const [goalData, setGoalData] = useState({
     goal_type: 'maintain' as 'loss' | 'maintain' | 'gain',
@@ -28,6 +35,7 @@ export function Settings() {
     duration_weeks: undefined as number | undefined,
   });
 
+  // Quand le profil change (chargé), on initialise les champs du formulaire
   useEffect(() => {
     if (profile) {
       setProfileData({
@@ -40,10 +48,12 @@ export function Settings() {
     }
   }, [profile]);
 
+  // Charger l'objectif actif à l'initialisation / changement d'utilisateur
   useEffect(() => {
     loadActiveGoal();
   }, [user]);
 
+  // Charge l'objectif actif depuis la table 'goals'
   const loadActiveGoal = async () => {
     if (!user) return;
 
@@ -74,6 +84,7 @@ export function Settings() {
     }
   };
 
+  // Sauvegarde du profil en base
   const handleSaveProfile = async () => {
     if (!user) return;
 
@@ -96,6 +107,7 @@ export function Settings() {
 
       if (updateError) throw updateError;
 
+      // Rafraîchir le profil global après modification
       await refreshProfile();
       setSuccess('Profil mis à jour avec succès');
     } catch (err: any) {
@@ -105,6 +117,7 @@ export function Settings() {
     }
   };
 
+  // Sauvegarde ou création d'un nouvel objectif
   const handleSaveGoal = async () => {
     if (!user || !profile) return;
 
@@ -113,6 +126,7 @@ export function Settings() {
     setSuccess('');
 
     try {
+      // Désactiver l'objectif actif précédent (si existant)
       if (activeGoal) {
         await supabase
           .from('goals')
@@ -120,11 +134,13 @@ export function Settings() {
           .eq('id', activeGoal.id);
       }
 
+      // Calcul des dates de début/fin selon la durée
       const today = new Date().toISOString().split('T')[0];
       const endDate = goalData.duration_weeks
         ? new Date(new Date().getTime() + goalData.duration_weeks * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
         : null;
 
+      // Insertion du nouvel objectif
       const { data: newGoal, error: goalError } = await supabase
         .from('goals')
         .insert({
@@ -146,6 +162,7 @@ export function Settings() {
 
       if (goalError) throw goalError;
 
+      // Calculer les cibles complètes (calories/macros) en fonction du profil et de l'objectif
       const targets = calculateCompleteTargets(
         {
           sexe: profile.sexe,
@@ -164,6 +181,7 @@ export function Settings() {
         }
       );
 
+      // Insérer la cible quotidienne initiale
       const { error: targetError } = await supabase.from('daily_targets').insert({
         user_id: user.id,
         date: today,
@@ -175,6 +193,7 @@ export function Settings() {
         goal_id: newGoal.id,
       });
 
+      // Si l'erreur n'est pas liée à une contrainte d'unicité, la remonter
       if (targetError && targetError.code !== '23505') {
         throw targetError;
       }
@@ -188,6 +207,7 @@ export function Settings() {
     }
   };
 
+  // Rendu JSX de la page des paramètres
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="text-2xl text-gray-900 mb-6">Paramètres</h1>

@@ -1,3 +1,5 @@
+// Formulaire d'inscription
+// Valide localement les mots de passe puis appelle signUp du contexte d'auth
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -10,6 +12,7 @@ export function SignupForm({ onToggle }: { onToggle: () => void }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  // Soumet le formulaire d'inscription
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -37,6 +40,7 @@ export function SignupForm({ onToggle }: { onToggle: () => void }) {
     }
   };
 
+  // Écran de succès après création
   if (success) {
     return (
       <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-md">

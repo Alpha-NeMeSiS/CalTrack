@@ -1,3 +1,5 @@
+// Carte de progression pour un objectif
+// Affiche l'état d'avancement temporel et de poids pour l'objectif actif
 import { Target, Calendar, TrendingUp } from 'lucide-react';
 import { Goal } from '../../lib/supabase';
 import { calculateGoalProgress } from '../../utils/calculations';

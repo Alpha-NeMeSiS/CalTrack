@@ -1,3 +1,5 @@
+// En-tête global de l'application
+// Affiche le logo, le nom de l'app et l'état de l'utilisateur (email + bouton de déconnexion)
 import { LogOut, User } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import logo from '../../Image/logo.png';

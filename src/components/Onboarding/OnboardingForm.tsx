@@ -1,3 +1,6 @@
+// Formulaire d'onboarding
+// Rassemble les informations personnelles et l'objectif initial de l'utilisateur,
+// crée le profil, l'objectif et les cibles quotidiennes en base de données
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -75,6 +78,7 @@ export function OnboardingForm() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Soumet le formulaire d'onboarding : crée le profil, l'objectif et les cibles journalières
   const handleSubmit = async () => {
     if (!user) return;
 
@@ -82,6 +86,7 @@ export function OnboardingForm() {
     setError('');
 
     try {
+      // Création du profil utilisateur
       const { error: profileError } = await supabase.from('profiles').insert({
         id: user.id,
         email: user.email!,
@@ -94,6 +99,7 @@ export function OnboardingForm() {
 
       if (profileError) throw profileError;
 
+      // Préparer dates et insertion de l'objectif
       const today = new Date().toISOString().split('T')[0];
       const endDate = formData.duration_weeks
         ? new Date(new Date().getTime() + formData.duration_weeks * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -120,6 +126,7 @@ export function OnboardingForm() {
 
       if (goalError) throw goalError;
 
+      // Calcul des cibles caloriques et des macros à partir des fonctions utilitaires
       const targets = calculateCompleteTargets(
         {
           sexe: formData.sexe,
@@ -138,6 +145,7 @@ export function OnboardingForm() {
         } as GoalParams
       );
 
+      // Insertion des targets journalières initiales
       const { error: targetError } = await supabase.from('daily_targets').insert({
         user_id: user.id,
         date: today,
@@ -151,6 +159,7 @@ export function OnboardingForm() {
 
       if (targetError) throw targetError;
 
+      // Rafraîchir le profil global côté application
       await refreshProfile();
     } catch (err: any) {
       setError(err.message || 'Une erreur est survenue');

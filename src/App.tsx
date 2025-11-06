@@ -1,3 +1,5 @@
+// Composant racine de l'application
+// Gère l'authentification et la navigation entre vues (dashboard, tendances, paramètres)
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginForm } from './components/Auth/LoginForm';
@@ -10,10 +12,14 @@ import { WeeklyTrends } from './components/Stats/WeeklyTrends';
 import { Settings } from './components/Settings/Settings';
 
 function AppContent() {
+  // Récupère l'état d'authentification et le profil utilisateur
   const { user, profile, loading } = useAuth();
+  // Mode d'auth (login / signup) pour l'écran d'authentification
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  // Vue courante affichée dans l'application: dashboard, tendances ou paramètres
   const [currentView, setCurrentView] = useState<'dashboard' | 'trends' | 'settings'>('dashboard');
 
+  // Écouteur global pour naviguer vers les paramètres depuis d'autres composants
   useEffect(() => {
     const handleNavigateToSettings = () => {
       setCurrentView('settings');
@@ -23,6 +29,7 @@ function AppContent() {
     return () => window.removeEventListener('navigate-to-settings', handleNavigateToSettings);
   }, []);
 
+  // Affiche un écran de chargement tant que l'authentification/profile n'est pas prête
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -34,6 +41,7 @@ function AppContent() {
     );
   }
 
+  // Si l'utilisateur n'est pas connecté, afficher le formulaire de connexion / inscription
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
@@ -46,6 +54,7 @@ function AppContent() {
     );
   }
 
+  // Si l'utilisateur est connecté mais n'a pas de profil complet, afficher le formulaire d'onboarding
   if (!profile) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
@@ -54,6 +63,7 @@ function AppContent() {
     );
   }
 
+  // Vue principale de l'application lorsque l'utilisateur est connecté et profil rempli
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -75,3 +85,6 @@ export default function App() {
     </AuthProvider>
   );
 }
+
+// Le composant App enveloppe AppContent avec le fournisseur d'authentification
+// (AuthProvider) pour rendre le contexte disponible dans toute l'application.

@@ -1,24 +1,31 @@
+// Importation des dépendances React nécessaires
 import { useState, useEffect } from 'react';
+// Importation des icônes pour les tendances
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+// Importation de la configuration Supabase
 import { supabase } from '../../lib/supabase';
+// Importation du contexte d'authentification
 import { useAuth } from '../../contexts/AuthContext';
+// Importation des fonctions de calcul
 import { calculateDailySummary } from '../../utils/calculations';
 
+// Interface pour les objectifs nutritionnels
 interface Goal {
   id: string;
   user_id: string;
-  type: 'loss' | 'maintain' | 'gain';
+  type: 'loss' | 'maintain' | 'gain'; // Type d'objectif: perte, maintien ou gain de poids
   is_active: boolean;
   start_date: string;
   end_date: string;
   duration_weeks: number;
 }
 
+// Interface pour les entrées du journal alimentaire
 interface Entry {
   id: string;
   user_id: string;
   date: string;
-  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack'; // Type de repas
   food_name: string;
   serving_size_g: number;
   calories_kcal: number;
@@ -29,6 +36,7 @@ interface Entry {
   created_at: string;
 }
 
+// Interface pour les objectifs quotidiens
 interface DailyTarget {
   id: string;
   user_id: string;
@@ -41,6 +49,7 @@ interface DailyTarget {
   goal_id: string;
 }
 
+// Interface pour le résumé des macronutriments
 interface MacroSummary {
   calories_kcal: number;
   protein_g: number;
@@ -49,46 +58,57 @@ interface MacroSummary {
   fiber_g?: number;
 }
 
+// Interface pour le résumé quotidien
 interface DailySummary {
   date: string;
-  consumed: MacroSummary;
-  target: MacroSummary;
-  status: 'under' | 'ok' | 'over';
+  consumed: MacroSummary;  // Macronutriments consommés
+  target: MacroSummary;    // Objectifs de macronutriments
+  status: 'under' | 'ok' | 'over';  // Statut par rapport à l'objectif
 }
 
+// Type pour les données hebdomadaires
 type WeekDataItem = {
   date: string;
-  summary: DailySummary | null;
+  summary: DailySummary | null;  // Peut être null si pas de données pour ce jour
 }
 
+// Composant principal pour afficher les tendances hebdomadaires
 export function WeeklyTrends() {
+  // Récupération de l'utilisateur depuis le contexte d'authentification
   const { user } = useAuth();
+  // États pour gérer le chargement et les données
   const [loading, setLoading] = useState(true);
-  const [weekData, setWeekData] = useState<WeekDataItem[]>([]);
-  const [monthData, setMonthData] = useState<WeekDataItem[]>([]);
+  const [weekData, setWeekData] = useState<WeekDataItem[]>([]); // Données des 7 derniers jours
+  const [monthData, setMonthData] = useState<WeekDataItem[]>([]); // Données des 30 derniers jours
 
+  // Effet pour charger les données au montage du composant
   useEffect(() => {
     if (user) {
       loadWeekData();
     }
   }, [user]);
 
+  // Fonction pour charger les données de la semaine et du mois
   const loadWeekData = async () => {
     if (!user) return;
 
     setLoading(true);
     try {
+      // Calcul des dates pour la période d'analyse
       const today = new Date();
       const monthAgo = new Date(today);
-      monthAgo.setDate(today.getDate() - 30);
+      monthAgo.setDate(today.getDate() - 30); // Date d'il y a 30 jours
 
       const weekAgo = new Date(today);
-      weekAgo.setDate(today.getDate() - 6);
+      weekAgo.setDate(today.getDate() - 6); // Date d'il y a 6 jours
 
+      // Formatage des dates pour la requête
       const startDate = monthAgo.toISOString().split('T')[0];
       const endDate = today.toISOString().split('T')[0];
 
+      // Récupération parallèle des objectifs et des entrées depuis Supabase
       const [targetsResult, entriesResult] = await Promise.all([
+        // Requête pour les objectifs quotidiens
         supabase
           .from('daily_targets')
           .select('*')
@@ -96,6 +116,7 @@ export function WeeklyTrends() {
           .gte('date', startDate)
           .lte('date', endDate)
           .order('date'),
+        // Requête pour les entrées du journal
         supabase
           .from('entries')
           .select('*')
@@ -105,44 +126,52 @@ export function WeeklyTrends() {
           .order('date'),
       ]);
 
+      // Vérification des erreurs de requête
       if (targetsResult.error) throw targetsResult.error;
       if (entriesResult.error) throw entriesResult.error;
 
+      // Extraction des données des résultats
       const targets = targetsResult.data || [];
       const entries = entriesResult.data || [];
 
-      // Données pour le graphique (7 derniers jours)
+      // Préparation des données pour le graphique des 7 derniers jours
       const weekData = [];
       for (let i = 6; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(today.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
 
+        // Recherche des données pour ce jour
         const dayTarget = targets.find((t) => t.date === dateStr);
         const dayEntries = entries.filter((e) => e.date === dateStr);
 
         if (dayTarget) {
+          // Calcul du résumé quotidien si un objectif existe
           const summary = calculateDailySummary(dayEntries, dayTarget, dateStr);
           weekData.push({ date: dateStr, summary });
         } else {
+          // Pas de données pour ce jour
           weekData.push({ date: dateStr, summary: null });
         }
       }
 
-      // Données pour l'historique détaillé (30 derniers jours)
+      // Préparation des données pour l'historique détaillé (30 derniers jours)
       const monthData = [];
       for (let i = 0; i < 30; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
 
+        // Recherche des données pour ce jour
         const dayTarget = targets.find((t) => t.date === dateStr);
         const dayEntries = entries.filter((e) => e.date === dateStr);
 
         if (dayTarget) {
+          // Calcul du résumé quotidien si un objectif existe
           const summary = calculateDailySummary(dayEntries, dayTarget, dateStr);
           monthData.push({ date: dateStr, summary });
         } else {
+          // Pas de données pour ce jour
           monthData.push({ date: dateStr, summary: null });
         }
       }
@@ -165,23 +194,30 @@ export function WeeklyTrends() {
     );
   }
 
+  // Filtrage des jours avec des données valides
   const validDays = weekData.filter((d): d is WeekDataItem & { summary: DailySummary } => d.summary !== null);
+  
+  // Calcul de la moyenne des calories consommées
   const avgCalories =
     validDays.length > 0
       ? Math.round(validDays.reduce((sum, d) => sum + d.summary.consumed.calories_kcal, 0) / validDays.length)
       : 0;
+  
+  // Calcul de la moyenne des objectifs caloriques
   const avgTarget =
     validDays.length > 0
       ? Math.round(validDays.reduce((sum, d) => sum + d.summary.target.calories_kcal, 0) / validDays.length)
       : 0;
-  const avgDelta = avgCalories - avgTarget;
 
+  // Calcul des statistiques d'atteinte des objectifs
   const statusCount = {
-    under: validDays.filter((d) => d.summary.status === 'under').length,
-    ok: validDays.filter((d) => d.summary.status === 'ok').length,
-    over: validDays.filter((d) => d.summary.status === 'over').length,
+    under: validDays.filter((d) => d.summary.status === 'under').length,  // Jours sous l'objectif
+    ok: validDays.filter((d) => d.summary.status === 'ok').length,        // Jours dans l'objectif
+    over: validDays.filter((d) => d.summary.status === 'over').length,    // Jours au-dessus de l'objectif
   };
 
+  // Calcul du maximum des calories pour l'échelle du graphique
+  // Utilise 2000 comme minimum pour éviter une échelle trop petite
   const maxCalories = Math.max(
     ...validDays.map((d) => Math.max(d.summary.consumed.calories_kcal, d.summary.target.calories_kcal)),
     2000
@@ -198,7 +234,7 @@ export function WeeklyTrends() {
           <h3 className="text-sm font-semibold text-gray-900 mb-4">Graphique des calories</h3>
           <div className="bg-gray-50 p-4 rounded-lg">
             <div className="relative h-64">
-              {/* Axe Y avec graduations */}
+              {/* Axe Y avec graduations pour l'échelle des calories */}
               <div className="absolute left-0 top-0 h-full w-16 flex flex-col justify-between text-xs text-gray-500 py-2">
                 {[...Array(6)].map((_, i) => (
                   <div key={i} className="flex items-center">
@@ -208,41 +244,49 @@ export function WeeklyTrends() {
                 ))}
               </div>
 
+              {/* Container pour les barres du graphique */}
               <div className="absolute inset-0 flex items-end justify-between gap-2 pb-6 pl-16 pr-4">
                 {(() => {
-                  // Render bars using pixel heights to avoid percentage layout issues
-                  const CHART_HEIGHT_PX = 200; // px usable height for bars
+                  // Configuration de la hauteur du graphique en pixels pour éviter les problèmes de mise en page
+                  const CHART_HEIGHT_PX = 200; // hauteur utilisable pour les barres en pixels
 
+                  // Fonction pour déterminer la couleur de la barre en fonction du rapport consommé/objectif
                   const getBarColor = (consumed: number, target: number) => {
-                    if (!target || target <= 0) return 'bg-gray-300';
+                    if (!target || target <= 0) return 'bg-gray-300';  // Pas d'objectif défini
                     const percentage = (consumed / target) * 100;
-                    if (percentage >= 95 && percentage <= 105) return 'bg-green-500'; // À l'objectif (±5%)
+                    if (percentage >= 95 && percentage <= 105) return 'bg-green-500';  // À l'objectif (±5%)
                     if (percentage < 95) {
-                      if (percentage < 75) return 'bg-orange-600'; // Très en dessous
-                      return 'bg-orange-400'; // En dessous
+                      if (percentage < 75) return 'bg-orange-600';  // Très en dessous de l'objectif (<75%)
+                      return 'bg-orange-400';  // En dessous de l'objectif (75-95%)
                     }
                     if (percentage > 105) {
-                      if (percentage > 125) return 'bg-red-600'; // Très au-dessus
-                      return 'bg-red-400'; // Au-dessus
+                      if (percentage > 125) return 'bg-red-600';  // Très au-dessus de l'objectif (>125%)
+                      return 'bg-red-400';  // Au-dessus de l'objectif (105-125%)
                     }
-                    return 'bg-gray-300';
+                    return 'bg-gray-300';  // Cas par défaut
                   };
 
+                  // Génération des barres du graphique pour chaque jour
                   return weekData.map((day) => {
+                    // Récupération des calories consommées et de l'objectif
                     const consumed = day.summary?.consumed.calories_kcal ?? 0;
                     const target = day.summary?.target.calories_kcal ?? 0;
 
-                    // Height in pixels (min 6px so it's visible)
+                    // Calcul de la hauteur de la barre en pixels
+                    // Minimum de 6px pour garantir la visibilité
                     const heightPx = day.summary
                       ? Math.max(6, Math.round((consumed / Math.max(1, maxCalories)) * CHART_HEIGHT_PX))
                       : 6;
 
+                    // Calcul de la hauteur de la ligne d'objectif en pixels
                     const targetPx = day.summary
                       ? Math.round((target / Math.max(1, maxCalories)) * CHART_HEIGHT_PX)
                       : 0;
 
+                    // Détermination de la couleur de la barre selon le rapport consommé/objectif
                     const statusColor = day.summary ? getBarColor(consumed, target) : 'bg-gray-300';
 
+                    // Préparation du contenu de l'infobulle
                     const tooltipContent = day.summary
                       ? `Consommé: ${Math.round(consumed)} kcal\nObjectif: ${Math.round(target)} kcal\n(${Math.round((consumed / Math.max(1, target || 1)) * 100)}%)\nFibre: ${Math.round(day.summary.consumed.fiber_g || 0)} g / ${Math.round(day.summary.target.fiber_g || 0)} g`
                       : 'Pas de données';

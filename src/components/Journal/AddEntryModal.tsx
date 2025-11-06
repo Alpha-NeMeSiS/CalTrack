@@ -1,3 +1,5 @@
+// Modal pour ajouter une entrée alimentaire
+// Permet de rechercher un aliment, saisir la quantité et obtenir les valeurs nutritionnelles calculées
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { FoodSearch } from '../Foods/FoodSearch';
@@ -65,6 +67,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Aliment</label>
+            {/* Sélection d'aliment via le composant de recherche */}
             <FoodSearch
               onSelect={(food) => {
                 setSelectedFood(food);
