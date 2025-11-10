@@ -136,29 +136,14 @@ async function ensureDailyTargetForDate(userId: string, dateStr: string): Promis
   }
 }
 
-function getTodayDate() {
-  return new Date().toISOString().split('T')[0];
-}
-
-type DashboardProps = {
-  activeDate?: string;
-  onActiveDateChange?: (date: string) => void;
-};
-
-export function Dashboard({ activeDate, onActiveDateChange }: DashboardProps) {
+export function Dashboard() {
   const { user, profile } = useAuth();
-  const [selectedDate, setSelectedDate] = useState<string>(activeDate ?? getTodayDate());
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [target, setTarget] = useState<DailyTarget | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (activeDate && activeDate !== selectedDate) {
-      setSelectedDate(activeDate);
-    }
-  }, [activeDate, selectedDate]);
 
   // Recharger les données lorsque l'utilisateur ou la date sélectionnée change
   useEffect(() => {
@@ -220,10 +205,20 @@ export function Dashboard({ activeDate, onActiveDateChange }: DashboardProps) {
     if (!user) return;
 
     try {
+      const cleanedEntry = { ...entryData };
+      if ('food_id' in cleanedEntry) {
+        const value = cleanedEntry.food_id;
+        const isUuid = typeof value === 'string' &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+        if (!isUuid) {
+          delete cleanedEntry.food_id;
+        }
+      }
+
       const { error } = await supabase.from('entries').insert({
         user_id: user.id,
         date: selectedDate,
-        ...entryData,
+        ...cleanedEntry,
       });
 
       if (error) throw error;
@@ -276,20 +271,6 @@ export function Dashboard({ activeDate, onActiveDateChange }: DashboardProps) {
             Vous devez définir un objectif pour commencer le suivi de vos apports.
           </p>
           <div className="flex items-center justify-center gap-4">
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                window.dispatchEvent(
-                  new CustomEvent('navigate-to-board', {
-                    detail: { date: getTodayDate() },
-                  })
-                );
-              }}
-              className="inline-block px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-md transition-colors"
-            >
-              Retour au tableau de bord
-            </a>
             <a
               href="#"
               onClick={(e) => {
