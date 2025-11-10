@@ -25,8 +25,17 @@ function AppContent() {
       setCurrentView('settings');
     };
 
+    const handleNavigateToBoard = () => {
+      setCurrentView('dashboard');
+    };
+
     window.addEventListener('navigate-to-settings', handleNavigateToSettings);
-    return () => window.removeEventListener('navigate-to-settings', handleNavigateToSettings);
+    window.addEventListener('navigate-to-board', handleNavigateToBoard);
+
+    return () => {
+      window.removeEventListener('navigate-to-settings', handleNavigateToSettings);
+      window.removeEventListener('navigate-to-board', handleNavigateToBoard);
+    };
   }, []);
 
   // Affiche un écran de chargement tant que l'authentification/profile n'est pas prête
