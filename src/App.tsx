@@ -30,11 +30,7 @@ function AppContent() {
       setCurrentView('settings');
     };
 
-    const handleNavigateToBoard = (event: Event) => {
-      const targetDate =
-        (event as CustomEvent<{ date?: string }>).detail?.date ?? getTodayDate();
-
-      setDashboardDate(targetDate);
+    const handleNavigateToBoard = () => {
       setCurrentView('dashboard');
     };
 
