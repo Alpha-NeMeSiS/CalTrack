@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { FoodSearch } from '../Foods/FoodSearch';
-import { Food } from '../../lib/supabase';
+import type { NormalizedFood } from '../../types/food';
 
 interface AddEntryModalProps {
   date: string;
@@ -20,7 +20,7 @@ interface AddEntryModalProps {
 }
 
 export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
-  const [selectedFood, setSelectedFood] = useState<Food | null>(null);
+  const [selectedFood, setSelectedFood] = useState<NormalizedFood | null>(null);
   const [quantity, setQuantity] = useState<number>(100);
   const [mealType, setMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | undefined>(undefined);
 
@@ -30,16 +30,23 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     if (!selectedFood) return;
 
     const multiplier = quantity / 100;
+    const localId = (selectedFood as NormalizedFood & { localId?: string }).localId;
+    const calculated = (value: number) => Math.round(value * multiplier * 10) / 10;
 
     onAdd({
-      food_id: selectedFood.id,
-      label: selectedFood.name,
+      food_id:
+        selectedFood.source === 'off'
+          ? selectedFood.offCode
+            ? `off:${selectedFood.offCode}`
+            : undefined
+          : localId,
+      label: `${selectedFood.brand ? `${selectedFood.brand} ` : ''}${selectedFood.name}`.trim(),
       qty_grammes: quantity,
       kcal: Math.round(selectedFood.kcal_per_100g * multiplier),
-      protein_g: Math.round(selectedFood.protein_g * multiplier * 10) / 10,
-      fat_g: Math.round(selectedFood.fat_g * multiplier * 10) / 10,
-      carbs_g: Math.round(selectedFood.carbs_g * multiplier * 10) / 10,
-      fiber_g: Math.round(selectedFood.fiber_g * multiplier * 10) / 10,
+      protein_g: calculated(selectedFood.protein_g),
+      fat_g: calculated(selectedFood.fat_g),
+      carbs_g: calculated(selectedFood.carbs_g),
+      fiber_g: calculated(selectedFood.fiber_g),
       meal_type: mealType,
     });
 
@@ -48,9 +55,11 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
 
   const multiplier = quantity / 100;
   const calculatedCalories = selectedFood ? Math.round(selectedFood.kcal_per_100g * multiplier) : 0;
-  const calculatedProtein = selectedFood ? Math.round(selectedFood.protein_g * multiplier * 10) / 10 : 0;
-  const calculatedFat = selectedFood ? Math.round(selectedFood.fat_g * multiplier * 10) / 10 : 0;
-  const calculatedCarbs = selectedFood ? Math.round(selectedFood.carbs_g * multiplier * 10) / 10 : 0;
+  const calculated = (value: number) => Math.round(value * multiplier * 10) / 10;
+  const calculatedProtein = selectedFood ? calculated(selectedFood.protein_g) : 0;
+  const calculatedFat = selectedFood ? calculated(selectedFood.fat_g) : 0;
+  const calculatedCarbs = selectedFood ? calculated(selectedFood.carbs_g) : 0;
+  const calculatedFiber = selectedFood ? calculated(selectedFood.fiber_g) : 0;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -72,10 +81,21 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
               }}
             />
             {selectedFood && (
-              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                <div className="font-medium text-blue-900">{selectedFood.name}</div>
-                <div className="text-sm text-blue-700 mt-1">
-                  {selectedFood.kcal_per_100g} kcal pour 100g
+              <div className="mt-3 flex items-center gap-3 rounded-md border border-blue-200 bg-blue-50 p-3">
+                {selectedFood.imageUrl && (
+                  <img
+                    src={selectedFood.imageUrl}
+                    alt=""
+                    className="h-12 w-12 flex-shrink-0 rounded object-cover"
+                  />
+                )}
+                <div>
+                  <div className="font-medium text-blue-900">
+                    {selectedFood.brand ? `${selectedFood.brand} ${selectedFood.name}` : selectedFood.name}
+                  </div>
+                  <div className="mt-1 text-sm text-blue-700">
+                    {Math.round(selectedFood.kcal_per_100g)} kcal pour 100 g
+                  </div>
                 </div>
               </div>
             )}
@@ -127,14 +147,16 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
               <div className="bg-gray-50 p-4 rounded-md">
                 <h3 className="text-sm text-gray-900 mb-2">Valeurs nutritionnelles</h3>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="text-gray-600">Calories:</div>
+                  <div className="text-gray-600">Calories :</div>
                   <div className="font-medium text-gray-900">{calculatedCalories} kcal</div>
-                  <div className="text-gray-600">Protéines:</div>
+                  <div className="text-gray-600">Protéines :</div>
                   <div className="font-medium text-gray-900">{calculatedProtein} g</div>
-                  <div className="text-gray-600">Lipides:</div>
+                  <div className="text-gray-600">Lipides :</div>
                   <div className="font-medium text-gray-900">{calculatedFat} g</div>
-                  <div className="text-gray-600">Glucides:</div>
+                  <div className="text-gray-600">Glucides :</div>
                   <div className="font-medium text-gray-900">{calculatedCarbs} g</div>
+                  <div className="text-gray-600">Fibres :</div>
+                  <div className="font-medium text-gray-900">{calculatedFiber} g</div>
                 </div>
               </div>
 
