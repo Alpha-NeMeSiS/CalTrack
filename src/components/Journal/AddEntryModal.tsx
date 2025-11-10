@@ -34,7 +34,12 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     const calculated = (value: number) => Math.round(value * multiplier * 10) / 10;
 
     onAdd({
-      ...(selectedFood.source === 'local' && localId ? { food_id: localId } : {}),
+      food_id:
+        selectedFood.source === 'off'
+          ? selectedFood.offCode
+            ? `off:${selectedFood.offCode}`
+            : undefined
+          : localId,
       label: `${selectedFood.brand ? `${selectedFood.brand} ` : ''}${selectedFood.name}`.trim(),
       qty_grammes: quantity,
       kcal: Math.round(selectedFood.kcal_per_100g * multiplier),
