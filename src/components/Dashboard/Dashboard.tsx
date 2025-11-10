@@ -205,10 +205,20 @@ export function Dashboard() {
     if (!user) return;
 
     try {
+      const cleanedEntry = { ...entryData };
+      if ('food_id' in cleanedEntry) {
+        const value = cleanedEntry.food_id;
+        const isUuid = typeof value === 'string' &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+        if (!isUuid) {
+          delete cleanedEntry.food_id;
+        }
+      }
+
       const { error } = await supabase.from('entries').insert({
         user_id: user.id,
         date: selectedDate,
-        ...entryData,
+        ...cleanedEntry,
       });
 
       if (error) throw error;
