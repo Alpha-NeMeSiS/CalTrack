@@ -265,16 +265,6 @@ export function Dashboard() {
               href="#"
               onClick={(e) => {
                 e.preventDefault();
-                window.dispatchEvent(new CustomEvent('navigate-to-board'));
-              }}
-              className="inline-block px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-md transition-colors"
-            >
-              Retour au tableau de bord
-            </a>
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
                 window.dispatchEvent(new CustomEvent('navigate-to-settings'));
               }}
               className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors"
