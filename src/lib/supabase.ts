@@ -35,6 +35,11 @@ export interface Goal {
   duration_weeks?: number;
   start_date?: string;
   end_date?: string;
+  calories_kcal?: number;
+  protein_g?: number;
+  fat_g?: number;
+  carbs_g?: number;
+  fiber_g?: number;
   created_at: string;
 }
 
