@@ -1,0 +1,5 @@
+[
+  { "code": "31077", "name": "Poulet, escalope, crue", "kcal_per_100g": 110, "protein_g": 23.1, "fat_g": 1.2, "carbs_g": 0, "fiber_g": 0 },
+  { "code": "20006", "name": "Riz, cru", "kcal_per_100g": 358, "protein_g": 7.1, "fat_g": 1.1, "carbs_g": 78.6, "fiber_g": 1.4 },
+  { "code": "16015", "name": "Pomme, crue, avec peau", "kcal_per_100g": 52, "protein_g": 0.3, "fat_g": 0.2, "carbs_g": 14, "fiber_g": 2.4 }
+]

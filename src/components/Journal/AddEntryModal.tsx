@@ -21,7 +21,7 @@ interface AddEntryModalProps {
   }) => void;
 }
 
-export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
+export function AddEntryModal({ onClose, onAdd }: AddEntryModalProps) {
   const [selectedFood, setSelectedFood] = useState<NormalizedFood | null>(null);
   const [quantity, setQuantity] = useState<number>(100);
   const [mealType, setMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | undefined>(undefined);
@@ -32,17 +32,17 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     if (!selectedFood) return;
 
     const multiplier = quantity / 100;
-    const localId = (selectedFood as NormalizedFood & { localId?: string }).localId;
     const calculated = (value: number) => Math.round(value * multiplier * 10) / 10;
+    const id =
+      selectedFood.source === 'ciqual' && selectedFood.extCode
+        ? `ciqual:${selectedFood.extCode}`
+        : selectedFood.source === 'off' && selectedFood.offCode
+          ? `off:${selectedFood.offCode}`
+          : undefined;
 
     onAdd({
-      food_id:
-        selectedFood.source === 'off'
-          ? selectedFood.offCode
-            ? `off:${selectedFood.offCode}`
-            : undefined
-          : localId,
-      label: `${selectedFood.brand ? `${selectedFood.brand} ` : ''}${selectedFood.name}`.trim(),
+      food_id: id,
+      label: selectedFood.brand ? `${selectedFood.brand} ${selectedFood.name}` : selectedFood.name,
       qty_grammes: quantity,
       kcal: Math.round(selectedFood.kcal_per_100g * multiplier),
       protein_g: calculated(selectedFood.protein_g),
@@ -134,7 +134,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                     <button
                       key={meal.value}
                       type="button"
-                      onClick={() => setMealType(mealType === meal.value ? undefined : meal.value as any)}
+                      onClick={() => setMealType(mealType === meal.value ? undefined : (meal.value as typeof mealType))}
                       className={`py-2 px-3 text-sm border-2 rounded-md font-medium transition-colors ${
                         mealType === meal.value
                           ? 'border-blue-600 bg-blue-50 text-blue-700'
