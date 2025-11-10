@@ -11,6 +11,10 @@ import { Dashboard } from './components/Dashboard/Dashboard';
 import { WeeklyTrends } from './components/Stats/WeeklyTrends';
 import { Settings } from './components/Settings/Settings';
 
+function getTodayDate() {
+  return new Date().toISOString().split('T')[0];
+}
+
 function AppContent() {
   // Récupère l'état d'authentification et le profil utilisateur
   const { user, profile, loading } = useAuth();
@@ -18,6 +22,7 @@ function AppContent() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   // Vue courante affichée dans l'application: dashboard, tendances ou paramètres
   const [currentView, setCurrentView] = useState<'dashboard' | 'trends' | 'settings'>('dashboard');
+  const [dashboardDate, setDashboardDate] = useState<string>(() => getTodayDate());
 
   // Écouteur global pour naviguer vers les paramètres depuis d'autres composants
   useEffect(() => {
@@ -25,8 +30,21 @@ function AppContent() {
       setCurrentView('settings');
     };
 
+    const handleNavigateToBoard = (event: Event) => {
+      const targetDate =
+        (event as CustomEvent<{ date?: string }>).detail?.date ?? getTodayDate();
+
+      setDashboardDate(targetDate);
+      setCurrentView('dashboard');
+    };
+
     window.addEventListener('navigate-to-settings', handleNavigateToSettings);
-    return () => window.removeEventListener('navigate-to-settings', handleNavigateToSettings);
+    window.addEventListener('navigate-to-board', handleNavigateToBoard);
+
+    return () => {
+      window.removeEventListener('navigate-to-settings', handleNavigateToSettings);
+      window.removeEventListener('navigate-to-board', handleNavigateToBoard);
+    };
   }, []);
 
   // Affiche un écran de chargement tant que l'authentification/profile n'est pas prête
@@ -70,7 +88,9 @@ function AppContent() {
       <Navigation currentView={currentView} onViewChange={setCurrentView} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {currentView === 'dashboard' && <Dashboard />}
+        {currentView === 'dashboard' && (
+          <Dashboard activeDate={dashboardDate} onActiveDateChange={setDashboardDate} />
+        )}
         {currentView === 'trends' && <WeeklyTrends />}
         {currentView === 'settings' && <Settings />}
       </main>

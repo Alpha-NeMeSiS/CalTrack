@@ -136,14 +136,29 @@ async function ensureDailyTargetForDate(userId: string, dateStr: string): Promis
   }
 }
 
-export function Dashboard() {
+function getTodayDate() {
+  return new Date().toISOString().split('T')[0];
+}
+
+type DashboardProps = {
+  activeDate?: string;
+  onActiveDateChange?: (date: string) => void;
+};
+
+export function Dashboard({ activeDate, onActiveDateChange }: DashboardProps) {
   const { user, profile } = useAuth();
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(activeDate ?? getTodayDate());
   const [target, setTarget] = useState<DailyTarget | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (activeDate && activeDate !== selectedDate) {
+      setSelectedDate(activeDate);
+    }
+  }, [activeDate, selectedDate]);
 
   // Recharger les données lorsque l'utilisateur ou la date sélectionnée change
   useEffect(() => {
@@ -265,7 +280,11 @@ export function Dashboard() {
               href="#"
               onClick={(e) => {
                 e.preventDefault();
-                window.dispatchEvent(new CustomEvent('navigate-to-board'));
+                window.dispatchEvent(
+                  new CustomEvent('navigate-to-board', {
+                    detail: { date: getTodayDate() },
+                  })
+                );
               }}
               className="inline-block px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-md transition-colors"
             >
@@ -297,7 +316,11 @@ export function Dashboard() {
           <input
             type="date"
             value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            onChange={(e) => {
+              const nextDate = e.target.value;
+              setSelectedDate(nextDate);
+              onActiveDateChange?.(nextDate);
+            }}
             max={new Date().toISOString().split('T')[0]}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-kaizen-500"
           />
