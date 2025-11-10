@@ -16,7 +16,7 @@ function kcalFromNutriments(nutriments: any): number {
   return kJ ? Math.round(((kJ / 4.184) + Number.EPSILON) * 10) / 10 : 0;
 }
 
-export async function searchOFF(term: string, abort?: AbortSignal): Promise<NormalizedFood[]> {
+export async function searchOFF(term: string, signal?: AbortSignal): Promise<NormalizedFood[]> {
   if (!term || term.trim().length < 2) return [];
 
   const params = new URLSearchParams({
@@ -38,7 +38,7 @@ export async function searchOFF(term: string, abort?: AbortSignal): Promise<Norm
     ].join(','),
   });
 
-  const response = await fetch(`${V1_SEARCH}?${params.toString()}`, { signal: abort });
+  const response = await fetch(`${V1_SEARCH}?${params.toString()}`, { signal });
   if (!response.ok) {
     return [];
   }
@@ -54,6 +54,7 @@ export async function searchOFF(term: string, abort?: AbortSignal): Promise<Norm
         brand: product?.brands || undefined,
         imageUrl: product?.image_small_url || undefined,
         offCode: product?.code || undefined,
+        extCode: undefined,
         kcal_per_100g: kcalFromNutriments(product?.nutriments),
         protein_g: toNumber(product?.nutriments?.proteins_100g),
         fat_g: toNumber(product?.nutriments?.fat_100g),
