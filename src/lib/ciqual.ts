@@ -21,7 +21,11 @@ export async function loadCiqual(): Promise<NormalizedFood[]> {
   if (cache) return cache;
   const res = await fetch('/data/ciqual-min.json', { cache: 'force-cache' });
   if (!res.ok) return (cache = []);
-  const rows = await res.json();
+
+  const text = await res.text();
+  const cleaned = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+  const rows = JSON.parse(cleaned);
+
   cache = Array.isArray(rows) ? rows.map(normalize) : [];
   return cache;
 }
