@@ -231,7 +231,7 @@ export function WeeklyTrends() {
 
       <div className="p-6 space-y-6">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-4">Graphique des calories</h3>
+          <h3 className="text-sm text-gray-900 mb-4">Graphique des calories</h3>
           <div className="bg-gray-50 p-4 rounded-lg">
             <div className="relative h-64">
               {/* Axe Y avec graduations pour l'échelle des calories */}
@@ -352,7 +352,7 @@ export function WeeklyTrends() {
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Historique détaillé (30 jours)</h3>
+          <h3 className="text-sm text-gray-900 mb-3">Historique détaillé (30 jours)</h3>
           <div className="space-y-2 h-[400px] overflow-y-auto pr-2 scrollbar scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400 scrollbar-track-transparent">
             {monthData.map((day) => {
               const date = new Date(day.date);

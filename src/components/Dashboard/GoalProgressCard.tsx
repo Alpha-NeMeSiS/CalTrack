@@ -40,7 +40,7 @@ export function GoalProgressCard({ goal, currentWeight }: GoalProgressCardProps)
     <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
       <div className="flex items-center gap-2 mb-4">
         <Target className="w-5 h-5 text-blue-600" />
-        <h3 className="text-lg text-blue-600">Progression de l'objectif</h3>
+        <h3 className="text-l text-blue-600">Progression de l'objectif</h3>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">

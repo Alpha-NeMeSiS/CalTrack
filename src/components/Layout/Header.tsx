@@ -15,7 +15,7 @@ export function Header() {
               <img src={logo} alt="CalTrack Logo" className="w-16 h-16 object-contain" />
             </div>
             <div>
-              <h1 className="text-xl text-shonen-700">CalTrack</h1>
+              <h1 className="text-xl text-shonen-700 ">CalTrack</h1>
               <p className="text-xs text-gray-600">Suivi calorique personnalisé</p>
             </div>
           </div>
