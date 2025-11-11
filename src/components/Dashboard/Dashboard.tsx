@@ -300,7 +300,7 @@ export function Dashboard() {
             onChange={(e) => {
               const nextDate = e.target.value;
               setSelectedDate(nextDate);
-              //onActiveDateChange?.(nextDate);
+              onActiveDateChange?.(nextDate);
             }}
             max={new Date().toISOString().split('T')[0]}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-kaizen-500"
