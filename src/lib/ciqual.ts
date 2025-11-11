@@ -7,11 +7,44 @@ const fold = (value: string): string =>
     .replace(/æ/g, 'ae')
     .replace(/ß/g, 'ss')
     .replace(/ø/g, 'o')
+    .replace(/\ufffd/g, '?')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/[^a-z0-9?]+/g, ' ')
     .trim()
     .replace(/\s+/g, ' ');
+
+const wildcardIndexOf = (haystack: string, needle: string): number => {
+  if (needle.length === 0 || haystack.length < needle.length) return -1;
+
+  outer: for (let i = 0; i <= haystack.length - needle.length; i += 1) {
+    for (let j = 0; j < needle.length; j += 1) {
+      const hc = haystack[i + j];
+      const nc = needle[j];
+
+      if (hc !== '?' && hc !== nc) {
+        continue outer;
+      }
+    }
+
+    return i;
+  }
+
+  return -1;
+};
+
+const findTokenIndex = (normalized: string, token: string): number => {
+  const direct = normalized.indexOf(token);
+  if (direct >= 0) {
+    return direct;
+  }
+
+  if (!normalized.includes('?')) {
+    return -1;
+  }
+
+  return wildcardIndexOf(normalized, token);
+};
 
 let cache: NormalizedFood[] | null = null;
 let searchIndex: { food: NormalizedFood; normalized: string }[] | null = null;
@@ -66,7 +99,7 @@ export async function searchCiqual(q: string): Promise<NormalizedFood[]> {
       let score = 0;
 
       for (const token of tokens) {
-        const idx = normalized.indexOf(token);
+        const idx = findTokenIndex(normalized, token);
         if (idx < 0) {
           return null;
         }
