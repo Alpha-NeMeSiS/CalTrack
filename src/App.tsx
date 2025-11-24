@@ -8,7 +8,7 @@ import { OnboardingForm } from './components/Onboarding/OnboardingForm';
 import { Header } from './components/Layout/Header';
 import { Navigation } from './components/Layout/Navigation';
 import { Dashboard } from './components/Dashboard/Dashboard';
-import { FridgeCapture } from './components/Fridge/FridgeCapture';
+import { FridgeScanner } from './components/Fridge/FridgeScanner';
 import { WeeklyTrends } from './components/Stats/WeeklyTrends';
 import { Settings } from './components/Settings/Settings';
 
@@ -88,7 +88,7 @@ function AppContent() {
         {currentView === 'dashboard' && (
           <Dashboard activeDate={dashboardDate} onActiveDateChange={setDashboardDate} />
         )}
-        {currentView === 'fridge' && <FridgeCapture />}
+        {currentView === 'fridge' && <FridgeScanner />}
         {currentView === 'trends' && <WeeklyTrends />}
         {currentView === 'settings' && <Settings />}
       </main>

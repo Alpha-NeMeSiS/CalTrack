@@ -1,10 +1,4 @@
-import {
-  DetectedItem,
-  GeneratedRecipe,
-  GeneratedRecipeWithNutrition,
-  GoalType,
-  QuantityLevel,
-} from '../types/fridge';
+import { DetectedItem, GeneratedRecipe, GoalType, QuantityLevel } from '../types/fridge';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -19,8 +13,12 @@ function mapQuantity(level: QuantityLevel): string {
   }
 }
 
-async function fallbackAnalyze(file: File): Promise<DetectedItem[]> {
-  await delay(700);
+// Placeholder: simule l'appel à un modèle de vision pour analyser l'image du frigo.
+export async function analyzeFridgeImage(file: File): Promise<DetectedItem[]> {
+  // Délai simulé pour refléter un appel réseau
+  await delay(900);
+
+  // Génère quelques résultats cohérents pour la démo
   const baseItems: Omit<DetectedItem, 'enabled'>[] = [
     { id: 'OEUF_POULE', name: 'Œufs de poule', confidence: 0.86, quantityLevel: 'medium' },
     { id: 'TOMATE_CRUE', name: 'Tomates fraîches', confidence: 0.79, quantityLevel: 'low' },
@@ -28,7 +26,9 @@ async function fallbackAnalyze(file: File): Promise<DetectedItem[]> {
     { name: 'Yaourt nature', confidence: 0.65, quantityLevel: 'medium' },
   ];
 
+  // Décale légèrement les scores pour éviter des valeurs figées entre analyses
   const jitter = Math.min(0.08, Math.max(0, file.size % 13) / 200);
+
   return baseItems.map((item) => ({
     ...item,
     confidence: Math.min(1, item.confidence + jitter),
@@ -36,8 +36,13 @@ async function fallbackAnalyze(file: File): Promise<DetectedItem[]> {
   }));
 }
 
-async function fallbackRecipes(items: DetectedItem[], goalType: GoalType): Promise<GeneratedRecipeWithNutrition[]> {
-  await delay(900);
+// Placeholder: simule un appel LLM pour proposer des recettes healthy à partir des aliments.
+export async function generateRecipesFromItems(
+  items: DetectedItem[],
+  goalType: GoalType,
+): Promise<GeneratedRecipe[]> {
+  await delay(1100);
+
   const enabledItems = items.filter((item) => item.enabled);
   const pantryNames = enabledItems.map((item) => item.name.toLowerCase());
 
@@ -90,49 +95,10 @@ async function fallbackRecipes(items: DetectedItem[], goalType: GoalType): Promi
     },
   ];
 
-  return recipes
-    .filter((recipe) =>
-      recipe.ingredients.some((ingredient) =>
-        pantryNames.some((itemName) => ingredient.name.toLowerCase().includes(itemName.split(' ')[0])),
-      ),
-    )
-    .map((recipe) => ({ ...recipe }));
-}
-
-export async function analyzeFridgeImage(file: File): Promise<DetectedItem[]> {
-  try {
-    const formData = new FormData();
-    formData.append('image', file);
-    const response = await fetch('/api/fridge/analyze', { method: 'POST', body: formData });
-    if (response.ok) {
-      const data = (await response.json()) as { items: DetectedItem[] };
-      return data.items;
-    }
-  } catch (error) {
-    console.warn('Fallback analyse frigo', error);
-  }
-
-  return fallbackAnalyze(file);
-}
-
-export async function generateRecipesFromItems(
-  items: DetectedItem[],
-  goalType: GoalType,
-): Promise<GeneratedRecipeWithNutrition[]> {
-  try {
-    const response = await fetch('/api/fridge/recipes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items, goal: goalType }),
-    });
-    if (response.ok) {
-      const data = (await response.json()) as { recipes: GeneratedRecipeWithNutrition[] };
-      return data.recipes;
-    }
-  } catch (error) {
-    console.warn('Fallback génération recettes', error);
-  }
-
-  const recipes = await fallbackRecipes(items, goalType);
-  return recipes.map((recipe) => ({ ...recipe }));
+  // Filtre léger pour personnaliser les suggestions en fonction des aliments gardés
+  return recipes.filter((recipe) =>
+    recipe.ingredients.some((ingredient) =>
+      pantryNames.some((itemName) => ingredient.name.toLowerCase().includes(itemName.split(' ')[0])),
+    ),
+  );
 }
