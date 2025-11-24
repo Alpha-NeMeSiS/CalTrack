@@ -1,15 +1,16 @@
 // Barre de navigation principale
 // Permet de naviguer entre les vues: Tableau de bord, Tendances et Paramètres
-import { Home, TrendingUp, Settings as SettingsIcon } from 'lucide-react';
+import { Home, TrendingUp, Settings as SettingsIcon, ChefHat } from 'lucide-react';
 
 interface NavigationProps {
-  currentView: 'dashboard' | 'trends' | 'settings';
-  onViewChange: (view: 'dashboard' | 'trends' | 'settings') => void;
+  currentView: 'dashboard' | 'fridge' | 'trends' | 'settings';
+  onViewChange: (view: 'dashboard' | 'fridge' | 'trends' | 'settings') => void;
 }
 
 export function Navigation({ currentView, onViewChange }: NavigationProps) {
   const tabs = [
     { id: 'dashboard' as const, label: 'Tableau de bord', icon: Home },
+    { id: 'fridge' as const, label: 'Cuisiner', icon: ChefHat },
     { id: 'trends' as const, label: 'Tendances', icon: TrendingUp },
     { id: 'settings' as const, label: 'Paramètres', icon: SettingsIcon },
   ];
