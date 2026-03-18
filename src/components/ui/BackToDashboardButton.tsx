@@ -1,45 +1,38 @@
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-
 export type Props = {
   href?: string;
   label?: string;
   className?: string;
-  as?: "link" | "button";
+  as?: 'link' | 'button';
   onAfterNav?: () => void;
 };
 
 const baseClasses =
-  "inline-block px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-md transition-colors";
+  'inline-block px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-md transition-colors';
 
 const BackToDashboardButton = ({
-  href = "/dashboard",
-  label = "Retour au tableau de bord",
+  href = '/dashboard',
+  label = 'Retour au tableau de bord',
   className,
-  as = "link",
+  as = 'link',
   onAfterNav,
 }: Props) => {
-  const router = useRouter();
   const classes = className ? `${baseClasses} ${className}` : baseClasses;
 
-  const handleAfterNav = () => {
-    if (onAfterNav) {
-      onAfterNav();
+  const navigate = () => {
+    window.dispatchEvent(new CustomEvent('navigate-to-board'));
+    if (href !== '/dashboard') {
+      window.location.hash = href;
     }
+    onAfterNav?.();
   };
 
-  if (as === "button") {
-    const handleButtonClick = () => {
-      router.push(href);
-      handleAfterNav();
-    };
-
+  if (as === 'button') {
     return (
       <button
-        type="button"
+        type='button'
         aria-label={label}
         className={classes}
-        onClick={handleButtonClick}
+        onClick={navigate}
       >
         {label}
       </button>
@@ -47,17 +40,10 @@ const BackToDashboardButton = ({
   }
 
   return (
-    <Link href={href} aria-label={label} className={classes} onClick={handleAfterNav}>
+    <button type='button' aria-label={label} className={classes} onClick={navigate}>
       {label}
-    </Link>
+    </button>
   );
 };
 
 export default BackToDashboardButton;
-
-{
-  /* Exemple :
-  <BackToDashboardButton />
-  <BackToDashboardButton as="button" href="/" className="mt-2" />
-  */
-}

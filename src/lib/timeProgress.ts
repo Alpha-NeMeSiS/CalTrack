@@ -17,7 +17,6 @@ export function computeTimeProgress(start: Date, end: Date, now: Date) {
   try {
     const startMs = start.getTime();
     const nowMs = now.getTime();
-    const endMs = end.getTime();
     
     // Calculer les semaines totales entre début et fin
     const totalWeeks = Math.max(1, weeksBetween(start, end));
