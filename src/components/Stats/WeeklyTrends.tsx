@@ -1,53 +1,11 @@
 // Importation des dépendances React nécessaires
 import { useState, useEffect } from 'react';
-// Importation des icônes pour les tendances
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 // Importation de la configuration Supabase
 import { supabase } from '../../lib/supabase';
 // Importation du contexte d'authentification
 import { useAuth } from '../../contexts/AuthContext';
 // Importation des fonctions de calcul
 import { calculateDailySummary } from '../../utils/calculations';
-
-// Interface pour les objectifs nutritionnels
-interface Goal {
-  id: string;
-  user_id: string;
-  type: 'loss' | 'maintain' | 'gain'; // Type d'objectif: perte, maintien ou gain de poids
-  is_active: boolean;
-  start_date: string;
-  end_date: string;
-  duration_weeks: number;
-}
-
-// Interface pour les entrées du journal alimentaire
-interface Entry {
-  id: string;
-  user_id: string;
-  date: string;
-  meal_type: 'breakfast' | 'lunch' | 'dinner' | 'snack'; // Type de repas
-  food_name: string;
-  serving_size_g: number;
-  calories_kcal: number;
-  protein_g: number;
-  fat_g: number;
-  carbs_g: number;
-  fiber_g: number;
-  created_at: string;
-}
-
-// Interface pour les objectifs quotidiens
-interface DailyTarget {
-  id: string;
-  user_id: string;
-  date: string;
-  calories_kcal: number;
-  protein_g: number;
-  fat_g: number;
-  carbs_g: number;
-  fiber_g: number;
-  goal_id: string;
-}
 
 // Interface pour le résumé des macronutriments
 interface MacroSummary {
@@ -98,9 +56,6 @@ export function WeeklyTrends() {
       const today = new Date();
       const monthAgo = new Date(today);
       monthAgo.setDate(today.getDate() - 30); // Date d'il y a 30 jours
-
-      const weekAgo = new Date(today);
-      weekAgo.setDate(today.getDate() - 6); // Date d'il y a 6 jours
 
       // Formatage des dates pour la requête
       const startDate = monthAgo.toISOString().split('T')[0];
@@ -155,23 +110,19 @@ export function WeeklyTrends() {
         }
       }
 
-      // Préparation des données pour l'historique détaillé (30 derniers jours)
-      const monthData = [];
+      const monthData: WeekDataItem[] = [];
       for (let i = 0; i < 30; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
 
-        // Recherche des données pour ce jour
         const dayTarget = targets.find((t) => t.date === dateStr);
         const dayEntries = entries.filter((e) => e.date === dateStr);
 
         if (dayTarget) {
-          // Calcul du résumé quotidien si un objectif existe
           const summary = calculateDailySummary(dayEntries, dayTarget, dateStr);
           monthData.push({ date: dateStr, summary });
         } else {
-          // Pas de données pour ce jour
           monthData.push({ date: dateStr, summary: null });
         }
       }
@@ -197,25 +148,6 @@ export function WeeklyTrends() {
   // Filtrage des jours avec des données valides
   const validDays = weekData.filter((d): d is WeekDataItem & { summary: DailySummary } => d.summary !== null);
   
-  // Calcul de la moyenne des calories consommées
-  const avgCalories =
-    validDays.length > 0
-      ? Math.round(validDays.reduce((sum, d) => sum + d.summary.consumed.calories_kcal, 0) / validDays.length)
-      : 0;
-  
-  // Calcul de la moyenne des objectifs caloriques
-  const avgTarget =
-    validDays.length > 0
-      ? Math.round(validDays.reduce((sum, d) => sum + d.summary.target.calories_kcal, 0) / validDays.length)
-      : 0;
-
-  // Calcul des statistiques d'atteinte des objectifs
-  const statusCount = {
-    under: validDays.filter((d) => d.summary.status === 'under').length,  // Jours sous l'objectif
-    ok: validDays.filter((d) => d.summary.status === 'ok').length,        // Jours dans l'objectif
-    over: validDays.filter((d) => d.summary.status === 'over').length,    // Jours au-dessus de l'objectif
-  };
-
   // Calcul du maximum des calories pour l'échelle du graphique
   // Utilise 2000 comme minimum pour éviter une échelle trop petite
   const maxCalories = Math.max(
@@ -354,7 +286,7 @@ export function WeeklyTrends() {
         <div>
           <h3 className="text-sm text-gray-900 mb-3">Historique détaillé (30 jours)</h3>
           <div className="space-y-2 h-[400px] overflow-y-auto pr-2 scrollbar scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400 scrollbar-track-transparent">
-            {monthData.map((day) => {
+            {monthData.map((day: WeekDataItem) => {
               const date = new Date(day.date);
               const dayName = date.toLocaleDateString('fr-FR', { weekday: 'short' });
               const dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
