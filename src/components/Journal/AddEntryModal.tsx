@@ -126,6 +126,9 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   const [recentEntriesLoading, setRecentEntriesLoading] = useState(false);
   const [recentEntriesLoaded, setRecentEntriesLoaded] = useState(false);
   const [recentEntriesError, setRecentEntriesError] = useState<string | null>(null);
+  const [selectedRecentFood, setSelectedRecentFood] = useState<Entry | null>(null);
+  const [quickQuantity, setQuickQuantity] = useState<number>(100);
+  const [quickMealType, setQuickMealType] = useState<MealType | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
@@ -229,6 +232,12 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     setMealType(undefined);
   };
 
+  const resetQuickState = () => {
+    setSelectedRecentFood(null);
+    setQuickQuantity(100);
+    setQuickMealType(undefined);
+  };
+
   const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft' && event.key !== 'Home' && event.key !== 'End') {
       return;
@@ -311,16 +320,41 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     });
   };
 
-  const handleQuickAdd = async (entry: Entry) => {
+  const handleRecentFoodSelect = (entry: Entry) => {
+    const initialQuantity = entry.qty_grammes > 0 ? entry.qty_grammes : 100;
+
+    setSelectedRecentFood(entry);
+    setQuickQuantity(initialQuantity);
+    setQuickMealType(entry.meal_type);
+  };
+
+  const quickBaseQuantity = selectedRecentFood?.qty_grammes && selectedRecentFood.qty_grammes > 0
+    ? selectedRecentFood.qty_grammes
+    : 100;
+  const quickRatio = quickBaseQuantity > 0 ? quickQuantity / quickBaseQuantity : 0;
+  const quickCalories = selectedRecentFood ? Math.round(selectedRecentFood.kcal * quickRatio) : 0;
+  const quickProtein = selectedRecentFood ? roundToOneDecimal(selectedRecentFood.protein_g * quickRatio) : 0;
+  const quickFat = selectedRecentFood ? roundToOneDecimal(selectedRecentFood.fat_g * quickRatio) : 0;
+  const quickCarbs = selectedRecentFood ? roundToOneDecimal(selectedRecentFood.carbs_g * quickRatio) : 0;
+  const quickFiber = selectedRecentFood ? roundToOneDecimal(selectedRecentFood.fiber_g * quickRatio) : 0;
+  const isQuickQuantityValid = quickQuantity > 0;
+
+  const handleQuickSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!selectedRecentFood || !isQuickQuantityValid) {
+      return;
+    }
+
     await submitEntry({
-      label: entry.label ?? 'Aliment sans nom',
-      qty_grammes: entry.qty_grammes,
-      kcal: entry.kcal,
-      protein_g: entry.protein_g,
-      fat_g: entry.fat_g,
-      carbs_g: entry.carbs_g,
-      fiber_g: entry.fiber_g,
-      meal_type: entry.meal_type,
+      label: selectedRecentFood.label ?? 'Aliment sans nom',
+      qty_grammes: quickQuantity,
+      kcal: quickCalories,
+      protein_g: quickProtein,
+      fat_g: quickFat,
+      carbs_g: quickCarbs,
+      fiber_g: quickFiber,
+      meal_type: quickMealType,
     });
   };
 
@@ -499,7 +533,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   const renderQuickTab = () => (
     <div className="space-y-4">
       <div className="rounded-md bg-gray-50 p-4 text-sm text-gray-600">
-        Reprenez rapidement un aliment déjà ajouté. Il sera recréé pour le {formatRecentDate(date)} avec les mêmes valeurs.
+        Sélectionnez un aliment récent puis ajustez la quantité et le repas avant de l’ajouter au {formatRecentDate(date)}.
       </div>
 
       {recentEntriesLoading && (
@@ -548,16 +582,98 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
 
                 <button
                   type="button"
-                  onClick={() => handleQuickAdd(entry)}
-                  disabled={submitting}
-                  className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                  onClick={() => handleRecentFoodSelect(entry)}
+                  className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
                 >
-                  {submitting ? 'Ajout en cours…' : 'Ajouter tel quel'}
+                  Utiliser
                 </button>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {selectedRecentFood && (
+        <form onSubmit={handleQuickSubmit} className="space-y-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-medium text-blue-900">Pré-remplissage rapide</h3>
+              <p className="mt-1 text-sm text-blue-800">{selectedRecentFood.label ?? 'Aliment sans nom'}</p>
+            </div>
+            <button
+              type="button"
+              onClick={resetQuickState}
+              className="text-sm font-medium text-blue-700 hover:text-blue-900"
+            >
+              Annuler
+            </button>
+          </div>
+
+          {selectedRecentFood.qty_grammes <= 0 && (
+            <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+              La quantité d’origine était invalide. Le recalcul est basé sur 100 g par défaut.
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="quick-label" className="block text-sm font-medium text-gray-700 mb-1">
+                Nom de l’aliment
+              </label>
+              <div id="quick-label" className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-gray-900">
+                {selectedRecentFood.label ?? 'Aliment sans nom'}
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="quick-quantity" className="block text-sm font-medium text-gray-700 mb-1">
+                Quantité (g)
+              </label>
+              <input
+                id="quick-quantity"
+                type="number"
+                value={quickQuantity}
+                onChange={(event) => setQuickQuantity(Number(event.target.value))}
+                min="1"
+                step="1"
+                required
+                aria-invalid={!isQuickQuantityValid}
+                className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  isQuickQuantityValid ? 'border-gray-300 bg-white' : 'border-red-400 bg-white'
+                }`}
+              />
+              {!isQuickQuantityValid && (
+                <p className="mt-1 text-sm text-red-600">La quantité doit être supérieure à 0.</p>
+              )}
+            </div>
+          </div>
+
+          <MealTypeSelector value={quickMealType} onChange={setQuickMealType} />
+
+          <div className="rounded-md bg-white p-4">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">Récapitulatif</h4>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="text-gray-600">Calories :</div>
+              <div className="font-medium text-gray-900">{quickCalories} kcal</div>
+              <div className="text-gray-600">Protéines :</div>
+              <div className="font-medium text-gray-900">{quickProtein} g</div>
+              <div className="text-gray-600">Lipides :</div>
+              <div className="font-medium text-gray-900">{quickFat} g</div>
+              <div className="text-gray-600">Glucides :</div>
+              <div className="font-medium text-gray-900">{quickCarbs} g</div>
+              <div className="text-gray-600">Fibres :</div>
+              <div className="font-medium text-gray-900">{quickFiber} g</div>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={!isQuickQuantityValid || submitting}
+            className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+          >
+            {submitting ? 'Ajout en cours…' : 'Ajouter au journal'}
+          </button>
+        </form>
       )}
 
       <button
@@ -601,6 +717,9 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                   }
                   if (tab.value !== 'manual') {
                     setManualSubmitAttempted(false);
+                  }
+                  if (tab.value !== 'quick') {
+                    resetQuickState();
                   }
                 }}
                 onKeyDown={(event) => handleTabKeyDown(event, index)}
