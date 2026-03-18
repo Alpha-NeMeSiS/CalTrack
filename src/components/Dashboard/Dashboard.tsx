@@ -136,14 +136,28 @@ async function ensureDailyTargetForDate(userId: string, dateStr: string): Promis
   }
 }
 
-export function Dashboard() {
+interface DashboardProps {
+  activeDate?: string;
+  onActiveDateChange?: (date: string) => void;
+}
+
+export function Dashboard({
+  activeDate,
+  onActiveDateChange,
+}: DashboardProps) {
   const { user, profile } = useAuth();
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(activeDate ?? new Date().toISOString().split('T')[0]);
   const [target, setTarget] = useState<DailyTarget | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (activeDate && activeDate !== selectedDate) {
+      setSelectedDate(activeDate);
+    }
+  }, [activeDate, selectedDate]);
 
   // Recharger les données lorsque l'utilisateur ou la date sélectionnée change
   useEffect(() => {
@@ -154,7 +168,7 @@ export function Dashboard() {
 
   // Charge les données du jour : target, entrées et objectif actif
   const loadDayData = async () => {
-    if (!user) return;
+    if (!user) return false;
 
     setLoading(true);
     try {
@@ -201,8 +215,8 @@ export function Dashboard() {
   };
 
   // Ajoute une entrée dans la table 'entries' puis recharge les données
-  const handleAddEntry = async (entryData: any) => {
-    if (!user) return;
+  const handleAddEntry = async (entryData: Omit<Entry, 'id' | 'user_id' | 'date' | 'created_at'>): Promise<boolean> => {
+    if (!user) return false;
 
     try {
       const cleanedEntry = { ...entryData };
@@ -224,8 +238,10 @@ export function Dashboard() {
       if (error) throw error;
 
       await loadDayData();
+      return true;
     } catch (error) {
       console.error('Error adding entry:', error);
+      return false;
     }
   };
 
@@ -237,6 +253,7 @@ export function Dashboard() {
       if (error) throw error;
 
       await loadDayData();
+      return true;
     } catch (error) {
       console.error('Error deleting entry:', error);
     }

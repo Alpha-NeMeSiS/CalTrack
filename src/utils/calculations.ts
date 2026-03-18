@@ -221,7 +221,7 @@ export function calculateGoalProgress(
   targetWeight: number,
   durationWeeks: number,
   startDate: string,
-  goalType: 'loss' | 'gain'
+  _goalType: 'loss' | 'gain'
 ): GoalProgress {
   const start = new Date(startDate);
   const today = new Date();
@@ -263,7 +263,7 @@ export function calculateOptimalDeficitOrSurplus(
   targetWeight: number,
   durationWeeks: number,
   tdee: number,
-  goalType: 'loss' | 'gain'
+  _goalType: 'loss' | 'gain'
 ): number {
   const totalWeightChange = Math.abs(targetWeight - currentWeight);
   const weeklyWeightChange = totalWeightChange / durationWeeks;
@@ -275,7 +275,7 @@ export function calculateOptimalDeficitOrSurplus(
   const deficitOrSurplusPct = (dailyCalorieChange / tdee) * 100;
 
   const minPct = 5;
-  const maxPct = goalType === 'loss' ? 25 : 20;
+  const maxPct = _goalType === 'loss' ? 25 : 20;
 
   return Math.max(minPct, Math.min(maxPct, Math.round(deficitOrSurplusPct)));
 }
