@@ -127,10 +127,12 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   const [recentEntriesLoaded, setRecentEntriesLoaded] = useState(false);
   const [recentEntriesError, setRecentEntriesError] = useState<string | null>(null);
   const [selectedRecentFood, setSelectedRecentFood] = useState<Entry | null>(null);
+  const [isQuickAddDialogOpen, setIsQuickAddDialogOpen] = useState(false);
   const [quickQuantity, setQuickQuantity] = useState<number>(100);
   const [quickMealType, setQuickMealType] = useState<MealType | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const quickQuantityInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (activeTab !== 'quick' || recentEntriesLoaded || !user) {
@@ -234,6 +236,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
 
   const resetQuickState = () => {
     setSelectedRecentFood(null);
+    setIsQuickAddDialogOpen(false);
     setQuickQuantity(100);
     setQuickMealType(undefined);
   };
@@ -268,6 +271,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
       if (success) {
         onClose();
       }
+      return success;
     } finally {
       setSubmitting(false);
     }
@@ -324,6 +328,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     const initialQuantity = entry.qty_grammes > 0 ? entry.qty_grammes : 100;
 
     setSelectedRecentFood(entry);
+    setIsQuickAddDialogOpen(true);
     setQuickQuantity(initialQuantity);
     setQuickMealType(entry.meal_type);
   };
@@ -346,7 +351,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
       return;
     }
 
-    await submitEntry({
+    const success = await submitEntry({
       label: selectedRecentFood.label ?? 'Aliment sans nom',
       qty_grammes: quickQuantity,
       kcal: quickCalories,
@@ -356,7 +361,29 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
       fiber_g: quickFiber,
       meal_type: quickMealType,
     });
+
+    if (success) {
+      resetQuickState();
+    }
   };
+
+
+  useEffect(() => {
+    if (!isQuickAddDialogOpen) {
+      return;
+    }
+
+    quickQuantityInputRef.current?.focus();
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        resetQuickState();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isQuickAddDialogOpen]);
 
   const renderSearchTab = () => (
     <form onSubmit={handleSearchSubmit} className="space-y-6">
@@ -593,89 +620,6 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
         </div>
       )}
 
-      {selectedRecentFood && (
-        <form onSubmit={handleQuickSubmit} className="space-y-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h3 className="text-sm font-medium text-blue-900">Pré-remplissage rapide</h3>
-              <p className="mt-1 text-sm text-blue-800">{selectedRecentFood.label ?? 'Aliment sans nom'}</p>
-            </div>
-            <button
-              type="button"
-              onClick={resetQuickState}
-              className="text-sm font-medium text-blue-700 hover:text-blue-900"
-            >
-              Annuler
-            </button>
-          </div>
-
-          {selectedRecentFood.qty_grammes <= 0 && (
-            <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
-              La quantité d’origine était invalide. Le recalcul est basé sur 100 g par défaut.
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="quick-label" className="block text-sm font-medium text-gray-700 mb-1">
-                Nom de l’aliment
-              </label>
-              <div id="quick-label" className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-gray-900">
-                {selectedRecentFood.label ?? 'Aliment sans nom'}
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="quick-quantity" className="block text-sm font-medium text-gray-700 mb-1">
-                Quantité (g)
-              </label>
-              <input
-                id="quick-quantity"
-                type="number"
-                value={quickQuantity}
-                onChange={(event) => setQuickQuantity(Number(event.target.value))}
-                min="1"
-                step="1"
-                required
-                aria-invalid={!isQuickQuantityValid}
-                className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  isQuickQuantityValid ? 'border-gray-300 bg-white' : 'border-red-400 bg-white'
-                }`}
-              />
-              {!isQuickQuantityValid && (
-                <p className="mt-1 text-sm text-red-600">La quantité doit être supérieure à 0.</p>
-              )}
-            </div>
-          </div>
-
-          <MealTypeSelector value={quickMealType} onChange={setQuickMealType} />
-
-          <div className="rounded-md bg-white p-4">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">Récapitulatif</h4>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="text-gray-600">Calories :</div>
-              <div className="font-medium text-gray-900">{quickCalories} kcal</div>
-              <div className="text-gray-600">Protéines :</div>
-              <div className="font-medium text-gray-900">{quickProtein} g</div>
-              <div className="text-gray-600">Lipides :</div>
-              <div className="font-medium text-gray-900">{quickFat} g</div>
-              <div className="text-gray-600">Glucides :</div>
-              <div className="font-medium text-gray-900">{quickCarbs} g</div>
-              <div className="text-gray-600">Fibres :</div>
-              <div className="font-medium text-gray-900">{quickFiber} g</div>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={!isQuickQuantityValid || submitting}
-            className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
-          >
-            {submitting ? 'Ajout en cours…' : 'Ajouter au journal'}
-          </button>
-        </form>
-      )}
-
       <button
         type="button"
         onClick={onClose}
@@ -685,6 +629,124 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
       </button>
     </div>
   );
+
+  const renderQuickAddDialog = () => {
+    if (!selectedRecentFood || !isQuickAddDialogOpen) {
+      return null;
+    }
+
+    return (
+      <div
+        className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 p-4"
+        onClick={resetQuickState}
+        aria-hidden="true"
+      >
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="quick-add-dialog-title"
+          className="w-full max-w-lg rounded-lg bg-white shadow-2xl"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+            <div>
+              <h3 id="quick-add-dialog-title" className="text-lg font-medium text-gray-900">
+                Finaliser l’ajout rapide
+              </h3>
+              <p className="mt-1 text-sm text-gray-600">
+                {selectedRecentFood.label ?? 'Aliment sans nom'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={resetQuickState}
+              className="text-gray-400 transition-colors hover:text-gray-600"
+              aria-label="Fermer l’ajout rapide"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <form onSubmit={handleQuickSubmit} className="space-y-4 p-6">
+            {selectedRecentFood.qty_grammes <= 0 && (
+              <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+                La quantité d’origine était invalide. Le recalcul est basé sur 100 g par défaut.
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label htmlFor="quick-label" className="mb-1 block text-sm font-medium text-gray-700">
+                  Nom de l’aliment
+                </label>
+                <div id="quick-label" className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-900">
+                  {selectedRecentFood.label ?? 'Aliment sans nom'}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="quick-quantity" className="mb-1 block text-sm font-medium text-gray-700">
+                  Quantité (g)
+                </label>
+                <input
+                  ref={quickQuantityInputRef}
+                  id="quick-quantity"
+                  type="number"
+                  value={quickQuantity}
+                  onChange={(event) => setQuickQuantity(Number(event.target.value))}
+                  min="1"
+                  step="1"
+                  required
+                  aria-invalid={!isQuickQuantityValid}
+                  className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    isQuickQuantityValid ? 'border-gray-300 bg-white' : 'border-red-400 bg-white'
+                  }`}
+                />
+                {!isQuickQuantityValid && (
+                  <p className="mt-1 text-sm text-red-600">La quantité doit être supérieure à 0.</p>
+                )}
+              </div>
+            </div>
+
+            <MealTypeSelector value={quickMealType} onChange={setQuickMealType} />
+
+            <div className="rounded-md bg-gray-50 p-4">
+              <h4 className="mb-2 text-sm font-medium text-gray-900">Récapitulatif</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="text-gray-600">Calories :</div>
+                <div className="font-medium text-gray-900">{quickCalories} kcal</div>
+                <div className="text-gray-600">Protéines :</div>
+                <div className="font-medium text-gray-900">{quickProtein} g</div>
+                <div className="text-gray-600">Lipides :</div>
+                <div className="font-medium text-gray-900">{quickFat} g</div>
+                <div className="text-gray-600">Glucides :</div>
+                <div className="font-medium text-gray-900">{quickCarbs} g</div>
+                <div className="text-gray-600">Fibres :</div>
+                <div className="font-medium text-gray-900">{quickFiber} g</div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={resetQuickState}
+                className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                Annuler
+              </button>
+              <button
+                type="submit"
+                disabled={!isQuickQuantityValid || submitting}
+                className="flex-1 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+              >
+                {submitting ? 'Ajout en cours…' : 'Ajouter au journal'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -747,6 +809,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
           </div>
         </div>
       </div>
+      {renderQuickAddDialog()}
     </div>
   );
 }
