@@ -55,9 +55,19 @@ const buildSearchIndex = (foods: NormalizedFood[]) =>
     normalized: fold(food.name),
   }));
 
-const normalize = (row: any): NormalizedFood => ({
+interface CiqualRow {
+  name?: string;
+  code?: string | number;
+  kcal_per_100g?: number | string;
+  protein_g?: number | string;
+  fat_g?: number | string;
+  carbs_g?: number | string;
+  fiber_g?: number | string;
+}
+
+const normalize = (row: CiqualRow): NormalizedFood => ({
   source: 'ciqual',
-  name: row.name,
+  name: row.name ?? 'Produit',
   brand: undefined,
   imageUrl: undefined,
   offCode: undefined,

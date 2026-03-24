@@ -1,6 +1,6 @@
 // Tableau de bord principal
 // Affiche l'anneau calorique, les macrocarts, le journal du jour et gère la création/suppression d'entrées
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Calendar } from 'lucide-react';
 import { supabase, DailyTarget, Entry, Goal } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -160,14 +160,8 @@ export function Dashboard({
   }, [activeDate, selectedDate]);
 
   // Recharger les données lorsque l'utilisateur ou la date sélectionnée change
-  useEffect(() => {
-    if (user) {
-      loadDayData();
-    }
-  }, [user, selectedDate]);
-
   // Charge les données du jour : target, entrées et objectif actif
-  const loadDayData = async () => {
+  const loadDayData = useCallback(async () => {
     if (!user) return false;
 
     setLoading(true);
@@ -212,7 +206,13 @@ export function Dashboard({
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDate, user]);
+
+  useEffect(() => {
+    if (user) {
+      loadDayData();
+    }
+  }, [loadDayData, user]);
 
   // Ajoute une entrée dans la table 'entries' puis recharge les données
   const handleAddEntry = async (entryData: Omit<Entry, 'id' | 'user_id' | 'date' | 'created_at'>): Promise<boolean> => {

@@ -12,15 +12,15 @@ interface GoalProgressCardProps {
 }
 
 export function GoalProgressCard({ goal, currentWeight }: GoalProgressCardProps) {
-  if (!goal.target_weight_kg || !goal.start_date) {
-    return null;
-  }
-
   const [now, setNow] = useState<Date>(new Date());
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(t);
   }, []);
+
+  if (!goal.target_weight_kg || !goal.start_date) {
+    return null;
+  }
 
   const progress = calculateGoalProgress(
     currentWeight,

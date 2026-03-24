@@ -7,7 +7,25 @@ const toNumber = (value: unknown): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-function kcalFromNutriments(nutriments: any): number {
+interface OFFNutriments {
+  'energy-kcal_100g'?: number | string;
+  energy_100g?: number | string;
+  proteins_100g?: number | string;
+  fat_100g?: number | string;
+  carbohydrates_100g?: number | string;
+  fiber_100g?: number | string;
+}
+
+interface OFFProduct {
+  code?: string;
+  product_name?: string;
+  product_name_fr?: string;
+  brands?: string;
+  image_small_url?: string;
+  nutriments?: OFFNutriments;
+}
+
+function kcalFromNutriments(nutriments: OFFNutriments | undefined): number {
   const kcal = toNumber(nutriments?.['energy-kcal_100g']);
   if (kcal) {
     return kcal;
@@ -46,7 +64,7 @@ export async function searchOFF(term: string, signal?: AbortSignal): Promise<Nor
   const products = Array.isArray(json?.products) ? json.products : [];
 
   return products
-    .map((product: any) => {
+    .map((product: OFFProduct) => {
       const name = product?.product_name_fr || product?.product_name || 'Produit';
       const normalized: NormalizedFood = {
         source: 'off',
