@@ -34,6 +34,18 @@ function kcalFromNutriments(nutriments: OFFNutriments | undefined): number {
   return kJ ? Math.round(((kJ / 4.184) + Number.EPSILON) * 10) / 10 : 0;
 }
 
+const normalizeSearchTerm = (term: string) =>
+  term.trim().toLocaleLowerCase().replace(/\s+/g, ' ');
+
+function createOFFError(code: 'OFF_HTTP_ERROR' | 'OFF_COOLDOWN', status?: number): Error {
+  const error = new Error(code);
+  error.name = code;
+  if (typeof status === 'number') {
+    (error as Error & { status?: number }).status = status;
+  }
+  return error;
+}
+
 export async function searchOFF(term: string, signal?: AbortSignal): Promise<NormalizedFood[]> {
   const trimmed = term.trim();
   if (!trimmed || trimmed.length < 3) return [];

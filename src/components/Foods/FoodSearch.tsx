@@ -16,7 +16,15 @@ interface FoodSearchProps {
   onSelect: (food: NormalizedFood) => void;
 }
 
+<<<<<<< HEAD
+const MIN_QUERY_LENGTH = 3;
+// Long debounce to significantly reduce OFF request rate and 503 risks.
+const OFF_SEARCH_DEBOUNCE_MS = 1200;
+
+function useDebounce<T>(value: T, ms = 900) {
+=======
 function useDebounce<T>(value: T, ms = 300) {
+>>>>>>> parent of 22fda64 (Route Open Food Facts queries through local proxy)
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebounced(value), ms);
