@@ -57,6 +57,8 @@ interface Goal {
 
 export function OnboardingForm() {
   const { user, refreshProfile } = useAuth();
+  const getErrorMessage = (err: unknown, fallback: string): string =>
+    err instanceof Error ? err.message : fallback;
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -74,7 +76,7 @@ export function OnboardingForm() {
     duration_weeks: undefined,
   });
 
-  const updateFormData = (field: keyof FormData, value: any) => {
+  const updateFormData = (field: keyof FormData, value: FormData[keyof FormData]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -161,8 +163,8 @@ export function OnboardingForm() {
 
       // Rafraîchir le profil global côté application
       await refreshProfile();
-    } catch (err: any) {
-      setError(err.message || 'Une erreur est survenue');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Une erreur est survenue'));
       setLoading(false);
     }
   };

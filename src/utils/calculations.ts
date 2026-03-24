@@ -221,7 +221,7 @@ export function calculateGoalProgress(
   targetWeight: number,
   durationWeeks: number,
   startDate: string,
-  _goalType: 'loss' | 'gain'
+  goalType: 'loss' | 'gain'
 ): GoalProgress {
   const start = new Date(startDate);
   const today = new Date();
@@ -238,7 +238,11 @@ export function calculateGoalProgress(
   const expectedWeightChange = weeklyRateTarget * weeksElapsed;
   const actualWeightChange = currentWeight - currentWeight;
 
-  const onTrack = Math.abs(actualWeightChange - expectedWeightChange) < Math.abs(weeklyRateTarget);
+  const directionMatchesGoal = goalType === 'loss'
+    ? targetWeight <= currentWeight
+    : targetWeight >= currentWeight;
+  const onTrack = directionMatchesGoal &&
+    Math.abs(actualWeightChange - expectedWeightChange) < Math.abs(weeklyRateTarget);
 
   const estimatedEndDate = new Date(start);
   estimatedEndDate.setDate(estimatedEndDate.getDate() + durationWeeks * 7);

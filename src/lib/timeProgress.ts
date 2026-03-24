@@ -98,7 +98,7 @@ export function humanizeRemainingDays(now: Date, end: Date, start?: Date): strin
 export function formatDateFR(d: Date): string {
   try {
     return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
-  } catch (err) {
+  } catch {
     return d.toISOString().split('T')[0];
   }
 }
