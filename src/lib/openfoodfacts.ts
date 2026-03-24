@@ -1,6 +1,6 @@
 import type { NormalizedFood } from '../types/food';
 
-const V1_SEARCH = 'https://world.openfoodfacts.org/cgi/search.pl';
+const OFF_PROXY_SEARCH = '/api/off/search';
 
 const toNumber = (value: unknown): number => {
   const parsed = Number(value);
@@ -47,46 +47,17 @@ function createOFFError(code: 'OFF_HTTP_ERROR' | 'OFF_COOLDOWN', status?: number
 }
 
 export async function searchOFF(term: string, signal?: AbortSignal): Promise<NormalizedFood[]> {
-  if (!term || term.trim().length < 2) return [];
+  const trimmed = term.trim();
+  if (!trimmed || trimmed.length < 3) return [];
 
-  const now = Date.now();
-  if (cooldownUntilTs > now) {
-    throw createOFFError('OFF_COOLDOWN');
-  }
-
-  const cachedResult = offSearchCache.get(normalizedTerm);
-  if (cachedResult && cachedResult.expiresAt > now) {
-    return cachedResult.foods;
-  }
-
-  const inFlight = inFlightSearchByTerm.get(normalizedTerm);
-  if (inFlight) {
-    return inFlight;
-  }
-
-  const params = new URLSearchParams({
-    search_terms: term.trim(),
-    search_simple: '1',
-    action: 'process',
-    json: '1',
-    page_size: '20',
-    nocache: '1',
-    fields: [
-      'code',
-      'product_name',
-      'product_name_fr',
-      'brands',
-      'image_small_url',
-      'nutriments',
-      'serving_size',
-      'nutrition_data_per',
-    ].join(','),
-  });
-
-  const response = await fetch(`${V1_SEARCH}?${params.toString()}`, { signal });
+  const response = await fetch(
+    `${OFF_PROXY_SEARCH}?q=${encodeURIComponent(trimmed)}`,
+    { signal },
+  );
   if (!response.ok) {
-    return [];
+    throw new Error(`OFF search failed with status ${response.status}`);
   }
+
   const json = await response.json();
   const products = Array.isArray(json?.products) ? json.products : [];
 

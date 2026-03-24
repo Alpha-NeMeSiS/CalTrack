@@ -35,8 +35,10 @@ function useDebounce<T>(value: T, ms = 300) {
 
 export function FoodSearch({ onSelect }: FoodSearchProps) {
   const [query, setQuery] = useState('');
-  const debouncedQuery = useDebounce(query, 300);
   const [category, setCategory] = useState<SearchCategory>('ciqual');
+  const minChars = category === 'off' ? 3 : 2;
+  const debounceMs = category === 'off' ? 1200 : 300;
+  const debouncedQuery = useDebounce(query, debounceMs);
   const [items, setItems] = useState<NormalizedFood[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -47,7 +49,7 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
 
   useEffect(() => {
     const trimmed = debouncedQuery.trim();
-    if (trimmed.length < 2) {
+    if (trimmed.length < minChars) {
       if (category === 'off') {
         abortRef.current?.abort();
         abortRef.current = null;
@@ -92,10 +94,16 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
         if (category === 'off' && controller?.signal.aborted) {
           return;
         }
-        console.error('Erreur lors de la recherche', error);
+        if (import.meta.env.DEV) {
+          console.error('Erreur lors de la recherche', error);
+        }
         setItems([]);
         setHighlightedIndex(-1);
-        setStatusMessage('Aucun résultat');
+        setStatusMessage(
+          category === 'off'
+            ? 'Service OFF indisponible, réessayez dans un instant.'
+            : 'Aucun résultat',
+        );
       } finally {
         if (mounted) {
           setLoading(false);
@@ -112,7 +120,7 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
         }
       }
     };
-  }, [debouncedQuery, category]);
+  }, [debouncedQuery, category, minChars]);
 
   useEffect(() => {
     setItems([]);
@@ -169,9 +177,9 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
   const expanded = useMemo(() => {
     const trimmed = debouncedQuery.trim();
     return (
-      trimmed.length >= 2 && (items.length > 0 || loading || statusMessage !== null)
+      trimmed.length >= minChars && (items.length > 0 || loading || statusMessage !== null)
     );
-  }, [debouncedQuery, items, loading, statusMessage]);
+  }, [debouncedQuery, items, loading, minChars, statusMessage]);
 
   const formatMacro = (value: number) => Math.round(value * 10) / 10;
 
