@@ -1,6 +1,7 @@
 import type { NormalizedFood } from '../types/food';
 
-const V1_SEARCH = 'https://world.openfoodfacts.org/cgi/search.pl';
+const OFF_SEARCH_PATH = '/api/off/cgi/search.pl';
+const MIN_SEARCH_LENGTH = 2;
 
 const toNumber = (value: unknown): number => {
   const parsed = Number(value);
@@ -35,10 +36,13 @@ function kcalFromNutriments(nutriments: OFFNutriments | undefined): number {
 }
 
 export async function searchOFF(term: string, signal?: AbortSignal): Promise<NormalizedFood[]> {
-  if (!term || term.trim().length < 2) return [];
+  const normalizedTerm = term.trim();
+  if (normalizedTerm.length < MIN_SEARCH_LENGTH) {
+    return [];
+  }
 
   const params = new URLSearchParams({
-    search_terms: term.trim(),
+    search_terms: normalizedTerm,
     search_simple: '1',
     action: 'process',
     json: '1',
@@ -56,10 +60,12 @@ export async function searchOFF(term: string, signal?: AbortSignal): Promise<Nor
     ].join(','),
   });
 
-  const response = await fetch(`${V1_SEARCH}?${params.toString()}`, { signal });
+  const response = await fetch(`${OFF_SEARCH_PATH}?${params.toString()}`, { signal });
+
   if (!response.ok) {
-    return [];
+    throw new Error(`Open Food Facts HTTP ${response.status}`);
   }
+
   const json = await response.json();
   const products = Array.isArray(json?.products) ? json.products : [];
 
