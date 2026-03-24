@@ -1,13 +1,31 @@
 import type { NormalizedFood } from '../types/food';
 
-const V1_SEARCH = 'https://world.openfoodfacts.org/cgi/search.pl';
+const OFF_PROXY_SEARCH = '/api/off/search';
 
 const toNumber = (value: unknown): number => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-function kcalFromNutriments(nutriments: any): number {
+interface OFFNutriments {
+  'energy-kcal_100g'?: number | string;
+  energy_100g?: number | string;
+  proteins_100g?: number | string;
+  fat_100g?: number | string;
+  carbohydrates_100g?: number | string;
+  fiber_100g?: number | string;
+}
+
+interface OFFProduct {
+  code?: string;
+  product_name?: string;
+  product_name_fr?: string;
+  brands?: string;
+  image_small_url?: string;
+  nutriments?: OFFNutriments;
+}
+
+function kcalFromNutriments(nutriments: OFFNutriments | undefined): number {
   const kcal = toNumber(nutriments?.['energy-kcal_100g']);
   if (kcal) {
     return kcal;
@@ -17,36 +35,22 @@ function kcalFromNutriments(nutriments: any): number {
 }
 
 export async function searchOFF(term: string, signal?: AbortSignal): Promise<NormalizedFood[]> {
-  if (!term || term.trim().length < 2) return [];
+  const trimmed = term.trim();
+  if (!trimmed || trimmed.length < 3) return [];
 
-  const params = new URLSearchParams({
-    search_terms: term.trim(),
-    search_simple: '1',
-    action: 'process',
-    json: '1',
-    page_size: '20',
-    nocache: '1',
-    fields: [
-      'code',
-      'product_name',
-      'product_name_fr',
-      'brands',
-      'image_small_url',
-      'nutriments',
-      'serving_size',
-      'nutrition_data_per',
-    ].join(','),
-  });
-
-  const response = await fetch(`${V1_SEARCH}?${params.toString()}`, { signal });
+  const response = await fetch(
+    `${OFF_PROXY_SEARCH}?q=${encodeURIComponent(trimmed)}`,
+    { signal },
+  );
   if (!response.ok) {
-    return [];
+    throw new Error(`OFF search failed with status ${response.status}`);
   }
+
   const json = await response.json();
   const products = Array.isArray(json?.products) ? json.products : [];
 
   return products
-    .map((product: any) => {
+    .map((product: OFFProduct) => {
       const name = product?.product_name_fr || product?.product_name || 'Produit';
       const normalized: NormalizedFood = {
         source: 'off',

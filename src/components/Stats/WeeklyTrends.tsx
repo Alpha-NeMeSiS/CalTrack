@@ -1,9 +1,9 @@
 // Importation des dépendances React nécessaires
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 // Importation de la configuration Supabase
 import { supabase } from '../../lib/supabase';
 // Importation du contexte d'authentification
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 // Importation des fonctions de calcul
 import { calculateDailySummary } from '../../utils/calculations';
 
@@ -39,15 +39,8 @@ export function WeeklyTrends() {
   const [weekData, setWeekData] = useState<WeekDataItem[]>([]); // Données des 7 derniers jours
   const [monthData, setMonthData] = useState<WeekDataItem[]>([]); // Données des 30 derniers jours
 
-  // Effet pour charger les données au montage du composant
-  useEffect(() => {
-    if (user) {
-      loadWeekData();
-    }
-  }, [user]);
-
   // Fonction pour charger les données de la semaine et du mois
-  const loadWeekData = async () => {
+  const loadWeekData = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
@@ -134,7 +127,14 @@ export function WeeklyTrends() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  // Effet pour charger les données au montage du composant
+  useEffect(() => {
+    if (user) {
+      loadWeekData();
+    }
+  }, [loadWeekData, user]);
 
   if (loading) {
     return (

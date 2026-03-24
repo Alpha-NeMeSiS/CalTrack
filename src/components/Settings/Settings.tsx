@@ -1,14 +1,16 @@
 // Page des paramètres utilisateur
 // Contient les onglets Profil et Objectif, ainsi que la logique de sauvegarde
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { User, Target, Save } from 'lucide-react';
 import { supabase, Goal } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { calculateBMR, calculateTDEE, calculateOptimalDeficitOrSurplus, calculateCompleteTargets } from '../../utils/calculations';
 
 export function Settings() {
   // Récupère l'utilisateur, le profil et la fonction pour rafraîchir le profil
   const { user, profile, refreshProfile } = useAuth();
+  const getErrorMessage = (err: unknown, fallback: string): string =>
+    err instanceof Error ? err.message : fallback;
 
   // États d'interface
   const [activeTab, setActiveTab] = useState<'profile' | 'goal'>('profile');
@@ -49,12 +51,8 @@ export function Settings() {
   }, [profile]);
 
   // Charger l'objectif actif à l'initialisation / changement d'utilisateur
-  useEffect(() => {
-    loadActiveGoal();
-  }, [user]);
-
   // Charge l'objectif actif depuis la table 'goals'
-  const loadActiveGoal = async () => {
+  const loadActiveGoal = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -82,7 +80,11 @@ export function Settings() {
     } catch (err) {
       console.error('Error loading goal:', err);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    loadActiveGoal();
+  }, [loadActiveGoal]);
 
   // Sauvegarde du profil en base
   const handleSaveProfile = async () => {
@@ -110,8 +112,8 @@ export function Settings() {
       // Rafraîchir le profil global après modification
       await refreshProfile();
       setSuccess('Profil mis à jour avec succès');
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la mise à jour');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erreur lors de la mise à jour'));
     } finally {
       setLoading(false);
     }
@@ -200,8 +202,8 @@ export function Settings() {
 
       await loadActiveGoal();
       setSuccess('Objectif mis à jour avec succès');
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la mise à jour');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Erreur lors de la mise à jour'));
     } finally {
       setLoading(false);
     }

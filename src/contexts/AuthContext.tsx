@@ -1,7 +1,7 @@
 // Contexte d'authentification
-// Ce fichier expose un AuthProvider et un hook useAuth pour accéder à l'utilisateur,
+// Ce fichier expose AuthProvider + AuthContext pour accéder à l'utilisateur,
 // au profil et aux méthodes d'auth (signIn, signUp, signOut, refreshProfile).
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase, Profile } from '../lib/supabase';
 
@@ -16,7 +16,7 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   // États locaux pour l'utilisateur, le profil et le chargement
@@ -119,13 +119,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-// Hook pratique pour consommer le contexte d'auth
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }

@@ -3,7 +3,7 @@
 import { KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { FoodSearch } from '../Foods/FoodSearch';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { Entry, supabase } from '../../lib/supabase';
 import type { NormalizedFood } from '../../types/food';
 
