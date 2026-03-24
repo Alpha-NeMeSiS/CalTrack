@@ -16,9 +16,9 @@ interface FoodSearchProps {
   onSelect: (food: NormalizedFood) => void;
 }
 
-const MIN_QUERY_LENGTH = 2;
-// Slightly longer debounce to avoid aggressive search-as-you-type on OFF.
-const OFF_SEARCH_DEBOUNCE_MS = 900;
+const MIN_QUERY_LENGTH = 3;
+// Long debounce to significantly reduce OFF request rate and 503 risks.
+const OFF_SEARCH_DEBOUNCE_MS = 1200;
 
 function useDebounce<T>(value: T, ms = 900) {
   const [debounced, setDebounced] = useState(value);
