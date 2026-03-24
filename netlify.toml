@@ -1,5 +1,0 @@
-[[redirects]]
-  from = "/api/off/*"
-  to = "https://world.openfoodfacts.org/:splat"
-  status = 200
-  force = true
