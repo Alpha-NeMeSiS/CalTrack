@@ -16,7 +16,11 @@ interface FoodSearchProps {
   onSelect: (food: NormalizedFood) => void;
 }
 
-function useDebounce<T>(value: T, ms = 300) {
+const MIN_QUERY_LENGTH = 2;
+// Slightly longer debounce to avoid aggressive search-as-you-type on OFF.
+const OFF_SEARCH_DEBOUNCE_MS = 900;
+
+function useDebounce<T>(value: T, ms = 900) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebounced(value), ms);
@@ -27,7 +31,7 @@ function useDebounce<T>(value: T, ms = 300) {
 
 export function FoodSearch({ onSelect }: FoodSearchProps) {
   const [query, setQuery] = useState('');
-  const debouncedQuery = useDebounce(query, 300);
+  const debouncedQuery = useDebounce(query, OFF_SEARCH_DEBOUNCE_MS);
   const [category, setCategory] = useState<SearchCategory>('ciqual');
   const [items, setItems] = useState<NormalizedFood[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,7 +43,7 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
 
   useEffect(() => {
     const trimmed = debouncedQuery.trim();
-    if (trimmed.length < 2) {
+    if (trimmed.length < MIN_QUERY_LENGTH) {
       if (category === 'off') {
         abortRef.current?.abort();
         abortRef.current = null;
@@ -87,7 +91,11 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
         console.error('Erreur lors de la recherche', error);
         setItems([]);
         setHighlightedIndex(-1);
-        setStatusMessage('Aucun résultat');
+        setStatusMessage(
+          category === 'off'
+            ? 'Recherche temporairement indisponible'
+            : 'Aucun résultat',
+        );
       } finally {
         if (mounted) {
           setLoading(false);
@@ -161,7 +169,8 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
   const expanded = useMemo(() => {
     const trimmed = debouncedQuery.trim();
     return (
-      trimmed.length >= 2 && (items.length > 0 || loading || statusMessage !== null)
+      trimmed.length >= MIN_QUERY_LENGTH &&
+      (items.length > 0 || loading || statusMessage !== null)
     );
   }, [debouncedQuery, items, loading, statusMessage]);
 
