@@ -6,7 +6,8 @@ import { supabase, Goal } from '../../lib/supabase';
 import { useAuth } from '../../contexts/useAuth';
 import { calculateBMR, calculateTDEE, calculateOptimalDeficitOrSurplus } from '../../utils/calculations';
 import { getTodayDate } from '../../utils/date';
-import { activateNewGoal, upsertDailyTargetForGoal } from '../../services/goals';
+import { activateNewGoal, fetchActiveGoal, upsertDailyTargetForGoal } from '../../services/goals';
+import { PROFILE_LIMITS, validateGoalInput, validateProfileInput } from '../../utils/validation';
 
 export function Settings() {
   // Récupère l'utilisateur, le profil et la fonction pour rafraîchir le profil
@@ -58,23 +59,16 @@ export function Settings() {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('goals')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) throw error;
+      const data = await fetchActiveGoal(user.id);
 
       if (data) {
         setActiveGoal(data);
         setGoalData({
           goal_type: data.type,
           activity_level: data.activity_level,
-          deficit_or_surplus_pct: data.deficit_or_surplus_pct,
+          // Un objectif de maintien est enregistré avec 0 % : proposer 15 % par défaut
+          // si l'utilisateur repasse en perte ou en prise
+          deficit_or_surplus_pct: data.deficit_or_surplus_pct || 15,
           target_weight_kg: data.target_weight_kg || undefined,
           duration_weeks: data.duration_weeks || undefined,
         });
@@ -92,9 +86,16 @@ export function Settings() {
   const handleSaveProfile = async () => {
     if (!user) return;
 
-    setLoading(true);
     setError('');
     setSuccess('');
+
+    const validationErrors = validateProfileInput(profileData);
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join(' '));
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const updatedProfile = {
@@ -135,9 +136,25 @@ export function Settings() {
   const handleSaveGoal = async () => {
     if (!user || !profile) return;
 
-    setLoading(true);
     setError('');
     setSuccess('');
+
+    const validationErrors = validateGoalInput(
+      {
+        type: goalData.goal_type,
+        activity_level: goalData.activity_level,
+        deficit_or_surplus_pct: goalData.deficit_or_surplus_pct,
+        target_weight_kg: goalData.target_weight_kg,
+        duration_weeks: goalData.duration_weeks,
+      },
+      profile.poids_kg
+    );
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join(' '));
+      return;
+    }
+
+    setLoading(true);
 
     try {
       // Crée le nouvel objectif, désactive l'ancien et met à jour (upsert) la cible du jour.
@@ -174,7 +191,8 @@ export function Settings() {
         <div className="border-b border-gray-200">
           <div className="flex">
             <button
-              onClick={() => setActiveTab('profile')}
+              type="button"
+              onClick={() => { setActiveTab('profile'); setError(''); setSuccess(''); }}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
                 activeTab === 'profile'
                   ? 'border-b-2 border-blue-600 text-blue-600'
@@ -185,7 +203,8 @@ export function Settings() {
               Profil
             </button>
             <button
-              onClick={() => setActiveTab('goal')}
+              type="button"
+              onClick={() => { setActiveTab('goal'); setError(''); setSuccess(''); }}
               className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
                 activeTab === 'goal'
                   ? 'border-b-2 border-blue-600 text-blue-600'
@@ -297,8 +316,8 @@ export function Settings() {
                   id="body_fat_pct"
                   value={profileData.body_fat_pct || ''}
                   onChange={(e) => setProfileData({ ...profileData, body_fat_pct: e.target.value ? Number(e.target.value) : undefined })}
-                  min="5"
-                  max="50"
+                  min={PROFILE_LIMITS.body_fat_pct.min}
+                  max={PROFILE_LIMITS.body_fat_pct.max}
                   step="0.1"
                   placeholder="Si connu"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -369,6 +388,30 @@ export function Settings() {
                   </button>
                 </div>
               </div>
+
+              {goalData.goal_type === 'maintain' && (
+                <div className="bg-blue-50 p-4 rounded-md border border-blue-200">
+                  <label htmlFor="duration_maintain" className="block text-xs font-medium text-blue-900 mb-1">
+                    Durée du maintien en semaines (optionnel)
+                  </label>
+                  <input
+                    type="number"
+                    id="duration_maintain"
+                    value={goalData.duration_weeks || ''}
+                    onChange={(e) =>
+                      setGoalData({ ...goalData, duration_weeks: e.target.value ? Number(e.target.value) : undefined })
+                    }
+                    min="1"
+                    max="260"
+                    step="1"
+                    placeholder="Ex: 12"
+                    className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="mt-1 text-xs text-blue-600">
+                    Laissez vide pour un objectif de maintien sans limite de temps
+                  </p>
+                </div>
+              )}
 
               {goalData.goal_type !== 'maintain' && (
                 <>

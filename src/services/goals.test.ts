@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getOperationArgs, hasOperation, supabaseMock } from '../test/supabaseMock';
 import { makeDailyTarget, makeGoal, makeProfile } from '../test/fixtures';
 import { buildDailyTargetPayload } from '../utils/goals';
-import { activateNewGoal, ensureDailyTargetForDate, fetchActiveGoal, upsertDailyTargetForGoal } from './goals';
+import {
+  activateNewGoal,
+  ensureDailyTargetForDate,
+  fetchActiveGoal,
+  fetchUserGoals,
+  upsertDailyTargetForGoal,
+} from './goals';
 
 vi.mock('../lib/supabase', async () => {
   const { fakeSupabase } = await import('../test/supabaseMock');
@@ -31,6 +37,28 @@ describe('fetchActiveGoal', () => {
   it('propage les erreurs Supabase', async () => {
     supabaseMock.setHandler(() => ({ data: null, error: new Error('boom') }));
     await expect(fetchActiveGoal('user-1')).rejects.toThrow('boom');
+  });
+});
+
+describe('fetchUserGoals', () => {
+  it("renvoie tous les objectifs de l'utilisateur, du plus récent au plus ancien", async () => {
+    const goals = [makeGoal({ id: 'g2' }), makeGoal({ id: 'g1' })];
+    supabaseMock.setHandler(() => ({ data: goals, error: null }));
+
+    await expect(fetchUserGoals('user-1')).resolves.toEqual(goals);
+
+    const [call] = supabaseMock.calls;
+    expect(call.table).toBe('goals');
+    expect(call.operations).toContainEqual({ method: 'eq', args: ['user_id', 'user-1'] });
+    expect(getOperationArgs(call, 'order')).toEqual(['created_at', { ascending: false }]);
+  });
+
+  it('renvoie une liste vide sans données et propage les erreurs', async () => {
+    supabaseMock.setHandler(() => ({ data: null, error: null }));
+    await expect(fetchUserGoals('user-1')).resolves.toEqual([]);
+
+    supabaseMock.setHandler(() => ({ data: null, error: new Error('boom') }));
+    await expect(fetchUserGoals('user-1')).rejects.toThrow('boom');
   });
 });
 

@@ -83,15 +83,19 @@ export function buildGoalInsertPayload(
   input: GoalInput,
   today: string
 ): GoalInsertPayload {
-  const durationWeeks = input.duration_weeks && input.duration_weeks > 0 ? input.duration_weeks : null;
-  const targetWeight = input.target_weight_kg && input.target_weight_kg > 0 ? input.target_weight_kg : null;
+  const isMaintain = input.type === 'maintain';
+  const durationWeeks = input.duration_weeks && input.duration_weeks > 0 ? Math.round(input.duration_weeks) : null;
+  // Un objectif de maintien n'a ni poids cible ni déficit/surplus : on ignore les
+  // valeurs restées dans le formulaire après un changement de type d'objectif.
+  const targetWeight =
+    !isMaintain && input.target_weight_kg && input.target_weight_kg > 0 ? input.target_weight_kg : null;
 
   return {
     user_id: userId,
     type: input.type,
     activity_level: input.activity_level,
     method: chooseBmrMethod(profile),
-    deficit_or_surplus_pct: input.deficit_or_surplus_pct,
+    deficit_or_surplus_pct: isMaintain ? 0 : input.deficit_or_surplus_pct,
     protein_g_per_kg: DEFAULT_PROTEIN_G_PER_KG,
     fat_g_per_kg_min: DEFAULT_FAT_G_PER_KG_MIN,
     is_active: true,
@@ -136,6 +140,35 @@ export function isDateWithinGoal(
   }
 
   return !goal.end_date || date <= goal.end_date;
+}
+
+/**
+ * Retourne l'objectif EN VIGUEUR à une date : le plus récent ayant démarré ce
+ * jour-là ou avant, et dont la période couvre la date.
+ *
+ * Contrairement à « l'objectif actif », cela fonctionne aussi pour les jours
+ * passés : après un changement d'objectif, la veille reste couverte par
+ * l'ancien objectif (au lieu d'afficher « Aucun objectif défini »).
+ */
+export function findGoalForDate<T extends Pick<GoalLike, 'start_date' | 'end_date' | 'created_at'>>(
+  goals: readonly T[],
+  date: string
+): T | null {
+  let best: { goal: T; start: string; createdAt: string } | null = null;
+
+  for (const goal of goals) {
+    const start = getGoalStartDate(goal);
+    if (!start || start > date) continue;
+
+    const createdAt = goal.created_at ?? '';
+    // Le plus récent gagne : date de début la plus tardive, puis création la plus récente
+    if (!best || start > best.start || (start === best.start && createdAt > best.createdAt)) {
+      best = { goal, start, createdAt };
+    }
+  }
+
+  if (!best) return null;
+  return isDateWithinGoal(best.goal, date) ? best.goal : null;
 }
 
 /** Calcule calories et macros d'un objectif à partir du profil courant. */

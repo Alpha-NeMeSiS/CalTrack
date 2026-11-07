@@ -25,6 +25,22 @@ export async function fetchActiveGoal(userId: string): Promise<Goal | null> {
 }
 
 /**
+ * Récupère les objectifs de l'utilisateur, du plus récent au plus ancien.
+ * Permet de retrouver l'objectif en vigueur à n'importe quelle date (findGoalForDate).
+ */
+export async function fetchUserGoals(userId: string): Promise<Goal[]> {
+  const { data, error } = await supabase
+    .from('goals')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) throw error;
+  return (data as Goal[] | null) ?? [];
+}
+
+/**
  * Calcule et enregistre (insert ou mise à jour) la cible d'une date pour un objectif.
  * L'upsert garantit qu'un changement d'objectif le même jour remplace bien la cible.
  */
@@ -47,8 +63,9 @@ export async function upsertDailyTargetForGoal(
 }
 
 /**
- * Retourne la cible de la date si elle existe déjà. Sinon, si l'objectif actif
- * couvre cette date, la calcule à partir du profil courant et l'enregistre.
+ * Retourne la cible de la date si elle existe déjà. Sinon, si l'objectif fourni
+ * (celui en vigueur à cette date) la couvre, la calcule à partir du profil
+ * courant et l'enregistre.
  * Retourne null si aucun objectif ne s'applique à cette date.
  */
 export async function ensureDailyTargetForDate(
