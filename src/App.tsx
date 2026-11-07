@@ -1,7 +1,8 @@
 // Composant racine de l'application
 // Gère l'authentification et la navigation entre vues (dashboard, tendances, paramètres)
 import { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './contexts/useAuth';
 import { LoginForm } from './components/Auth/LoginForm';
 import { SignupForm } from './components/Auth/SignupForm';
 import { OnboardingForm } from './components/Onboarding/OnboardingForm';
@@ -14,7 +15,8 @@ import { getTodayDate } from './utils/date';
 
 function AppContent() {
   // Récupère l'état d'authentification et le profil utilisateur
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, profileError, refreshProfile, signOut } = useAuth();
+  const [retryingProfile, setRetryingProfile] = useState(false);
   // Mode d'auth (login / signup) pour l'écran d'authentification
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   // Vue courante affichée dans l'application: dashboard, tendances ou paramètres
@@ -61,6 +63,42 @@ function AppContent() {
         ) : (
           <SignupForm onToggle={() => setAuthMode('login')} />
         )}
+      </div>
+    );
+  }
+
+  // Le profil n'a pas pu être chargé (erreur réseau, Supabase indisponible…) :
+  // ne PAS afficher l'onboarding, qui risquerait d'écraser un profil existant.
+  if (profileError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div role="alert" className="w-full max-w-md bg-white rounded-lg shadow-md p-8 text-center">
+          <p className="text-red-700 mb-6">{profileError}</p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => signOut()}
+              className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Se déconnecter
+            </button>
+            <button
+              type="button"
+              disabled={retryingProfile}
+              onClick={async () => {
+                setRetryingProfile(true);
+                try {
+                  await refreshProfile();
+                } finally {
+                  setRetryingProfile(false);
+                }
+              }}
+              className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-md transition-colors"
+            >
+              {retryingProfile ? 'Nouvelle tentative…' : 'Réessayer'}
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

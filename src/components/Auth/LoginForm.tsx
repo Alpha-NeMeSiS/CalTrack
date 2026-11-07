@@ -1,7 +1,7 @@
 // Formulaire de connexion
 // Appelle signIn via le contexte d'auth et affiche les erreurs éventuelles
 import { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 
 export function LoginForm({ onToggle }: { onToggle: () => void }) {
   const { signIn } = useAuth();

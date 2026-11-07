@@ -1,58 +1,43 @@
 // Contexte d'authentification
-// Ce fichier expose un AuthProvider et un hook useAuth pour accéder à l'utilisateur,
+// Ce fichier expose AuthProvider + AuthContext pour accéder à l'utilisateur,
 // au profil et aux méthodes d'auth (signIn, signUp, signOut, refreshProfile).
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
+// Le hook useAuth est dans ./useAuth.ts.
+import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
+import { Session, User } from '@supabase/supabase-js';
 import { supabase, Profile } from '../lib/supabase';
 
 // Type du contexte d'authentification exposé aux composants
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   profile: Profile | null;
+  /** true tant que la session ou le profil de l'utilisateur sont en cours de chargement */
   loading: boolean;
+  /** Message d'erreur si le profil n'a pas pu être chargé (≠ « pas encore de profil ») */
+  profileError: string | null;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   // États locaux pour l'utilisateur, le profil et le chargement
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
-  // Au montage, récupérer la session et écouter les changements d'état d'auth
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        loadProfile(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
-
-    // Souscrire aux changements d'auth (connexion/déconnexion)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      (async () => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await loadProfile(session.user.id);
-        } else {
-          setProfile(null);
-          setLoading(false);
-        }
-      })();
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  // Identifiant de l'utilisateur courant (undefined = session pas encore connue).
+  // Sert à ignorer les événements qui ne changent pas d'utilisateur
+  // (ex : rafraîchissement automatique du jeton toutes les heures) et les
+  // réponses tardives d'un ancien utilisateur.
+  const currentUserIdRef = useRef<string | null | undefined>(undefined);
 
   // Charge le profil utilisateur depuis la table 'profiles'
-  const loadProfile = async (userId: string) => {
+  const loadProfile = useCallback(async (userId: string) => {
+    setProfileError(null);
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -61,21 +46,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle();
 
       if (error) throw error;
-      setProfile(data);
+      if (currentUserIdRef.current !== userId) return; // l'utilisateur a changé entre-temps
+      setProfile((data as Profile | null) ?? null);
     } catch (error) {
       console.error('Error loading profile:', error);
+      if (currentUserIdRef.current !== userId) return;
+      // On ne considère PAS l'utilisateur comme « sans profil » : sinon il serait
+      // renvoyé vers l'onboarding (et pourrait écraser son profil existant).
       setProfile(null);
+      setProfileError('Impossible de charger votre profil. Vérifiez votre connexion puis réessayez.');
     } finally {
-      setLoading(false);
+      if (currentUserIdRef.current === userId) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
+
+  // Applique une session reçue de Supabase
+  const applySession = useCallback(
+    (session: Session | null) => {
+      const nextUser = session?.user ?? null;
+      const nextUserId = nextUser?.id ?? null;
+
+      // Même utilisateur (rafraîchissement du jeton, doublon getSession/INITIAL_SESSION) :
+      // ne rien recharger, pour ne pas réinitialiser l'interface.
+      if (currentUserIdRef.current === nextUserId) {
+        return;
+      }
+
+      currentUserIdRef.current = nextUserId;
+      setUser(nextUser);
+      setProfile(null);
+      setProfileError(null);
+
+      if (nextUser) {
+        // Garder l'écran de chargement pendant le chargement du profil : sinon
+        // l'onboarding s'affiche brièvement juste après la connexion.
+        setLoading(true);
+        void loadProfile(nextUser.id);
+      } else {
+        setLoading(false);
+      }
+    },
+    [loadProfile]
+  );
+
+  // Au montage, récupérer la session et écouter les changements d'état d'auth
+  useEffect(() => {
+    let active = true;
+
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (active) applySession(session);
+      })
+      .catch((error) => {
+        console.error('Error getting session:', error);
+        if (active) applySession(null);
+      });
+
+    // Souscrire aux changements d'auth (connexion/déconnexion).
+    // Supabase déconseille d'appeler d'autres méthodes Supabase directement dans
+    // ce callback (risque de blocage) : le traitement est différé.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setTimeout(() => {
+        if (active) applySession(session);
+      }, 0);
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [applySession]);
 
   // Forcer le rechargement du profil courant
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (user) {
       await loadProfile(user.id);
     }
-  };
+  }, [user, loadProfile]);
 
   // Inscription avec email/mot de passe via Supabase
   const signUp = async (email: string, password: string) => {
@@ -107,28 +159,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Déconnexion
+  // Déconnexion : l'état local est vidé même si l'appel réseau échoue
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setProfile(null);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) console.error('Error signing out:', error);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    } finally {
+      applySession(null);
+    }
   };
 
   // Fournit le contexte aux composants enfants
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider
+      value={{ user, profile, loading, profileError, signUp, signIn, signOut, refreshProfile }}
+    >
       {children}
     </AuthContext.Provider>
   );
-}
-
-// Hook pratique pour consommer le contexte d'auth
-// (exporté à côté du Provider par convention ; le Fast Refresh recharge simplement
-// la page entière lorsque ce fichier est modifié)
-// eslint-disable-next-line react-refresh/only-export-components
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }

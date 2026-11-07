@@ -16,7 +16,15 @@ interface FoodSearchProps {
   onSelect: (food: NormalizedFood) => void;
 }
 
-function useDebounce<T>(value: T, ms = 300) {
+// Nombre minimal de caractères avant de lancer une recherche
+const CIQUAL_MIN_QUERY_LENGTH = 2;
+const OFF_MIN_QUERY_LENGTH = 3;
+// Délai d'attente après la frappe. Plus long pour Open Food Facts afin de
+// réduire le nombre de requêtes (et le risque d'erreurs 503).
+const CIQUAL_SEARCH_DEBOUNCE_MS = 300;
+const OFF_SEARCH_DEBOUNCE_MS = 1200;
+
+function useDebounce<T>(value: T, ms = CIQUAL_SEARCH_DEBOUNCE_MS) {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebounced(value), ms);
@@ -27,8 +35,10 @@ function useDebounce<T>(value: T, ms = 300) {
 
 export function FoodSearch({ onSelect }: FoodSearchProps) {
   const [query, setQuery] = useState('');
-  const debouncedQuery = useDebounce(query, 300);
   const [category, setCategory] = useState<SearchCategory>('ciqual');
+  const minChars = category === 'off' ? OFF_MIN_QUERY_LENGTH : CIQUAL_MIN_QUERY_LENGTH;
+  const debounceMs = category === 'off' ? OFF_SEARCH_DEBOUNCE_MS : CIQUAL_SEARCH_DEBOUNCE_MS;
+  const debouncedQuery = useDebounce(query, debounceMs);
   const [items, setItems] = useState<NormalizedFood[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -39,7 +49,7 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
 
   useEffect(() => {
     const trimmed = debouncedQuery.trim();
-    if (trimmed.length < 2) {
+    if (trimmed.length < minChars) {
       if (category === 'off') {
         abortRef.current?.abort();
         abortRef.current = null;
@@ -84,10 +94,16 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
         if (category === 'off' && controller?.signal.aborted) {
           return;
         }
-        console.error('Erreur lors de la recherche', error);
+        if (import.meta.env.DEV) {
+          console.error('Erreur lors de la recherche', error);
+        }
         setItems([]);
         setHighlightedIndex(-1);
-        setStatusMessage('Aucun résultat');
+        setStatusMessage(
+          category === 'off'
+            ? 'Service OFF indisponible, réessayez dans un instant.'
+            : 'Aucun résultat',
+        );
       } finally {
         if (mounted) {
           setLoading(false);
@@ -104,14 +120,7 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
         }
       }
     };
-  }, [debouncedQuery, category]);
-
-  useEffect(() => {
-    setItems([]);
-    setStatusMessage(null);
-    setHighlightedIndex(-1);
-    setLoading(false);
-  }, [category]);
+  }, [debouncedQuery, category, minChars]);
 
   const handleSelect = useCallback(
     (food: NormalizedFood) => {
@@ -161,9 +170,9 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
   const expanded = useMemo(() => {
     const trimmed = debouncedQuery.trim();
     return (
-      trimmed.length >= 2 && (items.length > 0 || loading || statusMessage !== null)
+      trimmed.length >= minChars && (items.length > 0 || loading || statusMessage !== null)
     );
-  }, [debouncedQuery, items, loading, statusMessage]);
+  }, [debouncedQuery, items, loading, minChars, statusMessage]);
 
   const formatMacro = (value: number) => Math.round(value * 10) / 10;
 

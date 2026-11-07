@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 // Importation de la configuration Supabase
 import { supabase } from '../../lib/supabase';
 // Importation du contexte d'authentification
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 // Importation des fonctions de calcul
 import { calculateDailySummary } from '../../utils/calculations';
 import { addDaysToDateString, getTodayDate, parseLocalDate } from '../../utils/date';
@@ -37,6 +37,7 @@ export function WeeklyTrends() {
   const { user } = useAuth();
   // États pour gérer le chargement et les données
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [weekData, setWeekData] = useState<WeekDataItem[]>([]); // Données des 7 derniers jours
   const [monthData, setMonthData] = useState<WeekDataItem[]>([]); // Données des 30 derniers jours
 
@@ -45,6 +46,7 @@ export function WeeklyTrends() {
     if (!user) return;
 
     setLoading(true);
+    setLoadError(null);
     try {
       // Calcul des dates pour la période d'analyse
       // Dates locales (et non UTC) pour la période d'analyse
@@ -117,6 +119,8 @@ export function WeeklyTrends() {
       setMonthData(monthData);
     } catch (error) {
       console.error('Error loading week data:', error);
+      // Auparavant : erreur silencieuse, tous les jours affichaient « Pas de données »
+      setLoadError("Impossible de charger l'historique.");
     } finally {
       setLoading(false);
     }
@@ -134,6 +138,20 @@ export function WeeklyTrends() {
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-xl text-gray-900 mb-4">Tendances 7 jours</h2>
         <div className="text-center py-8 text-gray-500">Chargement...</div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl text-gray-900 mb-4">Tendances et historique</h2>
+        <div role="alert" className="text-center py-8">
+          <p className="text-red-700 mb-4">{loadError}</p>
+          <button type="button" onClick={() => loadWeekData()} className="btn-kaizen">
+            Réessayer
+          </button>
+        </div>
       </div>
     );
   }

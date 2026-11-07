@@ -3,7 +3,7 @@
 // crée le profil, l'objectif et les cibles quotidiennes en base de données
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import {
   calculateBMR,
   calculateTDEE,
@@ -12,6 +12,7 @@ import {
 } from '../../utils/calculations';
 import { getTodayDate } from '../../utils/date';
 import { activateNewGoal } from '../../services/goals';
+import { PROFILE_LIMITS, validateGoalInput, validateProfileInput } from '../../utils/validation';
 
 interface FormData {
   sexe: 'M' | 'F';
@@ -33,6 +34,7 @@ export function OnboardingForm() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [profileErrors, setProfileErrors] = useState<string[]>([]);
 
   const [formData, setFormData] = useState<FormData>({
     sexe: 'M',
@@ -51,9 +53,37 @@ export function OnboardingForm() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Passage à l'étape 2 : uniquement si le profil est valide
+  const handleNextStep = () => {
+    const errors = validateProfileInput(formData);
+    setProfileErrors(errors);
+    if (errors.length === 0) {
+      setStep(2);
+    }
+  };
+
   // Soumet le formulaire d'onboarding : crée le profil, l'objectif et les cibles journalières
   const handleSubmit = async () => {
     if (!user) return;
+
+    // Validation avant tout envoi : messages clairs plutôt qu'erreurs Postgres
+    const validationErrors = [
+      ...validateProfileInput(formData),
+      ...validateGoalInput(
+        {
+          type: formData.goal_type,
+          activity_level: formData.activity_level,
+          deficit_or_surplus_pct: formData.deficit_or_surplus_pct,
+          target_weight_kg: formData.target_weight_kg,
+          duration_weeks: formData.duration_weeks,
+        },
+        formData.poids_kg
+      ),
+    ];
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join(' '));
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -91,10 +121,13 @@ export function OnboardingForm() {
         getTodayDate()
       );
 
-      // Rafraîchir le profil global côté application
+      // Rafraîchir le profil global côté application (l'app passe alors au tableau de bord)
       await refreshProfile();
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Une erreur est survenue'));
+    } finally {
+      // Auparavant, le bouton restait bloqué sur « Création... » si le
+      // rechargement du profil échouait.
       setLoading(false);
     }
   };
@@ -192,8 +225,8 @@ export function OnboardingForm() {
               id="body_fat_pct"
               value={formData.body_fat_pct || ''}
               onChange={(e) => updateFormData('body_fat_pct', e.target.value ? Number(e.target.value) : undefined)}
-              min="5"
-              max="50"
+              min={PROFILE_LIMITS.body_fat_pct.min}
+              max={PROFILE_LIMITS.body_fat_pct.max}
               step="0.1"
               placeholder="Si connu"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -203,8 +236,19 @@ export function OnboardingForm() {
             </p>
           </div>
 
+          {profileErrors.length > 0 && (
+            <div role="alert" className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+              <ul className="list-disc pl-5 space-y-1">
+                {profileErrors.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <button
-            onClick={() => setStep(2)}
+            type="button"
+            onClick={handleNextStep}
             disabled={!formData.date_naissance}
             className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-md transition-colors"
           >
@@ -431,12 +475,14 @@ export function OnboardingForm() {
 
         <div className="flex gap-4">
           <button
+            type="button"
             onClick={() => setStep(1)}
             className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
           >
             Retour
           </button>
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={loading}
             className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-md transition-colors"

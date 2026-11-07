@@ -8,6 +8,7 @@ import {
   computeTargetsForGoal,
   DEFAULT_FAT_G_PER_KG_MIN,
   DEFAULT_PROTEIN_G_PER_KG,
+  findGoalForDate,
   getGoalStartDate,
   GoalLike,
   isDateWithinGoal,
@@ -91,6 +92,18 @@ describe('buildGoalInsertPayload', () => {
     expect(payload.target_weight_kg).toBe(55);
     expect(payload.duration_weeks).toBe(10);
     expect(payload.end_date).toBe('2025-04-21');
+  });
+
+  it("n'enregistre ni poids cible ni déficit pour un maintien (valeurs restées du formulaire)", () => {
+    const payload = buildGoalInsertPayload(
+      'user-1',
+      profile,
+      { type: 'maintain', activity_level: 1.2, deficit_or_surplus_pct: 15, target_weight_kg: 55, duration_weeks: 8 },
+      '2025-02-10'
+    );
+    expect(payload.target_weight_kg).toBeNull();
+    expect(payload.deficit_or_surplus_pct).toBe(0);
+    expect(payload.duration_weeks).toBe(8); // la durée reste possible pour un maintien
   });
 
   it('ignore un poids cible ou une durée à 0', () => {
@@ -182,5 +195,39 @@ describe('computeTargetsForGoal / buildDailyTargetPayload', () => {
     expect(buildDailyTargetPayload('u', 'd', heavier, maintainGoal).calories_kcal).toBeGreaterThan(
       buildDailyTargetPayload('u', 'd', profile, maintainGoal).calories_kcal
     );
+  });
+});
+
+describe('findGoalForDate', () => {
+  const goalA = { ...maintainGoal, id: 'A', start_date: '2025-01-01', end_date: null, created_at: '2025-01-01T12:00:00Z' };
+  const goalB = { ...maintainGoal, id: 'B', start_date: '2025-03-01', end_date: null, created_at: '2025-03-01T12:00:00Z' };
+
+  it("retourne l'objectif qui était en vigueur à la date (y compris un ancien objectif)", () => {
+    expect(findGoalForDate([goalB, goalA], '2025-02-10')?.id).toBe('A');
+    expect(findGoalForDate([goalA, goalB], '2025-03-01')?.id).toBe('B');
+    expect(findGoalForDate([goalB, goalA], '2025-06-01')?.id).toBe('B');
+  });
+
+  it('retourne null avant le premier objectif ou sans objectif', () => {
+    expect(findGoalForDate([goalA, goalB], '2024-12-31')).toBeNull();
+    expect(findGoalForDate([], '2025-02-10')).toBeNull();
+  });
+
+  it("retourne null si l'objectif le plus récent est terminé", () => {
+    const ended = { ...goalB, end_date: '2025-03-31' };
+    expect(findGoalForDate([ended, goalA], '2025-04-15')).toBeNull();
+    expect(findGoalForDate([ended, goalA], '2025-03-15')?.id).toBe('B');
+  });
+
+  it('départage deux objectifs du même jour par la date de création', () => {
+    const morning = { ...goalB, id: 'matin', created_at: '2025-03-01T08:00:00Z' };
+    const evening = { ...goalB, id: 'soir', created_at: '2025-03-01T20:00:00Z' };
+    expect(findGoalForDate([morning, evening], '2025-03-02')?.id).toBe('soir');
+  });
+
+  it('gère les anciens objectifs sans start_date (date de création)', () => {
+    const legacy = { ...goalA, start_date: null, created_at: new Date(2025, 0, 5, 12).toISOString() };
+    expect(findGoalForDate([legacy], '2025-01-04')).toBeNull();
+    expect(findGoalForDate([legacy], '2025-01-05')?.id).toBe('A');
   });
 });
