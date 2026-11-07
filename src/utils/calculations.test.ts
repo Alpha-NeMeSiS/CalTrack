@@ -199,6 +199,39 @@ describe('calculateGoalProgress', () => {
     expect(calculateGoalProgress(84, 76, 8, '2025-01-01', 'loss', 82, now).on_track).toBe(false);
   });
 
+  it('mesure l’évolution réelle depuis le poids de départ', () => {
+    // Départ 82 kg, cible 76 kg (6 kg à perdre), actuel 79 kg : 3 kg perdus = 50 %
+    const progress = calculateGoalProgress(79, 76, 8, '2025-01-01', 'loss', 82, now);
+    expect(progress.start_weight).toBe(82);
+    expect(progress.actual_weight_change).toBe(-3);
+    expect(progress.weight_progress_pct).toBe(50);
+    expect(progress.goal_reached).toBe(false);
+  });
+
+  it('borne la progression du poids entre 0 et 100 %', () => {
+    // Poids en hausse pendant une perte : 0 %
+    expect(calculateGoalProgress(84, 76, 8, '2025-01-01', 'loss', 82, now).weight_progress_pct).toBe(0);
+    // Cible dépassée : 100 %
+    expect(calculateGoalProgress(74, 76, 8, '2025-01-01', 'loss', 82, now).weight_progress_pct).toBe(100);
+    // Prise de masse : 70 → 75 kg, actuel 72 kg = 40 %
+    expect(calculateGoalProgress(72, 75, 10, '2025-01-01', 'gain', 70, now).weight_progress_pct).toBe(40);
+  });
+
+  it('considère une avance sur le rythme prévu comme « dans les temps » (régression)', () => {
+    // 3 kg perdus en 2 semaines pour 1,5 kg attendus
+    expect(calculateGoalProgress(79, 76, 8, '2025-01-01', 'loss', 82, now).on_track).toBe(true);
+    // Prise de masse en avance : 70 → 72 kg en 2 semaines pour 0,5 kg/sem attendu
+    expect(calculateGoalProgress(72, 75, 10, '2025-01-01', 'gain', 70, now).on_track).toBe(true);
+    // Prise de masse en retard : aucune évolution
+    expect(calculateGoalProgress(70, 75, 5, '2025-01-01', 'gain', 70, now).on_track).toBe(false);
+  });
+
+  it('considère un objectif atteint comme « dans les temps » (régression)', () => {
+    const progress = calculateGoalProgress(75, 76, 8, '2025-01-01', 'loss', 82, now);
+    expect(progress.goal_reached).toBe(true);
+    expect(progress.on_track).toBe(true);
+  });
+
   it('utilise le poids actuel comme poids de départ par défaut', () => {
     expect(calculateGoalProgress(80, 76, 8, '2025-01-01', 'loss', undefined, now).weekly_rate_target).toBe(-0.5);
   });

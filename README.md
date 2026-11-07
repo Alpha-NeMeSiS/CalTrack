@@ -107,6 +107,7 @@ Les migrations SQL se trouvent dans:
 
 - `supabase/migrations/20251023212206_create_calorie_tracker_schema.sql`
 - `supabase/migrations/20251024092148_add_goal_duration_and_target_weight.sql`
+- `supabase/migrations/20261107235000_add_goal_start_weight.sql` : poids de départ des objectifs (`goals.start_weight_kg`), utilisé pour mesurer l'évolution réelle du poids. **À appliquer avant de déployer le code qui l'utilise.**
 
 Elles créent les tables principales et les politiques de sécurité RLS pour isoler les données par utilisateur.
 

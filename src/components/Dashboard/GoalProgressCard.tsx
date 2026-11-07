@@ -1,5 +1,7 @@
 // Carte de progression pour un objectif
-// Affiche l'état d'avancement temporel et de poids pour l'objectif actif
+// Affiche l'état d'avancement temporel et de poids pour l'objectif actif.
+// L'évolution réelle du poids n'est affichée que si le poids de départ est connu
+// (goals.start_weight_kg, enregistré à la création de l'objectif).
 import { Target, Calendar, TrendingUp } from 'lucide-react';
 import { Goal } from '../../lib/supabase';
 import { calculateGoalProgress } from '../../utils/calculations';
@@ -24,15 +26,24 @@ export function GoalProgressCard({ goal, currentWeight }: GoalProgressCardProps)
     return null;
   }
 
+  const hasStartWeight = goal.start_weight_kg != null && goal.start_weight_kg > 0;
+
   const progress = calculateGoalProgress(
     currentWeight,
     goal.target_weight_kg,
     goal.duration_weeks,
     goal.start_date,
     goal.type,
-    undefined,
+    hasStartWeight ? Number(goal.start_weight_kg) : undefined,
     now
   );
+
+  const formatKg = (value: number) => `${value > 0 ? '+' : ''}${value.toFixed(1)} kg`;
+  const weightStatus = progress.goal_reached
+    ? { label: 'Objectif atteint', className: 'bg-green-100 text-green-700' }
+    : progress.on_track
+      ? { label: 'Dans les temps', className: 'bg-blue-100 text-blue-700' }
+      : { label: 'En retard sur le rythme prévu', className: 'bg-orange-100 text-orange-700' };
 
   // parseLocalDate : évite le décalage UTC de new Date('YYYY-MM-DD')
   const start = parseLocalDate(goal.start_date);
@@ -45,7 +56,7 @@ export function GoalProgressCard({ goal, currentWeight }: GoalProgressCardProps)
     <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
       <div className="flex items-center gap-2 mb-4">
         <Target className="w-5 h-5 text-blue-600" />
-        <h3 className="text-l text-blue-600">Progression de l'objectif</h3>
+        <h3 className="text-lg text-blue-600">Progression de l'objectif</h3>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -60,20 +71,49 @@ export function GoalProgressCard({ goal, currentWeight }: GoalProgressCardProps)
         </div>
 
         <div className="bg-white rounded-md p-3">
-          <div className="text-xs text-gray-600 mb-1">Changement cible</div>
+          <div className="text-xs text-gray-600 mb-1">Reste à atteindre</div>
           <div className="text-2xl font-bold text-gray-900">
-            {progress.weight_change > 0 ? '+' : ''}
-            {progress.weight_change.toFixed(1)} kg
+            {progress.goal_reached ? '0.0 kg' : formatKg(progress.weight_change)}
           </div>
         </div>
       </div>
+
+      {hasStartWeight && (
+        <div className="mb-4" data-testid="weight-progress">
+          <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
+            <span className="text-sm font-medium text-gray-700">Progression du poids</span>
+            <span className={`text-xs font-medium px-2 py-1 rounded-full ${weightStatus.className}`}>
+              {weightStatus.label}
+            </span>
+          </div>
+          <div className="flex justify-between text-xs text-gray-600 mb-1">
+            <span>Départ : {progress.start_weight} kg</span>
+            <span>
+              Évolution : {formatKg(progress.actual_weight_change)} · {progress.weight_progress_pct.toFixed(0)} %
+            </span>
+          </div>
+          <div
+            className="relative w-full h-3 bg-white rounded-full overflow-hidden"
+            role="progressbar"
+            aria-label="Progression vers le poids cible"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress.weight_progress_pct)}
+          >
+            <div
+              className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-500"
+              style={{ width: `${progress.weight_progress_pct}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="mb-4">
         <div className="flex justify-between items-center mb-2">
           <span className="text-sm font-medium text-gray-700">Progression temporelle</span>
           <span className="text-sm text-blue-600">{time.percent.toFixed(1)}%</span>
         </div>
-        <div className="relative w-full h-3 bg-white rounded-full overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(time.percent)}>
+        <div className="relative w-full h-3 bg-white rounded-full overflow-hidden" role="progressbar" aria-label="Progression temporelle" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(time.percent)}>
           <div
             className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500"
             style={{ width: `${progressBarWidth}%` }}
