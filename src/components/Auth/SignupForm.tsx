@@ -44,9 +44,10 @@ export function SignupForm({ onToggle }: { onToggle: () => void }) {
   if (success) {
     return (
       <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-md">
-        <h2 className="text-2xlc text-gray-900 mb-4">Compte créé !</h2>
+        <h2 className="text-2xl text-gray-900 mb-4">Compte créé !</h2>
         <p className="text-gray-600 mb-6">
-          Votre compte a été créé avec succès. Vous pouvez maintenant vous connecter.
+          Votre compte a été créé avec succès. Si un e-mail de confirmation vous a été envoyé,
+          cliquez sur le lien qu'il contient, puis connectez-vous.
         </p>
         <button
           onClick={onToggle}

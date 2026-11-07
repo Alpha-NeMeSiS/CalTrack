@@ -122,13 +122,6 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
     };
   }, [debouncedQuery, category, minChars]);
 
-  useEffect(() => {
-    setItems([]);
-    setStatusMessage(null);
-    setHighlightedIndex(-1);
-    setLoading(false);
-  }, [category]);
-
   const handleSelect = useCallback(
     (food: NormalizedFood) => {
       onSelect(food);

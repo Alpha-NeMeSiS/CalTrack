@@ -132,6 +132,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   const [quickQuantity, setQuickQuantity] = useState<number>(100);
   const [quickMealType, setQuickMealType] = useState<MealType | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const quickQuantityInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -192,7 +193,8 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     };
   }, [activeTab, recentEntriesLoaded, user]);
 
-  const multiplier = quantity / 100;
+  const isSearchQuantityValid = Number.isFinite(quantity) && quantity > 0;
+  const multiplier = isSearchQuantityValid ? quantity / 100 : 0;
   const calculatedCalories = selectedFood ? Math.round(selectedFood.kcal_per_100g * multiplier) : 0;
   const calculatedProtein = selectedFood ? roundToOneDecimal(selectedFood.protein_g * multiplier) : 0;
   const calculatedFat = selectedFood ? roundToOneDecimal(selectedFood.fat_g * multiplier) : 0;
@@ -206,7 +208,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
       errors.label = 'Le nom de l\'aliment est requis.';
     }
 
-    if (manualForm.qty_grammes <= 0) {
+    if (!Number.isFinite(manualForm.qty_grammes) || manualForm.qty_grammes <= 0) {
       errors.qty_grammes = 'La quantité doit être supérieure à 0.';
     }
 
@@ -219,7 +221,9 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     ];
 
     for (const field of numericFields) {
-      if (manualForm[field] < 0) {
+      if (!Number.isFinite(manualForm[field])) {
+        errors[field] = 'Veuillez saisir un nombre.';
+      } else if (manualForm[field] < 0) {
         errors[field] = 'La valeur ne peut pas être négative.';
       }
     }
@@ -267,12 +271,20 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
 
   const submitEntry = async (entry: AddEntryPayload) => {
     setSubmitting(true);
+    setSubmitError(null);
     try {
       const success = await onAdd(entry);
       if (success) {
         onClose();
+      } else {
+        // Auparavant : aucun retour visible, le bouton revenait simplement à « Ajouter »
+        setSubmitError("L'ajout a échoué. Vérifiez votre connexion puis réessayez.");
       }
       return success;
+    } catch (error) {
+      console.error("Erreur lors de l'ajout", error);
+      setSubmitError("L'ajout a échoué. Vérifiez votre connexion puis réessayez.");
+      return false;
     } finally {
       setSubmitting(false);
     }
@@ -281,7 +293,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   const handleSearchSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!selectedFood || quantity <= 0) {
+    if (!selectedFood || !isSearchQuantityValid) {
       return;
     }
 
@@ -343,7 +355,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   const quickFat = selectedRecentFood ? roundToOneDecimal(selectedRecentFood.fat_g * quickRatio) : 0;
   const quickCarbs = selectedRecentFood ? roundToOneDecimal(selectedRecentFood.carbs_g * quickRatio) : 0;
   const quickFiber = selectedRecentFood ? roundToOneDecimal(selectedRecentFood.fiber_g * quickRatio) : 0;
-  const isQuickQuantityValid = quickQuantity > 0;
+  const isQuickQuantityValid = Number.isFinite(quickQuantity) && quickQuantity > 0;
 
   const handleQuickSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -385,6 +397,21 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isQuickAddDialogOpen]);
+
+  useEffect(() => {
+    if (isQuickAddDialogOpen) {
+      return;
+    }
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape' && !submitting) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isQuickAddDialogOpen, onClose, submitting]);
 
   const renderSearchTab = () => (
     <form onSubmit={handleSearchSubmit} className="space-y-6">
@@ -465,7 +492,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
         </button>
         <button
           type="submit"
-          disabled={!selectedFood || quantity <= 0 || submitting}
+          disabled={!selectedFood || !isSearchQuantityValid || submitting}
           className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors"
         >
           {submitting ? 'Ajout en cours…' : 'Ajouter'}
@@ -640,7 +667,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
       <div
         className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 p-4"
         onClick={resetQuickState}
-        aria-hidden="true"
+        role="presentation"
       >
         <div
           role="dialog"
@@ -669,6 +696,11 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
           </div>
 
           <form onSubmit={handleQuickSubmit} className="space-y-4 p-6">
+            {submitError && (
+              <div role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {submitError}
+              </div>
+            )}
             {selectedRecentFood.qty_grammes <= 0 && (
               <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
                 La quantité d’origine était invalide. Le recalcul est basé sur 100 g par défaut.
@@ -751,9 +783,14 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-entry-title"
+        className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex items-center justify-between px-8 pt-8 pb-6 border-b border-gray-200">
-          <h2 className="text-xl text-gray-900">Ajouter un aliment</h2>
+          <h2 id="add-entry-title" className="text-xl text-gray-900">Ajouter un aliment</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Fermer la fenêtre">
             <X className="w-6 h-6" />
           </button>
@@ -775,6 +812,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                 aria-controls={`add-entry-panel-${tab.value}`}
                 onClick={() => {
                   setActiveTab(tab.value);
+                  setSubmitError(null);
                   if (tab.value !== 'search') {
                     resetSearchState();
                   }
@@ -799,6 +837,11 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
         </div>
 
         <div className="p-6">
+          {submitError && (
+            <div role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {submitError}
+            </div>
+          )}
           <div
             id={`add-entry-panel-${activeTab}`}
             role="tabpanel"
