@@ -1,6 +1,8 @@
 // @vitest-environment node
+// NB : ce test ne doit PAS être placé dans netlify/functions/ : Netlify y traite
+// chaque fichier comme une fonction, et « off-search.test » est un nom invalide.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { handler } from './off-search';
+import { handler } from '../functions/off-search';
 
 afterEach(() => {
   vi.unstubAllGlobals();

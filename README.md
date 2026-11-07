@@ -79,7 +79,7 @@ Les tests utilisent **Vitest** (environnement `jsdom`) et **Testing Library**. I
 | `src/lib/` | Recherche Ciqual, Open Food Facts (fetch mocké), progression temporelle |
 | `src/services/` | Accès Supabase des objectifs et cibles quotidiennes |
 | `src/components/` | Composants React (Dashboard, FoodSearch, LoginForm, MacroCard, CalorieRing) |
-| `netlify/functions/` | Fonction Netlify `off-search` (proxy Open Food Facts) |
+| `netlify/tests/` | Fonction Netlify `off-search` (proxy Open Food Facts) |
 
 Outils partagés dans `src/test/` :
 
