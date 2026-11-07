@@ -5,13 +5,13 @@ import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  calculateCompleteTargets,
   calculateBMR,
   calculateTDEE,
   calculateOptimalDeficitOrSurplus,
   UserProfile,
-  GoalParams,
 } from '../../utils/calculations';
+import { getTodayDate } from '../../utils/date';
+import { activateNewGoal } from '../../services/goals';
 
 interface FormData {
   sexe: 'M' | 'F';
@@ -24,35 +24,6 @@ interface FormData {
   deficit_or_surplus_pct: number;
   target_weight_kg?: number;
   duration_weeks?: number;
-}
-
-interface Profile {
-  id: string;
-  email: string;
-  sexe: 'M' | 'F';
-  date_naissance: string;
-  taille_cm: number;
-  poids_kg: number;
-  body_fat_pct?: number | null;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Goal {
-  id: string;
-  user_id: string;
-  type: 'loss' | 'maintain' | 'gain';
-  activity_level: number;
-  method: 'mifflin' | 'katch';
-  deficit_or_surplus_pct: number;
-  protein_g_per_kg: number;
-  fat_g_per_kg_min: number;
-  is_active: boolean;
-  target_weight_kg?: number | null;
-  duration_weeks?: number | null;
-  start_date?: string | null;
-  end_date?: string | null;
-  created_at: string;
 }
 
 export function OnboardingForm() {
@@ -88,78 +59,37 @@ export function OnboardingForm() {
     setError('');
 
     try {
-      // Création du profil utilisateur
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: user.id,
-        email: user.email!,
+      const userProfile: UserProfile = {
         sexe: formData.sexe,
         date_naissance: formData.date_naissance,
         taille_cm: formData.taille_cm,
         poids_kg: formData.poids_kg,
         body_fat_pct: formData.body_fat_pct || null,
-      } as Profile);
+      };
+
+      // Création du profil utilisateur.
+      // upsert (et non insert) : si une tentative précédente a créé le profil mais
+      // échoué ensuite, renvoyer le formulaire ne bloque plus sur une clé dupliquée.
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({ id: user.id, email: user.email!, ...userProfile }, { onConflict: 'id' });
 
       if (profileError) throw profileError;
 
-      // Préparer dates et insertion de l'objectif
-      const today = new Date().toISOString().split('T')[0];
-      const endDate = formData.duration_weeks
-        ? new Date(new Date().getTime() + formData.duration_weeks * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-        : null;
-
-      const { data: goalData, error: goalError } = await supabase
-        .from('goals')
-        .insert({
-          user_id: user.id,
-          type: formData.goal_type,
-          activity_level: formData.activity_level,
-          method: formData.body_fat_pct ? 'katch' : 'mifflin',
-          deficit_or_surplus_pct: formData.deficit_or_surplus_pct,
-          protein_g_per_kg: 2.0,
-          fat_g_per_kg_min: 0.8,
-          is_active: true,
-          target_weight_kg: formData.target_weight_kg || null,
-          duration_weeks: formData.duration_weeks || null,
-          start_date: formData.duration_weeks ? today : null,
-          end_date: endDate,
-        } as Goal)
-        .select()
-        .single();
-
-      if (goalError) throw goalError;
-
-      // Calcul des cibles caloriques et des macros à partir des fonctions utilitaires
-      const targets = calculateCompleteTargets(
-        {
-          sexe: formData.sexe,
-          date_naissance: formData.date_naissance,
-          taille_cm: formData.taille_cm,
-          poids_kg: formData.poids_kg,
-          body_fat_pct: formData.body_fat_pct,
-        } as UserProfile,
+      // Création de l'objectif (désactive un éventuel objectif d'une tentative
+      // précédente) et de la cible du jour
+      await activateNewGoal(
+        user.id,
+        userProfile,
         {
           type: formData.goal_type,
           activity_level: formData.activity_level,
-          method: formData.body_fat_pct ? 'katch' : 'mifflin',
           deficit_or_surplus_pct: formData.deficit_or_surplus_pct,
-          protein_g_per_kg: 2.0,
-          fat_g_per_kg_min: 0.8,
-        } as GoalParams
+          target_weight_kg: formData.target_weight_kg,
+          duration_weeks: formData.duration_weeks,
+        },
+        getTodayDate()
       );
-
-      // Insertion des targets journalières initiales
-      const { error: targetError } = await supabase.from('daily_targets').insert({
-        user_id: user.id,
-        date: today,
-        calories_kcal: targets.calories_kcal,
-        protein_g: targets.protein_g,
-        fat_g: targets.fat_g,
-        carbs_g: targets.carbs_g,
-        fiber_g: 25,
-        goal_id: goalData.id,
-      });
-
-      if (targetError) throw targetError;
 
       // Rafraîchir le profil global côté application
       await refreshProfile();
@@ -212,7 +142,7 @@ export function OnboardingForm() {
               id="date_naissance"
               value={formData.date_naissance}
               onChange={(e) => updateFormData('date_naissance', e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
+              max={getTodayDate()}
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />

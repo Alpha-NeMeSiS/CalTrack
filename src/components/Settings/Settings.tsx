@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { User, Target, Save } from 'lucide-react';
 import { supabase, Goal } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { calculateBMR, calculateTDEE, calculateOptimalDeficitOrSurplus, calculateCompleteTargets } from '../../utils/calculations';
+import { calculateBMR, calculateTDEE, calculateOptimalDeficitOrSurplus } from '../../utils/calculations';
+import { getTodayDate } from '../../utils/date';
+import { activateNewGoal, upsertDailyTargetForGoal } from '../../services/goals';
 
 export function Settings() {
   // Récupère l'utilisateur, le profil et la fonction pour rafraîchir le profil
@@ -45,7 +47,7 @@ export function Settings() {
         date_naissance: profile.date_naissance,
         taille_cm: profile.taille_cm,
         poids_kg: profile.poids_kg,
-        body_fat_pct: profile.body_fat_pct,
+        body_fat_pct: profile.body_fat_pct ?? undefined,
       });
     }
   }, [profile]);
@@ -95,19 +97,29 @@ export function Settings() {
     setSuccess('');
 
     try {
+      const updatedProfile = {
+        sexe: profileData.sexe,
+        date_naissance: profileData.date_naissance,
+        taille_cm: profileData.taille_cm,
+        poids_kg: profileData.poids_kg,
+        body_fat_pct: profileData.body_fat_pct || null,
+      };
+
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
-          sexe: profileData.sexe,
-          date_naissance: profileData.date_naissance,
-          taille_cm: profileData.taille_cm,
-          poids_kg: profileData.poids_kg,
-          body_fat_pct: profileData.body_fat_pct || null,
+          ...updatedProfile,
+          // Timestamp complet : toISOString() (UTC) est correct ici
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
 
       if (updateError) throw updateError;
+
+      // Le poids / l'âge / la taille changent les besoins : recalculer la cible du jour
+      if (activeGoal) {
+        await upsertDailyTargetForGoal(user.id, getTodayDate(), updatedProfile, activeGoal);
+      }
 
       // Rafraîchir le profil global après modification
       await refreshProfile();
@@ -128,77 +140,21 @@ export function Settings() {
     setSuccess('');
 
     try {
-      // Désactiver l'objectif actif précédent (si existant)
-      if (activeGoal) {
-        await supabase
-          .from('goals')
-          .update({ is_active: false })
-          .eq('id', activeGoal.id);
-      }
-
-      // Calcul des dates de début/fin selon la durée
-      const today = new Date().toISOString().split('T')[0];
-      const endDate = goalData.duration_weeks
-        ? new Date(new Date().getTime() + goalData.duration_weeks * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-        : null;
-
-      // Insertion du nouvel objectif
-      const { data: newGoal, error: goalError } = await supabase
-        .from('goals')
-        .insert({
-          user_id: user.id,
+      // Crée le nouvel objectif, désactive l'ancien et met à jour (upsert) la cible du jour.
+      // Auparavant, la cible du jour existante était conservée (erreur 23505 ignorée)
+      // et le nouvel objectif ne s'appliquait pas avant le lendemain.
+      await activateNewGoal(
+        user.id,
+        profile,
+        {
           type: goalData.goal_type,
           activity_level: goalData.activity_level,
-          method: profile.body_fat_pct ? 'katch' : 'mifflin',
           deficit_or_surplus_pct: goalData.deficit_or_surplus_pct,
-          protein_g_per_kg: 2.0,
-          fat_g_per_kg_min: 0.8,
-          is_active: true,
-          target_weight_kg: goalData.target_weight_kg || null,
-          duration_weeks: goalData.duration_weeks || null,
-          start_date: goalData.duration_weeks ? today : null,
-          end_date: endDate,
-        })
-        .select()
-        .single();
-
-      if (goalError) throw goalError;
-
-      // Calculer les cibles complètes (calories/macros) en fonction du profil et de l'objectif
-      const targets = calculateCompleteTargets(
-        {
-          sexe: profile.sexe,
-          date_naissance: profile.date_naissance,
-          taille_cm: profile.taille_cm,
-          poids_kg: profile.poids_kg,
-          body_fat_pct: profile.body_fat_pct,
+          target_weight_kg: goalData.target_weight_kg,
+          duration_weeks: goalData.duration_weeks,
         },
-        {
-          type: goalData.goal_type,
-          activity_level: goalData.activity_level,
-          method: profile.body_fat_pct ? 'katch' : 'mifflin',
-          deficit_or_surplus_pct: goalData.deficit_or_surplus_pct,
-          protein_g_per_kg: 2.0,
-          fat_g_per_kg_min: 0.8,
-        }
+        getTodayDate()
       );
-
-      // Insérer la cible quotidienne initiale
-      const { error: targetError } = await supabase.from('daily_targets').insert({
-        user_id: user.id,
-        date: today,
-        calories_kcal: targets.calories_kcal,
-        protein_g: targets.protein_g,
-        fat_g: targets.fat_g,
-        carbs_g: targets.carbs_g,
-        fiber_g: 25,
-        goal_id: newGoal.id,
-      });
-
-      // Si l'erreur n'est pas liée à une contrainte d'unicité, la remonter
-      if (targetError && targetError.code !== '23505') {
-        throw targetError;
-      }
 
       await loadActiveGoal();
       setSuccess('Objectif mis à jour avec succès');
@@ -294,7 +250,7 @@ export function Settings() {
                   id="date_naissance"
                   value={profileData.date_naissance}
                   onChange={(e) => setProfileData({ ...profileData, date_naissance: e.target.value })}
-                  max={new Date().toISOString().split('T')[0]}
+                  max={getTodayDate()}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>

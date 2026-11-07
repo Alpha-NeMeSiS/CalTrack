@@ -16,7 +16,7 @@ export interface Profile {
   date_naissance: string;
   taille_cm: number;
   poids_kg: number;
-  body_fat_pct?: number;
+  body_fat_pct?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -31,15 +31,13 @@ export interface Goal {
   protein_g_per_kg: number;
   fat_g_per_kg_min: number;
   is_active: boolean;
-  target_weight_kg?: number;
-  duration_weeks?: number;
-  start_date?: string;
-  end_date?: string;
-  calories_kcal?: number;
-  protein_g?: number;
-  fat_g?: number;
-  carbs_g?: number;
-  fiber_g?: number;
+  // Colonnes ajoutées par la migration 20251024092148 (nullable)
+  // NB : la table `goals` ne stocke PAS les calories/macros calculées ; elles
+  // sont recalculées depuis le profil (voir src/utils/goals.ts).
+  target_weight_kg?: number | null;
+  duration_weeks?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
   created_at: string;
 }
 

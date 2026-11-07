@@ -10,10 +10,7 @@ import { Navigation } from './components/Layout/Navigation';
 import { Dashboard } from './components/Dashboard/Dashboard';
 import { WeeklyTrends } from './components/Stats/WeeklyTrends';
 import { Settings } from './components/Settings/Settings';
-
-function getTodayDate() {
-  return new Date().toISOString().split('T')[0];
-}
+import { getTodayDate } from './utils/date';
 
 function AppContent() {
   // Récupère l'état d'authentification et le profil utilisateur

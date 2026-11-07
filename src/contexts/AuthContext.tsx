@@ -122,6 +122,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 // Hook pratique pour consommer le contexte d'auth
+// (exporté à côté du Provider par convention ; le Fast Refresh recharge simplement
+// la page entière lorsque ce fichier est modifié)
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

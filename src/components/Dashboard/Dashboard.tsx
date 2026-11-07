@@ -5,136 +5,13 @@ import { Plus, Calendar } from 'lucide-react';
 import { supabase, DailyTarget, Entry, Goal } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { calculateDailySummary } from '../../utils/calculations';
+import { getTodayDate } from '../../utils/date';
+import { isDateWithinGoal } from '../../utils/goals';
+import { ensureDailyTargetForDate, fetchActiveGoal } from '../../services/goals';
 import { CalorieRing } from './CalorieRing';
 import { MacroCard } from './MacroCard';
 import { GoalProgressCard } from './GoalProgressCard';
 import { AddEntryModal } from '../Journal/AddEntryModal';
-
-function isDateWithinGoal(goal: Goal | null, date: string): boolean {
-  if (!goal?.start_date || !goal?.end_date) {
-    return false;
-  }
-
-  return goal.start_date <= date && date <= goal.end_date;
-}
-
-// Ensure there is a daily target for the given date. If missing but an active
-// goal covers the date, derive the target values (copy from the goal's first
-// day when possible, otherwise from the goal fields) and upsert the
-// daily_target. Return the resulting DailyTarget or null.
-async function ensureDailyTargetForDate(userId: string, dateStr: string): Promise<DailyTarget | null> {
-  try {
-    const { data: existingTarget, error: existingError } = await supabase
-      .from('daily_targets')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('date', dateStr)
-      .maybeSingle();
-
-    if (existingError) {
-      console.error('Error querying existing daily_target:', existingError);
-      return null;
-    }
-
-    if (existingTarget) {
-      return existingTarget as DailyTarget;
-    }
-
-    const { data: activeGoal, error: goalError } = await supabase
-      .from('goals')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (goalError) {
-      console.error('Error querying active goal:', goalError);
-      return null;
-    }
-
-    const goal = (activeGoal as Goal | null) ?? null;
-
-    if (!isDateWithinGoal(goal, dateStr)) {
-      return null;
-    }
-
-    let payload: {
-      user_id: string;
-      date: string;
-      calories_kcal: number;
-      protein_g: number;
-      fat_g: number;
-      carbs_g: number;
-      fiber_g: number;
-      goal_id: string;
-    } | null = null;
-
-    if (goal?.start_date) {
-      const { data: firstDayTarget, error: firstDayError } = await supabase
-        .from('daily_targets')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('date', goal.start_date)
-        .maybeSingle();
-
-      if (firstDayError) {
-        console.error('Error querying first day daily_target:', firstDayError);
-      } else if (firstDayTarget) {
-        const src = firstDayTarget as DailyTarget;
-        payload = {
-          user_id: userId,
-          date: dateStr,
-          calories_kcal: src.calories_kcal,
-          protein_g: src.protein_g,
-          fat_g: src.fat_g,
-          carbs_g: src.carbs_g,
-          fiber_g: src.fiber_g ?? 0,
-          goal_id: src.goal_id ?? goal.id,
-        };
-      }
-    }
-
-    if (!payload) {
-      if (
-        goal?.calories_kcal == null ||
-        goal.protein_g == null ||
-        goal.fat_g == null ||
-        goal.carbs_g == null
-      ) {
-        return null;
-      }
-
-      payload = {
-        user_id: userId,
-        date: dateStr,
-        calories_kcal: goal.calories_kcal,
-        protein_g: goal.protein_g,
-        fat_g: goal.fat_g,
-        carbs_g: goal.carbs_g,
-        fiber_g: goal.fiber_g ?? 0,
-        goal_id: goal.id,
-      };
-    }
-
-    const { data: upsertedTarget, error: upsertError } = await supabase
-      .from('daily_targets')
-      .upsert(payload, { onConflict: 'user_id,date' })
-      .select()
-      .maybeSingle();
-
-    if (upsertError) {
-      console.error('Error upserting daily_target:', upsertError);
-      return null;
-    }
-
-    return (upsertedTarget as DailyTarget) ?? null;
-  } catch (err) {
-    console.error('Unexpected error in ensureDailyTargetForDate:', err);
-    return null;
-  }
-}
 
 interface DashboardProps {
   activeDate?: string;
@@ -146,12 +23,14 @@ export function Dashboard({
   onActiveDateChange,
 }: DashboardProps) {
   const { user, profile } = useAuth();
-  const [selectedDate, setSelectedDate] = useState(activeDate ?? new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(activeDate ?? getTodayDate());
   const [target, setTarget] = useState<DailyTarget | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (activeDate && activeDate !== selectedDate) {
@@ -162,57 +41,40 @@ export function Dashboard({
   // Recharger les données lorsque l'utilisateur ou la date sélectionnée change
   // Charge les données du jour : target, entrées et objectif actif
   const loadDayData = useCallback(async () => {
-    if (!user) return false;
+    if (!user || !profile) return;
 
     setLoading(true);
+    setLoadError(null);
     try {
-      const [targetResult, entriesResult, goalResult] = await Promise.all([
-        supabase
-          .from('daily_targets')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('date', selectedDate)
-          .maybeSingle(),
+      const [entriesResult, goal] = await Promise.all([
         supabase
           .from('entries')
           .select('*')
           .eq('user_id', user.id)
           .eq('date', selectedDate)
           .order('created_at', { ascending: true }),
-        supabase
-          .from('goals')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+        fetchActiveGoal(user.id),
       ]);
 
-      if (targetResult.error) throw targetResult.error;
       if (entriesResult.error) throw entriesResult.error;
-      if (goalResult.error) throw goalResult.error;
 
-      let finalTarget: DailyTarget | null = (targetResult.data as DailyTarget | null) ?? null;
-      if (!finalTarget) {
-        finalTarget = await ensureDailyTargetForDate(user.id, selectedDate);
-      }
+      // Récupère la cible du jour, ou la calcule depuis l'objectif actif si besoin
+      const dayTarget = await ensureDailyTargetForDate(user.id, selectedDate, profile, goal);
 
-      setTarget(finalTarget);
-      setEntries(entriesResult.data || []);
-      setActiveGoal((goalResult.data as Goal | null) ?? null);
+      setTarget(dayTarget);
+      setEntries((entriesResult.data as Entry[]) || []);
+      setActiveGoal(goal);
     } catch (error) {
       console.error('Error loading day data:', error);
+      setLoadError('Impossible de charger les données de cette journée.');
     } finally {
       setLoading(false);
     }
-  }, [selectedDate, user]);
+  }, [selectedDate, user, profile]);
 
   useEffect(() => {
-    if (user) {
-      loadDayData();
-    }
-  }, [loadDayData, user]);
+    loadDayData();
+  }, [loadDayData]);
 
   // Ajoute une entrée dans la table 'entries' puis recharge les données
   const handleAddEntry = async (entryData: Omit<Entry, 'id' | 'user_id' | 'date' | 'created_at'>): Promise<boolean> => {
@@ -246,7 +108,13 @@ export function Dashboard({
   };
 
   // Supprime une entrée puis recharge les données
-  const handleDeleteEntry = async (entryId: string) => {
+  const handleDeleteEntry = async (entryId: string, label?: string) => {
+    const confirmed = window.confirm(
+      label ? `Supprimer « ${label} » du journal ?` : 'Supprimer cet aliment du journal ?'
+    );
+    if (!confirmed) return false;
+
+    setActionError(null);
     try {
       const { error } = await supabase.from('entries').delete().eq('id', entryId);
 
@@ -256,6 +124,8 @@ export function Dashboard({
       return true;
     } catch (error) {
       console.error('Error deleting entry:', error);
+      setActionError("La suppression a échoué. Réessayez.");
+      return false;
     }
   };
 
@@ -267,16 +137,21 @@ export function Dashboard({
     );
   }
 
-  const goalCoversSelectedDate = isDateWithinGoal(activeGoal, selectedDate);
+  if (loadError) {
+    return (
+      <div className="max-w-2xl mx-auto text-center py-12">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <p className="text-red-700 mb-4">{loadError}</p>
+          <button onClick={() => loadDayData()} className="btn-kaizen">
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!target) {
-    if (goalCoversSelectedDate) {
-      return (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Chargement...</div>
-        </div>
-      );
-    }
+    const goalCoversSelectedDate = isDateWithinGoal(activeGoal, selectedDate);
 
     return (
       <div className="max-w-2xl mx-auto text-center py-12">
@@ -285,7 +160,9 @@ export function Dashboard({
             Aucun objectif défini pour cette date
           </h3>
           <p className="text-yellow-700 mb-4">
-            Vous devez définir un objectif pour commencer le suivi de vos apports.
+            {goalCoversSelectedDate
+              ? "Impossible de calculer la cible de cette journée."
+              : 'Vous devez définir un objectif pour commencer le suivi de vos apports.'}
           </p>
           <div className="flex items-center justify-center gap-4">
             <a
@@ -319,7 +196,7 @@ export function Dashboard({
               setSelectedDate(nextDate);
               onActiveDateChange?.(nextDate);
             }}
-            max={new Date().toISOString().split('T')[0]}
+            max={getTodayDate()}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-kaizen-500"
           />
         </div>
@@ -332,6 +209,12 @@ export function Dashboard({
           Ajouter
         </button>
       </div>
+
+      {actionError && (
+        <div role="alert" className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+          {actionError}
+        </div>
+      )}
 
       {activeGoal && activeGoal.target_weight_kg && profile && (
         <GoalProgressCard goal={activeGoal} currentWeight={profile.poids_kg} />
@@ -421,7 +304,7 @@ export function Dashboard({
                   </div>
 
                   <button
-                    onClick={() => handleDeleteEntry(entry.id)}
+                    onClick={() => handleDeleteEntry(entry.id, entry.label)}
                     className="text-red-600 hover:text-red-700 text-sm font-medium"
                   >
                     Supprimer

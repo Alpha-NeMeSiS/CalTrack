@@ -1,3 +1,5 @@
+import { toLocalDateString } from '../utils/date';
+
 export function clamp(n: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, n));
 }
@@ -99,6 +101,6 @@ export function formatDateFR(d: Date): string {
   try {
     return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }).format(d);
   } catch {
-    return d.toISOString().split('T')[0];
+    return toLocalDateString(d);
   }
 }

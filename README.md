@@ -17,7 +17,7 @@ Application web de suivi calorique construite avec **React + TypeScript + Vite**
 - **Front-end**: React 18, TypeScript, Vite
 - **UI**: Tailwind CSS
 - **Backend BaaS**: Supabase (Auth + Postgres + RLS)
-- **Qualité**: ESLint, TypeScript (`typecheck`)
+- **Qualité**: ESLint, TypeScript (`typecheck`), Vitest + Testing Library (tests)
 
 ## Prérequis
 
@@ -57,6 +57,39 @@ Par défaut, Vite démarre sur `http://localhost:5173`.
 - `npm run preview` : prévisualise le build localement.
 - `npm run lint` : exécute ESLint.
 - `npm run typecheck` : vérifie les types TypeScript.
+- `npm test` : lance tous les tests une fois.
+- `npm run test:watch` : relance les tests à chaque modification.
+- `npm run test:coverage` : génère un rapport de couverture dans `coverage/`.
+
+## Tests
+
+Les tests utilisent **Vitest** (environnement `jsdom`) et **Testing Library**. Ils sont placés à côté du code testé (`*.test.ts` / `*.test.tsx`) et ne nécessitent ni `.env` ni connexion Supabase : le client Supabase est remplacé par un faux client.
+
+| Dossier | Ce qui est testé |
+| --- | --- |
+| `src/utils/` | Calculs nutritionnels, dates locales, logique des objectifs |
+| `src/lib/` | Recherche Ciqual, Open Food Facts (fetch mocké), progression temporelle |
+| `src/services/` | Accès Supabase des objectifs et cibles quotidiennes |
+| `src/components/` | Composants React (Dashboard, LoginForm, MacroCard, CalorieRing) |
+
+Outils partagés dans `src/test/` :
+
+- `setup.ts` : initialisation (matchers `jest-dom`, nettoyage après chaque test) ;
+- `supabaseMock.ts` : faux client Supabase qui enregistre les requêtes et renvoie les résultats choisis par le test ;
+- `fixtures.ts` : données de test (`makeProfile`, `makeGoal`, `makeEntry`…).
+
+Exemple de mock Supabase dans un test :
+
+```ts
+vi.mock('../lib/supabase', async () => {
+  const { fakeSupabase } = await import('../test/supabaseMock');
+  return { supabase: fakeSupabase };
+});
+
+supabaseMock.setHandler((call) =>
+  call.table === 'entries' ? { data: [makeEntry()], error: null } : { data: null, error: null }
+);
+```
 
 ## Base de données
 
@@ -74,7 +107,9 @@ src/
   components/      # UI par domaine (Auth, Dashboard, Journal, Settings, etc.)
   contexts/        # Contextes React (authentification)
   lib/             # Clients/abstractions (supabase, APIs nutrition)
-  utils/           # Calculs métier
+  services/        # Accès Supabase (objectifs, cibles quotidiennes)
+  utils/           # Calculs métier, dates locales, logique des objectifs (fonctions pures)
+  test/            # Outils partagés pour les tests
 ```
 
 ## Notes

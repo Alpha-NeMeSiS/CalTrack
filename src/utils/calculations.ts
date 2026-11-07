@@ -1,9 +1,11 @@
+import { parseLocalDate, toLocalDateString } from './date';
+
 export interface UserProfile {
   sexe: 'M' | 'F';
   date_naissance: string;
   taille_cm: number;
   poids_kg: number;
-  body_fat_pct?: number;
+  body_fat_pct?: number | null;
 }
 
 export interface GoalParams {
@@ -26,9 +28,9 @@ export interface MacroTargets {
   fiber_g?: number;
 }
 
-export function calculateAge(dateNaissance: string): number {
-  const birthDate = new Date(dateNaissance);
-  const today = new Date();
+export function calculateAge(dateNaissance: string, today: Date = new Date()): number {
+  // parseLocalDate évite le décalage UTC de new Date('YYYY-MM-DD')
+  const birthDate = parseLocalDate(dateNaissance);
   let age = today.getFullYear() - birthDate.getFullYear();
   const monthDiff = today.getMonth() - birthDate.getMonth();
 
@@ -79,7 +81,8 @@ export function calculateMacros(
   protein_g_per_kg: number,
   fat_g_per_kg_min: number
 ): MacroTargets {
-  const protein_g = Math.max(1.6, protein_g_per_kg) * poids_kg;
+  // Utilise la valeur demandée (auparavant un plancher caché de 1.6 g/kg l'écrasait)
+  const protein_g = protein_g_per_kg * poids_kg;
 
   const minFatFromWeight = fat_g_per_kg_min * poids_kg;
   const minFatFromCalories = (0.25 * targetCalories) / 9;
@@ -160,11 +163,15 @@ export function calculateDailySummary(
     fiber_g: Math.round((consumed.fiber_g - (target.fiber_g || 0)) * 10) / 10,
   };
 
-  const caloriesDiffPct = (Math.abs(delta.calories_kcal) / target.calories_kcal) * 100;
-
   let status: 'under' | 'ok' | 'over' = 'ok';
-  if (caloriesDiffPct > 5) {
-    status = delta.calories_kcal < 0 ? 'under' : 'over';
+  if (target.calories_kcal > 0) {
+    const caloriesDiffPct = (Math.abs(delta.calories_kcal) / target.calories_kcal) * 100;
+    if (caloriesDiffPct > 5) {
+      status = delta.calories_kcal < 0 ? 'under' : 'over';
+    }
+  } else if (consumed.calories_kcal > 0) {
+    // Objectif nul (ou invalide) : évite une division par zéro (NaN / Infinity)
+    status = 'over';
   }
 
   return {
@@ -216,49 +223,62 @@ export interface GoalProgress {
   estimated_end_date: string;
 }
 
+/**
+ * Calcule la progression d'un objectif de poids.
+ *
+ * @param startWeight Poids au début de l'objectif. Le schéma actuel ne le stocke
+ *   pas : par défaut on utilise le poids actuel (aucune évolution mesurée).
+ * @param today Date de référence (injectable pour les tests).
+ */
 export function calculateGoalProgress(
   currentWeight: number,
   targetWeight: number,
   durationWeeks: number,
   startDate: string,
-  goalType: 'loss' | 'gain'
+  goalType: 'loss' | 'gain',
+  startWeight: number = currentWeight,
+  today: Date = new Date()
 ): GoalProgress {
-  const start = new Date(startDate);
-  const today = new Date();
+  const start = parseLocalDate(startDate);
+  // Protège contre une durée nulle/négative (division par zéro)
+  const safeDuration = durationWeeks > 0 ? durationWeeks : 1;
 
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
   const weeksElapsed = Math.max(0, Math.floor((today.getTime() - start.getTime()) / msPerWeek));
-  const weeksRemaining = Math.max(0, durationWeeks - weeksElapsed);
+  const weeksRemaining = Math.max(0, safeDuration - weeksElapsed);
 
-  const totalWeightChange = targetWeight - currentWeight;
-  const weeklyRateTarget = totalWeightChange / durationWeeks;
+  // Changement restant pour atteindre l'objectif
+  const remainingWeightChange = targetWeight - currentWeight;
+  // Rythme cible calculé sur l'objectif global (depuis le poids de départ)
+  const weeklyRateTarget = (targetWeight - startWeight) / safeDuration;
 
-  const progressPct = Math.min(100, (weeksElapsed / durationWeeks) * 100);
+  const progressPct = Math.min(100, (weeksElapsed / safeDuration) * 100);
 
   const expectedWeightChange = weeklyRateTarget * weeksElapsed;
-  const actualWeightChange = currentWeight - currentWeight;
+  // Bug corrigé : auparavant `currentWeight - currentWeight` (toujours 0)
+  const actualWeightChange = currentWeight - startWeight;
 
   const directionMatchesGoal = goalType === 'loss'
     ? targetWeight <= currentWeight
     : targetWeight >= currentWeight;
   const onTrack = directionMatchesGoal &&
-    Math.abs(actualWeightChange - expectedWeightChange) < Math.abs(weeklyRateTarget);
+    Math.abs(actualWeightChange - expectedWeightChange) <= Math.abs(weeklyRateTarget);
 
   const estimatedEndDate = new Date(start);
-  estimatedEndDate.setDate(estimatedEndDate.getDate() + durationWeeks * 7);
+  estimatedEndDate.setDate(estimatedEndDate.getDate() + safeDuration * 7);
 
   return {
     current_weight: currentWeight,
     target_weight: targetWeight,
-    weight_change: totalWeightChange,
-    weight_change_pct: (totalWeightChange / currentWeight) * 100,
+    weight_change: remainingWeightChange,
+    weight_change_pct: currentWeight > 0 ? (remainingWeightChange / currentWeight) * 100 : 0,
     weeks_elapsed: weeksElapsed,
     weeks_remaining: weeksRemaining,
-    weeks_total: durationWeeks,
+    weeks_total: safeDuration,
     progress_pct: Math.round(progressPct * 10) / 10,
     weekly_rate_target: Math.round(weeklyRateTarget * 100) / 100,
     on_track: onTrack,
-    estimated_end_date: estimatedEndDate.toISOString().split('T')[0],
+    estimated_end_date: toLocalDateString(estimatedEndDate),
   };
 }
 
@@ -269,6 +289,10 @@ export function calculateOptimalDeficitOrSurplus(
   tdee: number,
   _goalType: 'loss' | 'gain'
 ): number {
+  if (durationWeeks <= 0 || tdee <= 0) {
+    return 5;
+  }
+
   const totalWeightChange = Math.abs(targetWeight - currentWeight);
   const weeklyWeightChange = totalWeightChange / durationWeeks;
 
