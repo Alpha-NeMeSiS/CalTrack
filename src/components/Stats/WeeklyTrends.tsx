@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 // Importation des fonctions de calcul
 import { calculateDailySummary } from '../../utils/calculations';
+import { addDaysToDateString, getTodayDate, parseLocalDate } from '../../utils/date';
 
 // Interface pour le résumé des macronutriments
 interface MacroSummary {
@@ -46,13 +47,9 @@ export function WeeklyTrends() {
     setLoading(true);
     try {
       // Calcul des dates pour la période d'analyse
-      const today = new Date();
-      const monthAgo = new Date(today);
-      monthAgo.setDate(today.getDate() - 30); // Date d'il y a 30 jours
-
-      // Formatage des dates pour la requête
-      const startDate = monthAgo.toISOString().split('T')[0];
-      const endDate = today.toISOString().split('T')[0];
+      // Dates locales (et non UTC) pour la période d'analyse
+      const endDate = getTodayDate();
+      const startDate = addDaysToDateString(endDate, -30); // Date d'il y a 30 jours
 
       // Récupération parallèle des objectifs et des entrées depuis Supabase
       const [targetsResult, entriesResult] = await Promise.all([
@@ -85,9 +82,7 @@ export function WeeklyTrends() {
       // Préparation des données pour le graphique des 7 derniers jours
       const weekData = [];
       for (let i = 6; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(today.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = addDaysToDateString(endDate, -i);
 
         // Recherche des données pour ce jour
         const dayTarget = targets.find((t) => t.date === dateStr);
@@ -105,9 +100,7 @@ export function WeeklyTrends() {
 
       const monthData: WeekDataItem[] = [];
       for (let i = 0; i < 30; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = addDaysToDateString(endDate, -i);
 
         const dayTarget = targets.find((t) => t.date === dateStr);
         const dayEntries = entries.filter((e) => e.date === dateStr);
@@ -253,7 +246,7 @@ export function WeeklyTrends() {
                         </div>
 
                         <div className="text-xs text-gray-600 font-medium capitalize">
-                          {new Date(day.date).toLocaleDateString('fr-FR', { weekday: 'short' })}
+                          {parseLocalDate(day.date).toLocaleDateString('fr-FR', { weekday: 'short' })}
                         </div>
                       </div>
                     );
@@ -287,7 +280,7 @@ export function WeeklyTrends() {
           <h3 className="text-sm text-gray-900 mb-3">Historique détaillé (30 jours)</h3>
           <div className="space-y-2 h-[400px] overflow-y-auto pr-2 scrollbar scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400 scrollbar-track-transparent">
             {monthData.map((day: WeekDataItem) => {
-              const date = new Date(day.date);
+              const date = parseLocalDate(day.date);
               const dayName = date.toLocaleDateString('fr-FR', { weekday: 'short' });
               const dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 

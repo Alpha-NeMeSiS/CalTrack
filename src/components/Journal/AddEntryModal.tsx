@@ -6,6 +6,7 @@ import { FoodSearch } from '../Foods/FoodSearch';
 import { useAuth } from '../../contexts/AuthContext';
 import { Entry, supabase } from '../../lib/supabase';
 import type { NormalizedFood } from '../../types/food';
+import { parseLocalDate } from '../../utils/date';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 type AddEntryPayload = Pick<
@@ -67,7 +68,7 @@ function formatRecentDate(value: string) {
   return new Intl.DateTimeFormat('fr-FR', {
     day: '2-digit',
     month: 'short',
-  }).format(new Date(value));
+  }).format(parseLocalDate(value));
 }
 
 function getRecentEntryKey(entry: Pick<Entry, 'label' | 'qty_grammes' | 'kcal' | 'protein_g' | 'fat_g' | 'carbs_g' | 'fiber_g' | 'meal_type'>) {

@@ -5,6 +5,7 @@ import { Goal } from '../../lib/supabase';
 import { calculateGoalProgress } from '../../utils/calculations';
 import { useEffect, useState } from 'react';
 import { computeTimeProgress, humanizeRemainingDays, addWeeks, formatDateFR } from '../../lib/timeProgress';
+import { parseLocalDate } from '../../utils/date';
 
 interface GoalProgressCardProps {
   goal: Goal;
@@ -18,20 +19,24 @@ export function GoalProgressCard({ goal, currentWeight }: GoalProgressCardProps)
     return () => clearInterval(t);
   }, []);
 
-  if (!goal.target_weight_kg || !goal.start_date) {
+  // La carte n'a de sens que pour un objectif de poids avec une durée
+  if (!goal.target_weight_kg || !goal.start_date || !goal.duration_weeks || goal.type === 'maintain') {
     return null;
   }
 
   const progress = calculateGoalProgress(
     currentWeight,
     goal.target_weight_kg,
-    goal.duration_weeks ?? 1,
+    goal.duration_weeks,
     goal.start_date,
-    goal.type as 'loss' | 'gain'
+    goal.type,
+    undefined,
+    now
   );
 
-  const start = new Date(goal.start_date as string);
-  const end = goal.end_date ? new Date(goal.end_date as string) : addWeeks(start, goal.duration_weeks ?? 1);
+  // parseLocalDate : évite le décalage UTC de new Date('YYYY-MM-DD')
+  const start = parseLocalDate(goal.start_date);
+  const end = goal.end_date ? parseLocalDate(goal.end_date) : addWeeks(start, goal.duration_weeks);
 
   const time = computeTimeProgress(start, end, now);
   const progressBarWidth = Math.min(Math.max(time.percent, 0), 100);

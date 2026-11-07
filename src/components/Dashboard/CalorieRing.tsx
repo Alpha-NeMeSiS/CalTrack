@@ -5,7 +5,8 @@ interface CalorieRingProps {
 }
 
 export function CalorieRing({ consumed, target, status }: CalorieRingProps) {
-  const percentage = Math.min((consumed / target) * 100, 100);
+  // Garde-fou : un objectif à 0 donnerait NaN / Infinity
+  const percentage = target > 0 ? Math.min(Math.max((consumed / target) * 100, 0), 100) : 0;
   const circumference = 2 * Math.PI * 70;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
