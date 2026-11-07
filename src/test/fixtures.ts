@@ -28,6 +28,7 @@ export function makeGoal(overrides: Partial<Goal> = {}): Goal {
     fat_g_per_kg_min: 0.8,
     is_active: true,
     target_weight_kg: null,
+    start_weight_kg: null,
     duration_weeks: null,
     start_date: '2025-01-01',
     end_date: null,

@@ -43,6 +43,8 @@ export interface GoalInsertPayload {
   fat_g_per_kg_min: number;
   is_active: boolean;
   target_weight_kg: number | null;
+  /** Poids au moment de la création, pour mesurer l'évolution réelle */
+  start_weight_kg: number | null;
   duration_weeks: number | null;
   start_date: string;
   end_date: string | null;
@@ -79,7 +81,7 @@ export function computeGoalEndDate(startDate: string, durationWeeks?: number | n
  */
 export function buildGoalInsertPayload(
   userId: string,
-  profile: Pick<UserProfile, 'body_fat_pct'>,
+  profile: Pick<UserProfile, 'body_fat_pct' | 'poids_kg'>,
   input: GoalInput,
   today: string
 ): GoalInsertPayload {
@@ -100,6 +102,7 @@ export function buildGoalInsertPayload(
     fat_g_per_kg_min: DEFAULT_FAT_G_PER_KG_MIN,
     is_active: true,
     target_weight_kg: targetWeight,
+    start_weight_kg: Number.isFinite(profile.poids_kg) && profile.poids_kg > 0 ? profile.poids_kg : null,
     duration_weeks: durationWeeks,
     start_date: today,
     end_date: computeGoalEndDate(today, durationWeeks),

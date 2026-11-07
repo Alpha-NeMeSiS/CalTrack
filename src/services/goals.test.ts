@@ -144,6 +144,7 @@ describe('activateNewGoal', () => {
       user_id: 'user-1',
       type: 'loss',
       start_date: '2025-02-10',
+      start_weight_kg: profile.poids_kg, // poids enregistré à la création
       is_active: true,
     });
 

@@ -211,6 +211,15 @@ export function getGoalTypeLabel(type: 'loss' | 'maintain' | 'gain'): string {
 export interface GoalProgress {
   current_weight: number;
   target_weight: number;
+  /** Poids de départ utilisé pour le calcul (poids actuel si inconnu) */
+  start_weight: number;
+  /** Évolution réelle depuis le départ (négative = perte), arrondie à 0,1 kg */
+  actual_weight_change: number;
+  /** Part du chemin parcouru vers le poids cible, de 0 à 100 % */
+  weight_progress_pct: number;
+  /** Le poids cible est atteint (ou dépassé dans le bon sens) */
+  goal_reached: boolean;
+  /** Changement de poids restant pour atteindre la cible */
   weight_change: number;
   weight_change_pct: number;
   weeks_elapsed: number;
@@ -226,8 +235,9 @@ export interface GoalProgress {
 /**
  * Calcule la progression d'un objectif de poids.
  *
- * @param startWeight Poids au début de l'objectif. Le schéma actuel ne le stocke
- *   pas : par défaut on utilise le poids actuel (aucune évolution mesurée).
+ * @param startWeight Poids au début de l'objectif (colonne goals.start_weight_kg).
+ *   S'il est inconnu (anciens objectifs), on utilise le poids actuel : aucune
+ *   évolution n'est alors mesurée.
  * @param today Date de référence (injectable pour les tests).
  */
 export function calculateGoalProgress(
@@ -258,11 +268,23 @@ export function calculateGoalProgress(
   // Bug corrigé : auparavant `currentWeight - currentWeight` (toujours 0)
   const actualWeightChange = currentWeight - startWeight;
 
-  const directionMatchesGoal = goalType === 'loss'
-    ? targetWeight <= currentWeight
-    : targetWeight >= currentWeight;
-  const onTrack = directionMatchesGoal &&
-    Math.abs(actualWeightChange - expectedWeightChange) <= Math.abs(weeklyRateTarget);
+  const goalReached = goalType === 'loss'
+    ? currentWeight <= targetWeight
+    : currentWeight >= targetWeight;
+
+  // Part du changement total déjà réalisée (0 à 100 %)
+  const totalWeightChange = targetWeight - startWeight;
+  const weightProgressPct = totalWeightChange === 0
+    ? (goalReached ? 100 : 0)
+    : Math.min(100, Math.max(0, (actualWeightChange / totalWeightChange) * 100));
+
+  // « Dans les temps » : au moins aussi avancé que prévu, avec une tolérance d'une
+  // semaine de rythme. Être en avance compte comme dans les temps (auparavant,
+  // l'écart était mesuré dans les deux sens), et un objectif atteint aussi.
+  const tolerance = Math.abs(weeklyRateTarget);
+  const onTrack = goalReached || (goalType === 'loss'
+    ? actualWeightChange <= expectedWeightChange + tolerance
+    : actualWeightChange >= expectedWeightChange - tolerance);
 
   const estimatedEndDate = new Date(start);
   estimatedEndDate.setDate(estimatedEndDate.getDate() + safeDuration * 7);
@@ -270,6 +292,10 @@ export function calculateGoalProgress(
   return {
     current_weight: currentWeight,
     target_weight: targetWeight,
+    start_weight: startWeight,
+    actual_weight_change: Math.round(actualWeightChange * 10) / 10,
+    weight_progress_pct: Math.round(weightProgressPct * 10) / 10,
+    goal_reached: goalReached,
     weight_change: remainingWeightChange,
     weight_change_pct: currentWeight > 0 ? (remainingWeightChange / currentWeight) * 100 : 0,
     weeks_elapsed: weeksElapsed,

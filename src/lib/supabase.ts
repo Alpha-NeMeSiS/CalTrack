@@ -35,6 +35,9 @@ export interface Goal {
   // NB : la table `goals` ne stocke PAS les calories/macros calculées ; elles
   // sont recalculées depuis le profil (voir src/utils/goals.ts).
   target_weight_kg?: number | null;
+  // Migration 20261107235000 : poids à la création de l'objectif (null pour
+  // les anciens objectifs inactifs)
+  start_weight_kg?: number | null;
   duration_weeks?: number | null;
   start_date?: string | null;
   end_date?: string | null;

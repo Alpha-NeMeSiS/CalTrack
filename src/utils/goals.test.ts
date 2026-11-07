@@ -74,16 +74,24 @@ describe('buildGoalInsertPayload', () => {
       fat_g_per_kg_min: DEFAULT_FAT_G_PER_KG_MIN,
       is_active: true,
       target_weight_kg: null,
+      start_weight_kg: 60, // poids du profil au moment de la création
       duration_weeks: null,
       start_date: '2025-02-10',
       end_date: null,
     });
   });
 
+  it("enregistre le poids de départ (null s'il est invalide)", () => {
+    const input = { type: 'loss' as const, activity_level: 1.2, deficit_or_surplus_pct: 15 };
+    expect(buildGoalInsertPayload('u', { ...profile, poids_kg: 82.4 }, input, '2025-02-10').start_weight_kg).toBe(82.4);
+    expect(buildGoalInsertPayload('u', { ...profile, poids_kg: 0 }, input, '2025-02-10').start_weight_kg).toBeNull();
+    expect(buildGoalInsertPayload('u', { ...profile, poids_kg: Number.NaN }, input, '2025-02-10').start_weight_kg).toBeNull();
+  });
+
   it('calcule la date de fin et la méthode Katch', () => {
     const payload = buildGoalInsertPayload(
       'user-1',
-      { body_fat_pct: 25 },
+      { body_fat_pct: 25, poids_kg: 60 },
       { type: 'loss', activity_level: 1.2, deficit_or_surplus_pct: 15, target_weight_kg: 55, duration_weeks: 10 },
       '2025-02-10'
     );
