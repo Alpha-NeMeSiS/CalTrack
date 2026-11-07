@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { User, Target, Save } from 'lucide-react';
 import { supabase, Goal } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { calculateBMR, calculateTDEE, calculateOptimalDeficitOrSurplus } from '../../utils/calculations';
 import { getTodayDate } from '../../utils/date';
 import { activateNewGoal, upsertDailyTargetForGoal } from '../../services/goals';

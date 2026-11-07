@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Calendar } from 'lucide-react';
 import { supabase, DailyTarget, Entry, Goal } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import { calculateDailySummary } from '../../utils/calculations';
 import { getTodayDate } from '../../utils/date';
 import { isDateWithinGoal } from '../../utils/goals';

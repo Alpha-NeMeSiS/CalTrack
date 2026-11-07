@@ -12,7 +12,7 @@ const profile = makeProfile();
 // (un nouvel objet à chaque rendu relancerait le chargement en boucle)
 const authValue = { user: { id: 'user-1' }, profile };
 
-vi.mock('../../contexts/AuthContext', () => ({
+vi.mock('../../contexts/useAuth', () => ({
   useAuth: () => authValue,
 }));
 

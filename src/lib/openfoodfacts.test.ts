@@ -15,24 +15,23 @@ afterEach(() => {
 });
 
 describe('searchOFF', () => {
-  it("n'appelle pas l'API pour une recherche trop courte", async () => {
+  it("n'appelle pas l'API pour une recherche de moins de 3 caractères", async () => {
     const fetchMock = mockFetchJson({ products: [] });
     expect(await searchOFF('a')).toEqual([]);
+    expect(await searchOFF(' ab ')).toEqual([]);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('construit la requête et transmet le signal d’annulation', async () => {
+  it('passe par le proxy Netlify et transmet le signal d’annulation', async () => {
     const fetchMock = mockFetchJson({ products: [] });
     const controller = new AbortController();
 
-    await searchOFF('  nutella ', controller.signal);
+    await searchOFF('  pâte à tartiner ', controller.signal);
 
-    const [url, options] = fetchMock.mock.calls[0];
-    const params = new URL(url).searchParams;
-    expect(url).toMatch(/^https:\/\/world\.openfoodfacts\.org\/cgi\/search\.pl\?/);
-    expect(params.get('search_terms')).toBe('nutella');
-    expect(params.get('json')).toBe('1');
-    expect(options).toEqual({ signal: controller.signal });
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/off/search?q=${encodeURIComponent('pâte à tartiner')}`,
+      { signal: controller.signal }
+    );
   });
 
   it('normalise les produits', async () => {
@@ -90,10 +89,12 @@ describe('searchOFF', () => {
     expect(results[0].name).toBe('Produit'); // nom par défaut
   });
 
-  it('renvoie une liste vide en cas d’erreur HTTP ou de réponse inattendue', async () => {
-    mockFetchJson({}, false);
-    expect(await searchOFF('nutella')).toEqual([]);
+  it('lève une erreur si le proxy répond en erreur (affichée par FoodSearch)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503, json: () => Promise.resolve({}) }));
+    await expect(searchOFF('nutella')).rejects.toThrow('OFF search failed with status 503');
+  });
 
+  it('renvoie une liste vide pour une réponse inattendue', async () => {
     mockFetchJson({ products: 'oops' });
     expect(await searchOFF('nutella')).toEqual([]);
   });

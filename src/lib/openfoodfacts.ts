@@ -1,6 +1,6 @@
 import type { NormalizedFood } from '../types/food';
 
-const V1_SEARCH = 'https://world.openfoodfacts.org/cgi/search.pl';
+const OFF_PROXY_SEARCH = '/api/off/search';
 
 const toNumber = (value: unknown): number => {
   const parsed = Number(value);
@@ -35,31 +35,17 @@ function kcalFromNutriments(nutriments: OFFNutriments | undefined): number {
 }
 
 export async function searchOFF(term: string, signal?: AbortSignal): Promise<NormalizedFood[]> {
-  if (!term || term.trim().length < 2) return [];
+  const trimmed = term.trim();
+  if (!trimmed || trimmed.length < 3) return [];
 
-  const params = new URLSearchParams({
-    search_terms: term.trim(),
-    search_simple: '1',
-    action: 'process',
-    json: '1',
-    page_size: '20',
-    nocache: '1',
-    fields: [
-      'code',
-      'product_name',
-      'product_name_fr',
-      'brands',
-      'image_small_url',
-      'nutriments',
-      'serving_size',
-      'nutrition_data_per',
-    ].join(','),
-  });
-
-  const response = await fetch(`${V1_SEARCH}?${params.toString()}`, { signal });
+  const response = await fetch(
+    `${OFF_PROXY_SEARCH}?q=${encodeURIComponent(trimmed)}`,
+    { signal },
+  );
   if (!response.ok) {
-    return [];
+    throw new Error(`OFF search failed with status ${response.status}`);
   }
+
   const json = await response.json();
   const products = Array.isArray(json?.products) ? json.products : [];
 

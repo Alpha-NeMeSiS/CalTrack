@@ -1,7 +1,8 @@
 // Composant racine de l'application
 // Gère l'authentification et la navigation entre vues (dashboard, tendances, paramètres)
 import { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './contexts/useAuth';
 import { LoginForm } from './components/Auth/LoginForm';
 import { SignupForm } from './components/Auth/SignupForm';
 import { OnboardingForm } from './components/Onboarding/OnboardingForm';

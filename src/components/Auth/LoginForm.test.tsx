@@ -5,7 +5,7 @@ import { LoginForm } from './LoginForm';
 
 const signIn = vi.fn();
 
-vi.mock('../../contexts/AuthContext', () => ({
+vi.mock('../../contexts/useAuth', () => ({
   useAuth: () => ({ signIn }),
 }));
 

@@ -1,7 +1,7 @@
 // Formulaire d'inscription
 // Valide localement les mots de passe puis appelle signUp du contexte d'auth
 import { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 
 export function SignupForm({ onToggle }: { onToggle: () => void }) {
   const { signUp } = useAuth();

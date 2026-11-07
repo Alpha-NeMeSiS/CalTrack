@@ -3,7 +3,7 @@
 // crée le profil, l'objectif et les cibles quotidiennes en base de données
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 import {
   calculateBMR,
   calculateTDEE,

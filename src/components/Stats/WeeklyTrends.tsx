@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 // Importation de la configuration Supabase
 import { supabase } from '../../lib/supabase';
 // Importation du contexte d'authentification
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 // Importation des fonctions de calcul
 import { calculateDailySummary } from '../../utils/calculations';
 import { addDaysToDateString, getTodayDate, parseLocalDate } from '../../utils/date';
