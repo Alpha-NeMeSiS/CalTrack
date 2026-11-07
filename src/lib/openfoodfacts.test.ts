@@ -94,6 +94,22 @@ describe('searchOFF', () => {
     await expect(searchOFF('nutella')).rejects.toThrow('OFF search failed with status 503');
   });
 
+  it('accepte des marques sous forme de liste', async () => {
+    mockFetchJson({ products: [{ product_name: 'Yaourt', brands: ['Danone', '', 'Activia'], nutriments: { 'energy-kcal_100g': 60 } }] });
+    const [food] = await searchOFF('yaourt');
+    expect(food.brand).toBe('Danone, Activia');
+  });
+
+  it('remplace les valeurs nutritionnelles négatives ou invalides par 0', async () => {
+    mockFetchJson({
+      products: [{ product_name: 'Erreur de saisie', nutriments: { 'energy-kcal_100g': 120, proteins_100g: -3, fat_100g: 'abc' } }],
+    });
+    const [food] = await searchOFF('erreur');
+    expect(food.protein_g).toBe(0);
+    expect(food.fat_g).toBe(0);
+    expect(food.kcal_per_100g).toBe(120);
+  });
+
   it('renvoie une liste vide pour une réponse inattendue', async () => {
     mockFetchJson({ products: 'oops' });
     expect(await searchOFF('nutella')).toEqual([]);

@@ -1,10 +1,21 @@
 import type { NormalizedFood } from '../types/food';
 
 const OFF_PROXY_SEARCH = '/api/off/search';
+const MIN_QUERY_LENGTH = 3;
 
+// Les données OFF sont saisies par des contributeurs : on écarte les valeurs
+// non numériques ou négatives (la base refuse les valeurs < 0 à l'enregistrement).
 const toNumber = (value: unknown): number => {
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+
+const toBrand = (brands: unknown): string | undefined => {
+  if (Array.isArray(brands)) {
+    const joined = brands.filter((b) => typeof b === 'string' && b.trim()).join(', ');
+    return joined || undefined;
+  }
+  return typeof brands === 'string' && brands.trim() ? brands : undefined;
 };
 
 interface OFFNutriments {
@@ -20,7 +31,7 @@ interface OFFProduct {
   code?: string;
   product_name?: string;
   product_name_fr?: string;
-  brands?: string;
+  brands?: string | string[];
   image_small_url?: string;
   nutriments?: OFFNutriments;
 }
@@ -36,7 +47,7 @@ function kcalFromNutriments(nutriments: OFFNutriments | undefined): number {
 
 export async function searchOFF(term: string, signal?: AbortSignal): Promise<NormalizedFood[]> {
   const trimmed = term.trim();
-  if (!trimmed || trimmed.length < 3) return [];
+  if (trimmed.length < MIN_QUERY_LENGTH) return [];
 
   const response = await fetch(
     `${OFF_PROXY_SEARCH}?q=${encodeURIComponent(trimmed)}`,
@@ -55,7 +66,7 @@ export async function searchOFF(term: string, signal?: AbortSignal): Promise<Nor
       const normalized: NormalizedFood = {
         source: 'off',
         name,
-        brand: product?.brands || undefined,
+        brand: toBrand(product?.brands),
         imageUrl: product?.image_small_url || undefined,
         offCode: product?.code || undefined,
         extCode: undefined,
