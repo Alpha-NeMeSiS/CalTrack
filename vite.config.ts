@@ -12,7 +12,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'netlify/**/*.test.ts'],
     // Valeurs factices : src/lib/supabase.ts lève une erreur si elles manquent.
     // Les tests ne contactent jamais Supabase (le client est mocké).
     env: {
@@ -22,8 +22,8 @@ export default defineConfig({
     restoreMocks: true,
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/main.tsx', 'src/vite-env.d.ts'],
+      include: ['src/**/*.{ts,tsx}', 'netlify/functions/**/*.ts'],
+      exclude: ['**/*.test.{ts,tsx}', 'src/test/**', 'src/main.tsx', 'src/vite-env.d.ts'],
     },
   },
 });
