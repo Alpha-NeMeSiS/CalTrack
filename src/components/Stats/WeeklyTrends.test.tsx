@@ -37,10 +37,16 @@ beforeEach(() => {
     makeEntry({ id: 'today', date: today, kcal: 900 }),
     makeEntry({ id: 'before-yesterday', date: daysAgo(2), kcal: 1200 }),
   ];
-  supabaseMock.setHandler((call) => ({
-    data: call.table === 'daily_targets' ? targets : entries,
-    error: null,
-  }));
+  const weights = [
+    { id: 'w1', date: daysAgo(20), weight_kg: 81.5 },
+    { id: 'w2', date: daysAgo(0), weight_kg: 79.9 },
+  ];
+  supabaseMock.setHandler((call) => {
+    if (call.table === 'daily_targets') return { data: targets, error: null };
+    if (call.table === 'entries') return { data: entries, error: null };
+    if (call.table === 'weight_logs') return { data: weights, error: null };
+    return { data: null, error: null }; // goals : pas d'objectif actif
+  });
 });
 
 describe('WeeklyTrends', () => {
@@ -82,6 +88,13 @@ describe('WeeklyTrends', () => {
     expect(within(chart).getByText('Non renseigné')).toBeInTheDocument();
   });
 
+  it('affiche la courbe de poids des 90 derniers jours', async () => {
+    render(<WeeklyTrends />);
+
+    expect(await screen.findByText('Évolution du poids (90 jours)')).toBeInTheDocument();
+    expect(screen.getByTestId('weight-change')).toHaveTextContent('-1,6 kg');
+  });
+
   it('affiche une erreur avec « Réessayer » si le chargement échoue', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     supabaseMock.setHandler(() => ({ data: null, error: new Error('réseau') }));
@@ -92,5 +105,16 @@ describe('WeeklyTrends', () => {
     supabaseMock.setHandler(() => ({ data: [], error: null }));
     await userEvent.setup().click(screen.getByRole('button', { name: 'Réessayer' }));
     expect(await screen.findByText('Graphique des calories')).toBeInTheDocument();
+  });
+
+  it('affiche les indicateurs des 7 derniers jours', async () => {
+    render(<WeeklyTrends />);
+    await screen.findByText('Historique détaillé (30 jours)');
+
+    // Avant-hier seul est un jour complet renseigné (1200 kcal)
+    expect(screen.getByRole('heading', { name: 'Vos 7 derniers jours' })).toBeInTheDocument();
+    const tile = screen.getByText('Calories moyennes').parentElement as HTMLElement;
+    expect(tile.textContent?.replace(/[\u202f\u00a0]/g, ' ')).toContain('1 200 kcal/j');
+    expect(screen.getByText('Série en cours').parentElement).toHaveTextContent('1 jour');
   });
 });

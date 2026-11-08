@@ -12,11 +12,14 @@ const auth = vi.hoisted(() => ({
   listener: null as null | ((event: string, session: Session | null) => void),
   getSession: (() => Promise.resolve({ data: { session: null } })) as (...args: unknown[]) => Promise<unknown>,
   signOut: (() => Promise.resolve({ error: null })) as (...args: unknown[]) => Promise<unknown>,
+  resetPasswordForEmail: (() => Promise.resolve({ error: null })) as (...args: unknown[]) => Promise<unknown>,
+  updateUser: (() => Promise.resolve({ error: null })) as (...args: unknown[]) => Promise<unknown>,
 }));
 
 vi.mock('../lib/supabase', async () => {
   const { fakeSupabase } = await import('../test/supabaseMock');
   return {
+    openedFromPasswordRecoveryLink: false,
     supabase: {
       ...fakeSupabase,
       auth: {
@@ -28,6 +31,8 @@ vi.mock('../lib/supabase', async () => {
         signOut: (...args: unknown[]) => auth.signOut(...args),
         signUp: vi.fn(),
         signInWithPassword: vi.fn(),
+        resetPasswordForEmail: (...args: unknown[]) => auth.resetPasswordForEmail(...args),
+        updateUser: (...args: unknown[]) => auth.updateUser(...args),
       },
     },
   };
@@ -39,15 +44,32 @@ function sessionFor(userId: string): Session {
 
 /** Affiche l'état du contexte pour les assertions */
 function Probe() {
-  const { user, profile, loading, profileError, signOut } = useAuth();
+  const { user, profile, loading, profileError, signOut, passwordRecovery, updatePassword, requestPasswordReset, deleteAccount } =
+    useAuth();
   return (
     <div>
       <span data-testid="state">
         {loading ? 'loading' : !user ? 'anonymous' : profileError ? 'error' : profile ? 'ready' : 'onboarding'}
       </span>
       <span data-testid="error">{profileError ?? ''}</span>
+      <span data-testid="recovery">{passwordRecovery ? 'recovery' : 'normal'}</span>
       <button type="button" onClick={() => signOut()}>
         Déconnexion
+      </button>
+      <button type="button" onClick={() => updatePassword('nouveau123')}>
+        Changer
+      </button>
+      <button type="button" onClick={() => requestPasswordReset('eva@example.com')}>
+        Oublié
+      </button>
+      <button
+        type="button"
+        onClick={async () => {
+          const { error } = await deleteAccount();
+          document.body.dataset.deleteResult = error ? error.message : 'ok';
+        }}
+      >
+        Supprimer
       </button>
     </div>
   );
@@ -67,6 +89,9 @@ beforeEach(() => {
   auth.listener = null;
   auth.getSession = vi.fn(() => Promise.resolve({ data: { session: auth.session } }));
   auth.signOut = vi.fn(() => Promise.resolve({ error: null }));
+  auth.resetPasswordForEmail = vi.fn(() => Promise.resolve({ error: null }));
+  auth.updateUser = vi.fn(() => Promise.resolve({ error: null }));
+  delete document.body.dataset.deleteResult;
 });
 
 describe('AuthProvider', () => {
@@ -145,5 +170,70 @@ describe('AuthProvider', () => {
     });
 
     await waitFor(() => expect(state()).toBe('anonymous'));
+  });
+
+  it("passe en mode « nouveau mot de passe » à l'arrivée depuis le lien de réinitialisation", async () => {
+    auth.session = sessionFor('user-1');
+    supabaseMock.setHandler(() => ({ data: makeProfile(), error: null }));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(state()).toBe('ready'));
+    expect(screen.getByTestId('recovery')).toHaveTextContent('normal');
+
+    emitAuthEvent('PASSWORD_RECOVERY', sessionFor('user-1'));
+    expect(screen.getByTestId('recovery')).toHaveTextContent('recovery');
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Changer' }).click();
+    });
+    expect(auth.updateUser).toHaveBeenCalledWith({ password: 'nouveau123' });
+    await waitFor(() => expect(screen.getByTestId('recovery')).toHaveTextContent('normal'));
+  });
+
+  it("demande l'email de réinitialisation avec retour vers l'application", async () => {
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(state()).toBe('anonymous'));
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Oublié' }).click();
+    });
+
+    expect(auth.resetPasswordForEmail).toHaveBeenCalledWith('eva@example.com', {
+      redirectTo: window.location.origin,
+    });
+  });
+
+  it('supprime le compte via la fonction SQL puis ferme la session locale', async () => {
+    auth.session = sessionFor('user-1');
+    supabaseMock.setHandler(() => ({ data: makeProfile(), error: null }));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(state()).toBe('ready'));
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Supprimer' }).click();
+    });
+
+    await waitFor(() => expect(state()).toBe('anonymous'));
+    expect(supabaseMock.callsFor('rpc:delete_my_account')).toHaveLength(1);
+    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+    expect(document.body.dataset.deleteResult).toBe('ok');
+  });
+
+  it("garde la session si la suppression du compte échoue", async () => {
+    auth.session = sessionFor('user-1');
+    supabaseMock.setHandler((call) =>
+      call.table === 'rpc:delete_my_account'
+        ? { data: null, error: { message: 'permission denied' } }
+        : { data: makeProfile(), error: null }
+    );
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(state()).toBe('ready'));
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Supprimer' }).click();
+    });
+
+    await waitFor(() => expect(document.body.dataset.deleteResult).toBe('permission denied'));
+    expect(auth.signOut).not.toHaveBeenCalled();
+    expect(state()).toBe('ready');
   });
 });

@@ -7,6 +7,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
+/**
+ * true si l'application a été ouverte depuis le lien « mot de passe oublié ».
+ * Supabase (flux implicite) redirige vers l'app avec `#access_token=…&type=recovery` ;
+ * le client efface ce fragment pendant son initialisation (asynchrone) et
+ * l'événement PASSWORD_RECOVERY peut partir avant l'abonnement de React :
+ * on lit donc l'URL ici, AVANT de créer le client.
+ */
+export const openedFromPasswordRecoveryLink =
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery';
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface Profile {
@@ -83,5 +94,13 @@ export interface Entry {
   carbs_g: number;
   fiber_g: number;
   meal_type?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  created_at: string;
+}
+
+export interface WeightLog {
+  id: string;
+  user_id: string;
+  date: string;
+  weight_kg: number;
   created_at: string;
 }

@@ -12,7 +12,9 @@ import {
 } from '../../utils/calculations';
 import { getTodayDate } from '../../utils/date';
 import { activateNewGoal } from '../../services/goals';
+import { upsertWeightLog } from '../../services/weights';
 import { PROFILE_LIMITS, validateGoalInput, validateProfileInput } from '../../utils/validation';
+import { GoalTargetsPreview } from '../Goals/GoalTargetsPreview';
 
 interface FormData {
   sexe: 'M' | 'F';
@@ -105,6 +107,14 @@ export function OnboardingForm() {
         .upsert({ id: user.id, email: user.email!, ...userProfile }, { onConflict: 'id' });
 
       if (profileError) throw profileError;
+
+      // Première pesée du journal (non bloquant : l'inscription doit aboutir même
+      // si le journal de pesées est momentanément indisponible)
+      try {
+        await upsertWeightLog(user.id, getTodayDate(), formData.poids_kg);
+      } catch (weightError) {
+        console.warn('Première pesée non enregistrée', weightError);
+      }
 
       // Création de l'objectif (désactive un éventuel objectif d'une tentative
       // précédente) et de la cible du jour
@@ -472,6 +482,40 @@ export function OnboardingForm() {
           </>
         )}
 
+
+        <GoalTargetsPreview
+          profile={{
+            sexe: formData.sexe,
+            date_naissance: formData.date_naissance,
+            taille_cm: formData.taille_cm,
+            poids_kg: formData.poids_kg,
+            body_fat_pct: formData.body_fat_pct,
+          }}
+          goal={{
+            type: formData.goal_type,
+            activity_level: formData.activity_level,
+            deficit_or_surplus_pct: formData.deficit_or_surplus_pct,
+            target_weight_kg: formData.target_weight_kg,
+            duration_weeks: formData.duration_weeks,
+          }}
+          onApplyDuration={(weeks) => {
+            updateFormData('duration_weeks', weeks);
+            if (formData.target_weight_kg && formData.goal_type !== 'maintain') {
+              const profile = {
+                sexe: formData.sexe,
+                date_naissance: formData.date_naissance,
+                taille_cm: formData.taille_cm,
+                poids_kg: formData.poids_kg,
+                body_fat_pct: formData.body_fat_pct,
+              };
+              const tdee = calculateTDEE(calculateBMR(profile, formData.body_fat_pct ? 'katch' : 'mifflin'), formData.activity_level);
+              updateFormData(
+                'deficit_or_surplus_pct',
+                calculateOptimalDeficitOrSurplus(formData.poids_kg, formData.target_weight_kg, weeks, tdee, formData.goal_type)
+              );
+            }
+          }}
+        />
 
         <div className="flex gap-4">
           <button

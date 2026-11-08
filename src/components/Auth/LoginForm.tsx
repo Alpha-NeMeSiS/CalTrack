@@ -1,7 +1,10 @@
 // Formulaire de connexion
-// Appelle signIn via le contexte d'auth et affiche les erreurs éventuelles
+// Appelle signIn via le contexte d'auth et affiche les erreurs éventuelles.
+// Le lien « Mot de passe oublié ? » affiche le formulaire d'envoi du lien de
+// réinitialisation (ForgotPasswordForm).
 import { useState } from 'react';
 import { useAuth } from '../../contexts/useAuth';
+import { ForgotPasswordForm } from './ForgotPasswordForm';
 
 export function LoginForm({ onToggle }: { onToggle: () => void }) {
   const { signIn } = useAuth();
@@ -9,6 +12,7 @@ export function LoginForm({ onToggle }: { onToggle: () => void }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
 
   // Soumet le formulaire de connexion
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,13 +29,17 @@ export function LoginForm({ onToggle }: { onToggle: () => void }) {
     setLoading(false);
   };
 
+  if (showForgot) {
+    return <ForgotPasswordForm initialEmail={email} onBack={() => setShowForgot(false)} />;
+  }
+
   return (
     <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Connexion</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+          <div role="alert" className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
             {error}
           </div>
         )}
@@ -43,6 +51,7 @@ export function LoginForm({ onToggle }: { onToggle: () => void }) {
           <input
             type="email"
             id="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -51,12 +60,22 @@ export function LoginForm({ onToggle }: { onToggle: () => void }) {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-            Mot de passe
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Mot de passe
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowForgot(true)}
+              className="text-sm text-blue-600 hover:text-blue-700"
+            >
+              Mot de passe oublié ?
+            </button>
+          </div>
           <input
             type="password"
             id="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

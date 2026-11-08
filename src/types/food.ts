@@ -13,4 +13,8 @@ export interface NormalizedFood {
   fat_g: number;
   carbs_g: number;
   fiber_g: number;
+  /** Portion indiquée par le fabricant, en grammes (Open Food Facts) */
+  servingGrams?: number;
+  /** Libellé de la portion (ex : « 1 pot (125 g) ») */
+  servingLabel?: string;
 }

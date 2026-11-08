@@ -5,9 +5,14 @@ import { Plus, Calendar } from 'lucide-react';
 import { supabase, DailyTarget, Entry, Goal } from '../../lib/supabase';
 import { useAuth } from '../../contexts/useAuth';
 import { calculateDailySummary } from '../../utils/calculations';
-import { getTodayDate, isDateOnlyString } from '../../utils/date';
-import { findGoalForDate } from '../../utils/goals';
+import { addDaysToDateString, getTodayDate, isDateOnlyString, parseLocalDate } from '../../utils/date';
+import { findGoalForDate, isGoalEndedOn } from '../../utils/goals';
+import { formatDateFR } from '../../lib/timeProgress';
 import { ensureDailyTargetForDate, fetchUserGoals } from '../../services/goals';
+import { recordWeight } from '../../services/weights';
+import { copyDayEntries, updateEntry } from '../../services/entries';
+import { groupEntriesByMeal, MEAL_LABELS, MealType } from '../../utils/entries';
+import { WeightQuickLog } from '../Weight/WeightQuickLog';
 import { CalorieRing } from './CalorieRing';
 import { MacroCard } from './MacroCard';
 import { GoalProgressCard } from './GoalProgressCard';
@@ -26,7 +31,7 @@ export function Dashboard({
   activeDate,
   onActiveDateChange,
 }: DashboardProps) {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [selectedDate, setSelectedDate] = useState(activeDate ?? getTodayDate());
   const [target, setTarget] = useState<DailyTarget | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -36,6 +41,12 @@ export function Dashboard({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  // Journal : modification d'une entrée et copie de la veille
+  const [editing, setEditing] = useState<{ id: string; quantity: string; meal: MealType | '' } | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const [journalMessage, setJournalMessage] = useState<string | null>(null);
   // Identifiant de la dernière requête : ignore les réponses d'une date
   // précédente qui arriveraient après celles de la date courante.
   const requestIdRef = useRef(0);
@@ -97,9 +108,32 @@ export function Dashboard({
     [selectedDate, user, profile]
   );
 
+  // Changement de date ou d'utilisateur : écran de chargement. Simple mise à
+  // jour du profil (ex : nouvelle pesée) : actualisation en arrière-plan.
+  const lastLoadKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    loadDayData();
-  }, [loadDayData]);
+    const key = `${user?.id ?? ''}|${selectedDate}`;
+    const silent = lastLoadKeyRef.current === key;
+    lastLoadKeyRef.current = key;
+    loadDayData({ silent });
+  }, [loadDayData, user?.id, selectedDate]);
+
+  // Enregistre une pesée ; si c'est la plus récente, le poids du profil et la
+  // cible du jour sont mis à jour.
+  const handleSaveWeight = async (weightKg: number, date: string) => {
+    if (!user || !profile) return;
+    const profileUpdated = await recordWeight({
+      userId: user.id,
+      date,
+      weightKg,
+      profile,
+      goalForToday: activeGoal,
+      today: getTodayDate(),
+    });
+    if (profileUpdated) {
+      await refreshProfile();
+    }
+  };
 
   // Ajoute une entrée dans la table 'entries' puis recharge les données
   const handleAddEntry = async (entryData: AddEntryData): Promise<boolean> => {
@@ -150,13 +184,68 @@ export function Dashboard({
     }
   };
 
+  const startEditing = (entry: Entry) => {
+    setEditError(null);
+    setEditing({ id: entry.id, quantity: String(entry.qty_grammes), meal: entry.meal_type ?? '' });
+  };
+
+  // Modifie quantité et repas (nutriments recalculés proportionnellement)
+  const handleUpdateEntry = async (entry: Entry) => {
+    if (!editing) return;
+    const quantity = Number(editing.quantity.replace(',', '.'));
+    if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 5000) {
+      setEditError('La quantité doit être un nombre de grammes supérieur à 0.');
+      return;
+    }
+    setSavingEdit(true);
+    setEditError(null);
+    try {
+      await updateEntry(entry, quantity, editing.meal || null);
+      setEditing(null);
+      await loadDayData({ silent: true });
+    } catch (error) {
+      console.error('Error updating entry:', error);
+      setEditError("La modification a échoué. Réessayez.");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  // Copie tous les aliments de la veille vers la journée affichée
+  const handleCopyPreviousDay = async () => {
+    if (!user) return;
+    setCopying(true);
+    setJournalMessage(null);
+    setActionError(null);
+    try {
+      const count = await copyDayEntries(user.id, addDaysToDateString(selectedDate, -1), selectedDate);
+      setJournalMessage(
+        count === 0
+          ? 'Aucun aliment enregistré la veille.'
+          : `${count} aliment${count > 1 ? 's' : ''} copié${count > 1 ? 's' : ''} depuis la veille.`
+      );
+      if (count > 0) await loadDayData({ silent: true });
+    } catch (error) {
+      console.error('Error copying entries:', error);
+      setActionError('La copie a échoué. Réessayez.');
+    } finally {
+      setCopying(false);
+    }
+  };
+
   const handleDateChange = (nextDate: string) => {
     // Champ vidé ou date incomplète : on garde la date courante
     if (!isDateOnlyString(nextDate)) return;
     setActionError(null);
+    setJournalMessage(null);
+    setEditing(null);
     setSelectedDate(nextDate);
     onActiveDateChange?.(nextDate);
   };
+
+  // Ouvre Paramètres directement sur l'onglet Objectif
+  const openGoalSettings = () =>
+    window.dispatchEvent(new CustomEvent('navigate-to-settings', { detail: { tab: 'goal' } }));
 
   // En-tête toujours affiché : il permet de changer de date même quand la
   // journée n'a pas d'objectif ou n'a pas pu être chargée.
@@ -231,7 +320,7 @@ export function Dashboard({
             <div className="flex items-center justify-center gap-4">
               <button
                 type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('navigate-to-settings'))}
+                onClick={() => openGoalSettings()}
                 className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors"
               >
                 Aller aux paramètres
@@ -254,6 +343,19 @@ export function Dashboard({
       {actionError && (
         <div role="alert" className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
           {actionError}
+        </div>
+      )}
+
+      {/* Objectif de perte/prise terminé : suivi automatique en maintien */}
+      {goalForDate && goalForDate.type !== 'maintain' && goalForDate.end_date && isGoalEndedOn(goalForDate, selectedDate) && (
+        <div role="status" className="flex flex-col gap-3 rounded-lg border border-kaizen-200 bg-kaizen-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-kaizen-800">
+            <span className="font-semibold">Objectif terminé le {formatDateFR(parseLocalDate(goalForDate.end_date))}.</span>{' '}
+            Vos journées sont maintenant suivies en maintien ({Math.round(target.calories_kcal)} kcal).
+          </p>
+          <button type="button" onClick={openGoalSettings} className="btn-kaizen whitespace-nowrap text-sm">
+            Définir un nouvel objectif
+          </button>
         </div>
       )}
 
@@ -303,11 +405,23 @@ export function Dashboard({
         </div>
       </div>
 
-      {/* 2. Journal du jour */}
+      {/* 2. Journal du jour, regroupé par repas */}
       <div className="card-kaizen">
-        <div className="p-4 sm:p-6 border-b border-white/20">
+        <div className="flex flex-wrap items-center justify-between gap-2 p-4 sm:p-6 border-b border-white/20">
           <h2 className="text-lg text-shonen-700">Journal du jour</h2>
+          <button
+            type="button"
+            onClick={handleCopyPreviousDay}
+            disabled={copying}
+            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {copying ? 'Copie…' : 'Copier les repas de la veille'}
+          </button>
         </div>
+
+        {journalMessage && (
+          <p role="status" className="px-4 pt-3 text-sm text-kaizen-700 sm:px-6">{journalMessage}</p>
+        )}
 
         {entries.length === 0 ? (
           <div className="p-12 text-center text-gray-600">
@@ -320,45 +434,106 @@ export function Dashboard({
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-white/10">
-            {entries.map((entry) => (
-              <div key={entry.id} className="p-4 hover:bg-white/6 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-shonen-700">{entry.label || 'Aliment sans nom'}</span>
-                      {entry.meal_type && (
-                        <span className="text-xs px-2 py-1 bg-white/6 text-gray-600 rounded">
-                          {entry.meal_type === 'breakfast' && 'Petit-déj'}
-                          {entry.meal_type === 'lunch' && 'Déjeuner'}
-                          {entry.meal_type === 'dinner' && 'Dîner'}
-                          {entry.meal_type === 'snack' && 'Collation'}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 text-sm text-gray-600">
-                      {entry.qty_grammes}g · {Math.round(entry.kcal)} kcal
-                    </div>
-                    <div className="mt-1 text-xs text-gray-500">
-                      P: {entry.protein_g}g · L: {entry.fat_g}g · G: {entry.carbs_g}g
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleDeleteEntry(entry.id, entry.label)}
-                    aria-label={`Supprimer ${entry.label || 'cet aliment'}`}
-                    className="text-red-600 hover:text-red-700 text-sm font-medium"
-                  >
-                    Supprimer
-                  </button>
+          <div className="divide-y divide-gray-100">
+            {groupEntriesByMeal(entries).map((group) => (
+              <section key={group.meal} aria-label={group.label} className="py-2">
+                <div className="flex items-baseline justify-between px-4 pt-2 sm:px-6">
+                  <h3 className="text-sm font-semibold text-gray-700">{group.label}</h3>
+                  <span className="text-xs text-gray-500">{group.kcal} kcal</span>
                 </div>
-              </div>
+
+                {group.entries.map((entry) => (
+                  <div key={entry.id} className="px-4 py-3 sm:px-6">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <span className="font-medium text-gray-900">{entry.label || 'Aliment sans nom'}</span>
+                        <div className="mt-1 text-sm text-gray-600">
+                          {entry.qty_grammes}g · {Math.round(entry.kcal)} kcal
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500">
+                          P: {entry.protein_g}g · L: {entry.fat_g}g · G: {entry.carbs_g}g
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 gap-3 text-sm font-medium">
+                        <button
+                          type="button"
+                          onClick={() => startEditing(entry)}
+                          aria-label={`Modifier ${entry.label || 'cet aliment'}`}
+                          className="text-gray-600 hover:text-gray-900"
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteEntry(entry.id, entry.label)}
+                          aria-label={`Supprimer ${entry.label || 'cet aliment'}`}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </div>
+
+                    {editing?.id === entry.id && (
+                      <form
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          handleUpdateEntry(entry);
+                        }}
+                        aria-label={`Modifier ${entry.label || 'cet aliment'}`}
+                        className="mt-3 flex flex-wrap items-end gap-3 rounded-md bg-gray-50 p-3"
+                      >
+                        <div>
+                          <label htmlFor={`edit-qty-${entry.id}`} className="mb-1 block text-xs text-gray-600">Quantité (g)</label>
+                          <input
+                            id={`edit-qty-${entry.id}`}
+                            type="text"
+                            inputMode="decimal"
+                            value={editing.quantity}
+                            onChange={(e) => setEditing({ ...editing, quantity: e.target.value })}
+                            className="w-24 rounded-md border border-gray-300 px-2 py-1.5"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor={`edit-meal-${entry.id}`} className="mb-1 block text-xs text-gray-600">Repas</label>
+                          <select
+                            id={`edit-meal-${entry.id}`}
+                            value={editing.meal}
+                            onChange={(e) => setEditing({ ...editing, meal: e.target.value as MealType | '' })}
+                            className="rounded-md border border-gray-300 px-2 py-1.5"
+                          >
+                            <option value="">Sans repas</option>
+                            {(['breakfast', 'lunch', 'dinner', 'snack'] as const).map((meal) => (
+                              <option key={meal} value={meal}>{MEAL_LABELS[meal]}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex gap-2">
+                          <button type="submit" disabled={savingEdit} className="btn-kaizen text-sm disabled:opacity-50">
+                            {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
+                          </button>
+                          <button type="button" onClick={() => setEditing(null)} className="rounded-md px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100">
+                            Annuler
+                          </button>
+                        </div>
+                        {editError && <p role="alert" className="w-full text-sm text-red-700">{editError}</p>}
+                      </form>
+                    )}
+                  </div>
+                ))}
+              </section>
             ))}
           </div>
         )}
       </div>
 
-      {/* 3. Progression de l'objectif : information de fond, après le suivi du jour */}
+      {/* 3. Pesée du jour */}
+      {user && profile && (
+        <WeightQuickLog userId={user.id} date={selectedDate} currentWeight={profile.poids_kg} onSave={handleSaveWeight} />
+      )}
+
+      {/* 4. Progression de l'objectif : information de fond, après le suivi du jour */}
       {activeGoal && activeGoal.target_weight_kg && profile && (
         <GoalProgressCard goal={activeGoal} currentWeight={profile.poids_kg} />
       )}

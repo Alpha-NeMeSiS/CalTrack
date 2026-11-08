@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateGoalInput, validateProfileInput } from './validation';
+import { getGoalWarnings, validateGoalInput, validateProfileInput } from './validation';
 
 const today = new Date(2025, 5, 15);
 const validProfile = { date_naissance: '1990-04-20', taille_cm: 175, poids_kg: 70, body_fat_pct: null };
@@ -88,5 +88,34 @@ describe('validateGoalInput', () => {
     expect(validateGoalInput({ ...base, type: 'maintain', activity_level: 3 }, 70)).toEqual([
       "Le niveau d'activité est invalide.",
     ]);
+  });
+});
+
+describe('validateGoalInput — protéines', () => {
+  it('borne le taux de protéines entre 1,2 et 2,5 g/kg', () => {
+    const base = { type: 'maintain' as const, activity_level: 1.55, deficit_or_surplus_pct: 0 };
+    expect(validateGoalInput({ ...base, protein_g_per_kg: 2 }, 70)).toEqual([]);
+    expect(validateGoalInput({ ...base, protein_g_per_kg: 4 }, 70)).toEqual([
+      'Les protéines doivent être comprises entre 1.2 et 2.5 g/kg.',
+    ]);
+  });
+});
+
+describe('getGoalWarnings', () => {
+  const base = { activity_level: 1.55, deficit_or_surplus_pct: 20 };
+
+  it('avertit (sans bloquer) quand le rythme est trop rapide et propose une durée', () => {
+    const warnings = getGoalWarnings({ ...base, type: 'loss', target_weight_kg: 70, duration_weeks: 4 }, 80);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].message).toMatch(/^Rythme trop rapide : perdre 2.5 kg par semaine/);
+    expect(warnings[0].suggestedDurationWeeks).toBe(13);
+    // L'objectif reste valide : ce n'est qu'un avertissement
+    expect(validateGoalInput({ ...base, type: 'loss', target_weight_kg: 70, duration_weeks: 4 }, 80)).toEqual([]);
+  });
+
+  it("n'avertit pas pour un rythme raisonnable, un maintien ou un objectif incomplet", () => {
+    expect(getGoalWarnings({ ...base, type: 'loss', target_weight_kg: 76, duration_weeks: 10 }, 80)).toEqual([]);
+    expect(getGoalWarnings({ ...base, type: 'maintain' }, 80)).toEqual([]);
+    expect(getGoalWarnings({ ...base, type: 'loss', target_weight_kg: 70 }, 80)).toEqual([]);
   });
 });

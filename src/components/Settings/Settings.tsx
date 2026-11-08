@@ -1,22 +1,41 @@
 // Page des paramètres utilisateur
-// Contient les onglets Profil et Objectif, ainsi que la logique de sauvegarde
+// Contient les onglets Profil, Objectif et Compte, ainsi que la logique de sauvegarde
 import { useState, useEffect, useCallback } from 'react';
-import { User, Target, Save } from 'lucide-react';
+import { User, Target, Save, ShieldCheck } from 'lucide-react';
 import { supabase, Goal } from '../../lib/supabase';
 import { useAuth } from '../../contexts/useAuth';
 import { calculateBMR, calculateTDEE, calculateOptimalDeficitOrSurplus } from '../../utils/calculations';
 import { getTodayDate } from '../../utils/date';
 import { activateNewGoal, fetchActiveGoal, upsertDailyTargetForGoal } from '../../services/goals';
+import { upsertWeightLog } from '../../services/weights';
 import { PROFILE_LIMITS, validateGoalInput, validateProfileInput } from '../../utils/validation';
+import { DEFAULT_PROTEIN_G_PER_KG } from '../../utils/goals';
+import { GoalTargetsPreview } from '../Goals/GoalTargetsPreview';
+import { AccountSettings } from './AccountSettings';
 
-export function Settings() {
+export type SettingsTab = 'profile' | 'goal' | 'account';
+
+const TABS: { id: SettingsTab; label: string; icon: typeof User }[] = [
+  { id: 'profile', label: 'Profil', icon: User },
+  { id: 'goal', label: 'Objectif', icon: Target },
+  { id: 'account', label: 'Compte', icon: ShieldCheck },
+];
+
+const PROTEIN_OPTIONS = [
+  { value: 1.6, label: '1,6 g/kg — modéré' },
+  { value: 1.8, label: '1,8 g/kg' },
+  { value: 2.0, label: '2,0 g/kg — recommandé (défaut)' },
+  { value: 2.2, label: '2,2 g/kg — sportif / sèche' },
+];
+
+export function Settings({ initialTab = 'profile' }: { initialTab?: SettingsTab } = {}) {
   // Récupère l'utilisateur, le profil et la fonction pour rafraîchir le profil
   const { user, profile, refreshProfile } = useAuth();
   const getErrorMessage = (err: unknown, fallback: string): string =>
     err instanceof Error ? err.message : fallback;
 
   // États d'interface
-  const [activeTab, setActiveTab] = useState<'profile' | 'goal'>('profile');
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -38,6 +57,7 @@ export function Settings() {
     deficit_or_surplus_pct: 15,
     target_weight_kg: undefined as number | undefined,
     duration_weeks: undefined as number | undefined,
+    protein_g_per_kg: DEFAULT_PROTEIN_G_PER_KG,
   });
 
   // Quand le profil change (chargé), on initialise les champs du formulaire
@@ -71,6 +91,7 @@ export function Settings() {
           deficit_or_surplus_pct: data.deficit_or_surplus_pct || 15,
           target_weight_kg: data.target_weight_kg || undefined,
           duration_weeks: data.duration_weeks || undefined,
+          protein_g_per_kg: Number(data.protein_g_per_kg) || DEFAULT_PROTEIN_G_PER_KG,
         });
       }
     } catch (err) {
@@ -117,6 +138,11 @@ export function Settings() {
 
       if (updateError) throw updateError;
 
+      // Un nouveau poids saisi ici compte comme la pesée du jour (journal de pesées)
+      if (profile && Number(profile.poids_kg) !== Number(updatedProfile.poids_kg)) {
+        await upsertWeightLog(user.id, getTodayDate(), updatedProfile.poids_kg);
+      }
+
       // Le poids / l'âge / la taille changent les besoins : recalculer la cible du jour
       if (activeGoal) {
         await upsertDailyTargetForGoal(user.id, getTodayDate(), updatedProfile, activeGoal);
@@ -146,6 +172,7 @@ export function Settings() {
         deficit_or_surplus_pct: goalData.deficit_or_surplus_pct,
         target_weight_kg: goalData.target_weight_kg,
         duration_weeks: goalData.duration_weeks,
+        protein_g_per_kg: goalData.protein_g_per_kg,
       },
       profile.poids_kg
     );
@@ -169,6 +196,7 @@ export function Settings() {
           deficit_or_surplus_pct: goalData.deficit_or_surplus_pct,
           target_weight_kg: goalData.target_weight_kg,
           duration_weeks: goalData.duration_weeks,
+          protein_g_per_kg: goalData.protein_g_per_kg,
         },
         getTodayDate()
       );
@@ -190,30 +218,22 @@ export function Settings() {
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="border-b border-gray-200">
           <div className="flex">
-            <button
-              type="button"
-              onClick={() => { setActiveTab('profile'); setError(''); setSuccess(''); }}
-              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
-                activeTab === 'profile'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <User className="w-5 h-5" />
-              Profil
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('goal'); setError(''); setSuccess(''); }}
-              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
-                activeTab === 'goal'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Target className="w-5 h-5" />
-              Objectif
-            </button>
+            {TABS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={activeTab === id}
+                onClick={() => { setActiveTab(id); setError(''); setSuccess(''); }}
+                className={`flex flex-1 sm:flex-none items-center justify-center gap-2 px-3 sm:px-6 py-4 font-medium transition-colors ${
+                  activeTab === id
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Icon className="w-5 h-5" aria-hidden="true" />
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -230,7 +250,9 @@ export function Settings() {
             </div>
           )}
 
-          {activeTab === 'profile' ? (
+          {activeTab === 'account' ? (
+            <AccountSettings />
+          ) : activeTab === 'profile' ? (
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Sexe</label>
@@ -519,6 +541,55 @@ export function Settings() {
                     </p>
                   </div>
                 </>
+              )}
+
+              <div>
+                <label htmlFor="protein_g_per_kg" className="block text-sm font-medium text-gray-700 mb-1">
+                  Protéines
+                </label>
+                <select
+                  id="protein_g_per_kg"
+                  value={goalData.protein_g_per_kg}
+                  onChange={(e) => setGoalData({ ...goalData, protein_g_per_kg: Number(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {PROTEIN_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Par kg de poids de référence (votre poids, plafonné à un IMC de 25).
+                </p>
+              </div>
+
+              {profile && (
+                <GoalTargetsPreview
+                  profile={profile}
+                  goal={{
+                    type: goalData.goal_type,
+                    activity_level: goalData.activity_level,
+                    deficit_or_surplus_pct: goalData.deficit_or_surplus_pct,
+                    target_weight_kg: goalData.target_weight_kg,
+                    duration_weeks: goalData.duration_weeks,
+                    protein_g_per_kg: goalData.protein_g_per_kg,
+                  }}
+                  onApplyDuration={(weeks) => {
+                    const next = { ...goalData, duration_weeks: weeks };
+                    if (goalData.target_weight_kg && goalData.goal_type !== 'maintain') {
+                      const tdee = calculateTDEE(calculateBMR(profile, profile.body_fat_pct ? 'katch' : 'mifflin'), goalData.activity_level);
+                      next.deficit_or_surplus_pct = calculateOptimalDeficitOrSurplus(
+                        profile.poids_kg, goalData.target_weight_kg, weeks, tdee, goalData.goal_type
+                      );
+                    }
+                    setGoalData(next);
+                  }}
+                />
+              )}
+
+              {activeGoal && (
+                <p className="text-xs text-gray-500">
+                  Enregistrer crée un nouvel objectif qui démarre aujourd'hui : la progression repart de votre poids actuel.
+                </p>
               )}
 
               <button

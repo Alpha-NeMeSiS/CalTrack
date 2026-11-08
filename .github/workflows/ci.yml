@@ -1,0 +1,48 @@
+# Intégration continue : vérifie chaque push et chaque pull request
+# (lint, types, tests, build de production).
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, types, tests et build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Vérification des types
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      - name: Build de production
+        run: npm run build
+        env:
+          # Valeurs factices : le build n'appelle pas Supabase
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_ANON_KEY: ci-placeholder-key

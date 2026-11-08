@@ -5,3 +5,22 @@
   from = "/api/off/search"
   to = "/.netlify/functions/off-search"
   status = 200
+
+# PWA : le service worker et le manifeste doivent toujours être revalidés,
+# sinon une ancienne version du service worker resterait active.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+    Cache-Control = "no-cache"
+
+# Fichiers générés par Vite : noms versionnés, donc immuables
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

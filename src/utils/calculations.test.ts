@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  assessGoalPace,
+  calculateFiberTarget,
+  calculateReferenceWeight,
+  getCalorieFloor,
   calculateAge,
   calculateBMR,
   calculateCompleteTargets,
@@ -91,7 +95,7 @@ describe('calculateMacros', () => {
       protein_g: 140, // 2 g/kg
       fat_g: 56, // max(0.8 * 70, 25% de 2000 / 9)
       carbs_g: 234, // (2000 - 140*4 - 56*9) / 4
-      fiber_g: 25,
+      fiber_g: 28, // 14 g pour 1 000 kcal
     });
   });
 
@@ -275,5 +279,93 @@ describe('libellés', () => {
     expect(getGoalTypeLabel('loss')).toBe('Perte de poids');
     expect(getGoalTypeLabel('maintain')).toBe('Maintien');
     expect(getGoalTypeLabel('gain')).toBe('Prise de masse');
+  });
+});
+
+describe('règles nutritionnelles V2', () => {
+  const thirtyYearsAgo = `${new Date().getFullYear() - 30}-01-01`;
+  const fortyYearsAgo = `${new Date().getFullYear() - 40}-01-01`;
+
+  describe('getCalorieFloor', () => {
+    it('ne descend jamais sous 1 200 kcal (femme) / 1 500 kcal (homme)', () => {
+      expect(getCalorieFloor({ sexe: 'F' }, 1100)).toBe(1200);
+      expect(getCalorieFloor({ sexe: 'M' }, 1400)).toBe(1500);
+    });
+
+    it('ni sous le métabolisme de base', () => {
+      expect(getCalorieFloor({ sexe: 'M' }, 1987.4)).toBe(1987);
+    });
+  });
+
+  describe('calculateReferenceWeight', () => {
+    it('utilise le poids réel jusqu’à un IMC de 25', () => {
+      expect(calculateReferenceWeight({ poids_kg: 70, taille_cm: 178 })).toBe(70);
+    });
+
+    it('plafonne au poids correspondant à un IMC de 25 au-delà', () => {
+      // 25 × 1,78² = 79,2 kg
+      expect(calculateReferenceWeight({ poids_kg: 120, taille_cm: 178 })).toBe(79.2);
+    });
+  });
+
+  describe('calculateFiberTarget', () => {
+    it('suit 14 g pour 1 000 kcal, entre 20 et 40 g', () => {
+      expect(calculateFiberTarget(2150)).toBe(30);
+      expect(calculateFiberTarget(1200)).toBe(20);
+      expect(calculateFiberTarget(4000)).toBe(40);
+    });
+  });
+
+  describe('calculateCompleteTargets avec garde-fous', () => {
+    it("relève un déficit trop fort au plancher et le signale (exemple : 930 kcal)", () => {
+      // Femme de 40 ans, 155 cm, 50 kg, sédentaire, déficit de 30 % → 930 kcal sans garde-fou
+      const targets = calculateCompleteTargets(
+        { sexe: 'F', date_naissance: fortyYearsAgo, taille_cm: 155, poids_kg: 50 },
+        { type: 'loss', activity_level: 1.2, method: 'mifflin', deficit_or_surplus_pct: 30, protein_g_per_kg: 2, fat_g_per_kg_min: 0.8 }
+      );
+      expect(targets.calories_kcal).toBe(1200);
+      expect(targets.calorie_floor_applied).toBe(true);
+    });
+
+    it("n'applique pas le plancher quand le déficit est raisonnable", () => {
+      const targets = calculateCompleteTargets(
+        { sexe: 'M', date_naissance: thirtyYearsAgo, taille_cm: 178, poids_kg: 80 },
+        { type: 'loss', activity_level: 1.55, method: 'mifflin', deficit_or_surplus_pct: 15, protein_g_per_kg: 2, fat_g_per_kg_min: 0.8 }
+      );
+      expect(targets.calorie_floor_applied).toBeUndefined();
+      expect(targets.calories_kcal).toBeGreaterThan(1500);
+    });
+
+    it('calcule les protéines sur le poids de référence en cas de surpoids (exemple : 120 kg)', () => {
+      const targets = calculateCompleteTargets(
+        { sexe: 'M', date_naissance: thirtyYearsAgo, taille_cm: 178, poids_kg: 120 },
+        { type: 'loss', activity_level: 1.375, method: 'mifflin', deficit_or_surplus_pct: 20, protein_g_per_kg: 2, fat_g_per_kg_min: 0.8 }
+      );
+      expect(targets.protein_g).toBe(158.4); // 2 g × 79,2 kg (et non 240 g)
+      expect(targets.carbs_g).toBeGreaterThan(100);
+    });
+  });
+
+  describe('assessGoalPace', () => {
+    it('accepte un rythme de perte raisonnable', () => {
+      // 4 kg en 10 semaines pour 80 kg : 0,4 kg/sem (0,5 %)
+      const pace = assessGoalPace(80, 76, 10, 'loss');
+      expect(pace.is_too_fast).toBe(false);
+      expect(pace.weekly_change_kg).toBe(0.4);
+      expect(pace.weekly_change_pct).toBe(0.5);
+    });
+
+    it('signale un rythme trop rapide et propose une durée réaliste', () => {
+      // −10 kg en 4 semaines pour 80 kg : 2,5 kg/sem, maximum 0,8 kg/sem
+      const pace = assessGoalPace(80, 70, 4, 'loss');
+      expect(pace.is_too_fast).toBe(true);
+      expect(pace.max_weekly_change_kg).toBe(0.8);
+      expect(pace.recommended_min_weeks).toBe(13);
+    });
+
+    it('est plus strict pour une prise de masse (0,5 %/sem)', () => {
+      expect(assessGoalPace(70, 75, 10, 'gain').is_too_fast).toBe(true); // 0,5 kg/sem > 0,35
+      expect(assessGoalPace(70, 73, 10, 'gain').is_too_fast).toBe(false); // 0,3 kg/sem
+    });
   });
 });

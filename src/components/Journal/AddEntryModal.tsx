@@ -420,7 +420,8 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
         <FoodSearch
           onSelect={(food) => {
             setSelectedFood(food);
-            setQuantity(100);
+            // Portion du fabricant si elle est connue (ex : 1 pot de 125 g), sinon 100 g
+            setQuantity(food.servingGrams ?? 100);
           }}
         />
         {selectedFood && (
@@ -460,6 +461,40 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {/* Portions rapides : évite de taper la quantité */}
+            <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Portions rapides">
+              {selectedFood.servingGrams && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(selectedFood.servingGrams!)}
+                    aria-pressed={quantity === selectedFood.servingGrams}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === selectedFood.servingGrams ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                  >
+                    1 portion ({selectedFood.servingGrams} g)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(selectedFood.servingGrams! * 2)}
+                    aria-pressed={quantity === selectedFood.servingGrams * 2}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === selectedFood.servingGrams * 2 ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                  >
+                    2 portions
+                  </button>
+                </>
+              )}
+              {[50, 100, 150, 200].map((grams) => (
+                <button
+                  key={grams}
+                  type="button"
+                  onClick={() => setQuantity(grams)}
+                  aria-pressed={quantity === grams}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === grams ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                >
+                  {grams} g
+                </button>
+              ))}
+            </div>
           </div>
 
           <MealTypeSelector value={mealType} onChange={setMealType} />

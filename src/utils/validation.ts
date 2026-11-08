@@ -2,7 +2,7 @@
 //
 // But : afficher un message clair AVANT l'envoi à Supabase, au lieu d'une erreur
 // Postgres incompréhensible (contraintes CHECK de la base, colonne entière…).
-import { calculateAge } from './calculations';
+import { assessGoalPace, calculateAge } from './calculations';
 import { isDateOnlyString, parseLocalDate } from './date';
 import type { GoalType } from './goals';
 
@@ -18,6 +18,7 @@ export const GOAL_LIMITS = {
   deficit_or_surplus_pct: { min: 5, max: 30 },
   target_weight_kg: { min: 30, max: 300 },
   duration_weeks: { min: 1, max: 260 },
+  protein_g_per_kg: { min: 1.2, max: 2.5 },
 } as const;
 
 export interface ProfileInput {
@@ -33,6 +34,7 @@ export interface GoalFormInput {
   deficit_or_surplus_pct: number;
   target_weight_kg?: number | null;
   duration_weeks?: number | null;
+  protein_g_per_kg?: number | null;
 }
 
 const isInRange = (value: number, { min, max }: { min: number; max: number }) =>
@@ -93,6 +95,12 @@ export function validateGoalInput(goal: GoalFormInput, currentWeightKg: number):
     errors.push("Le niveau d'activité est invalide.");
   }
 
+  if (isProvided(goal.protein_g_per_kg) && !isInRange(goal.protein_g_per_kg, GOAL_LIMITS.protein_g_per_kg)) {
+    errors.push(
+      `Les protéines doivent être comprises entre ${GOAL_LIMITS.protein_g_per_kg.min} et ${GOAL_LIMITS.protein_g_per_kg.max} g/kg.`
+    );
+  }
+
   if (isProvided(goal.duration_weeks)) {
     if (!Number.isInteger(goal.duration_weeks) || !isInRange(goal.duration_weeks, GOAL_LIMITS.duration_weeks)) {
       errors.push(
@@ -126,4 +134,39 @@ export function validateGoalInput(goal: GoalFormInput, currentWeightKg: number):
   }
 
   return errors;
+}
+
+export interface GoalWarning {
+  message: string;
+  /** Durée réaliste proposée (semaines), si le rythme est trop rapide */
+  suggestedDurationWeeks?: number;
+}
+
+/**
+ * Avertissements NON bloquants sur un objectif valide : rythme trop rapide pour
+ * le poids cible et la durée choisis (au-delà de 1 %/sem en perte, 0,5 % en prise).
+ */
+export function getGoalWarnings(goal: GoalFormInput, currentWeightKg: number): GoalWarning[] {
+  if (goal.type === 'maintain' || !isProvided(goal.target_weight_kg) || !isProvided(goal.duration_weeks)) {
+    return [];
+  }
+  if (validateGoalInput(goal, currentWeightKg).length > 0) {
+    return [];
+  }
+
+  const pace = assessGoalPace(currentWeightKg, goal.target_weight_kg, goal.duration_weeks, goal.type);
+  if (!pace.is_too_fast) {
+    return [];
+  }
+
+  const verb = goal.type === 'loss' ? 'perdre' : 'prendre';
+  return [
+    {
+      message:
+        `Rythme trop rapide : ${verb} ${pace.weekly_change_kg} kg par semaine (${pace.weekly_change_pct} % du poids). ` +
+        `Le maximum recommandé est d'environ ${pace.max_weekly_change_kg} kg par semaine, soit au moins ` +
+        `${pace.recommended_min_weeks} semaines pour cet objectif.`,
+      suggestedDurationWeeks: Math.min(GOAL_LIMITS.duration_weeks.max, pace.recommended_min_weeks),
+    },
+  ];
 }

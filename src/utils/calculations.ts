@@ -26,6 +26,93 @@ export interface MacroTargets {
   fat_g: number;
   carbs_g: number;
   fiber_g?: number;
+  /** true si les calories ont été relevées au plancher de sécurité (voir getCalorieFloor) */
+  calorie_floor_applied?: boolean;
+}
+
+// --- Règles nutritionnelles (V2) -------------------------------------------
+
+/** Plancher calorique absolu couramment recommandé, par sexe (kcal/jour). */
+export const MIN_CALORIES_BY_SEX = { F: 1200, M: 1500 } as const;
+
+/** IMC au-delà duquel les protéines/lipides sont calculés sur un poids de référence. */
+export const REFERENCE_BMI = 25;
+
+/** Fibres recommandées : 14 g pour 1 000 kcal, bornées. */
+export const FIBER_G_PER_1000_KCAL = 14;
+export const FIBER_MIN_G = 20;
+export const FIBER_MAX_G = 40;
+
+/** Rythme maximal raisonnable, en % du poids par semaine. */
+export const MAX_WEEKLY_LOSS_PCT = 1;
+export const MAX_WEEKLY_GAIN_PCT = 0.5;
+
+/** Énergie approximative d'un kilo de masse corporelle (kcal). */
+export const KCAL_PER_KG_BODY_WEIGHT = 7700;
+
+/**
+ * Calories minimales d'un objectif : jamais sous le métabolisme de base, ni
+ * sous 1 200 kcal (femme) / 1 500 kcal (homme).
+ */
+export function getCalorieFloor(profile: Pick<UserProfile, 'sexe'>, bmr: number): number {
+  const absoluteMin = MIN_CALORIES_BY_SEX[profile.sexe] ?? MIN_CALORIES_BY_SEX.F;
+  return Math.round(Math.max(absoluteMin, Number.isFinite(bmr) ? bmr : 0));
+}
+
+/**
+ * Poids de référence pour les protéines et lipides minimaux.
+ * Au-delà d'un IMC de 25, on utilise le poids correspondant à un IMC de 25 :
+ * 2 g/kg sur 120 kg (240 g/jour) n'a pas de sens pour une personne en surpoids.
+ */
+export function calculateReferenceWeight(profile: Pick<UserProfile, 'poids_kg' | 'taille_cm'>): number {
+  const heightM = profile.taille_cm / 100;
+  if (!(heightM > 0)) return profile.poids_kg;
+  const weightAtReferenceBmi = REFERENCE_BMI * heightM * heightM;
+  return Math.min(profile.poids_kg, Math.round(weightAtReferenceBmi * 10) / 10);
+}
+
+/** Fibres recommandées pour un apport calorique donné. */
+export function calculateFiberTarget(calories: number): number {
+  const fiber = Math.round((FIBER_G_PER_1000_KCAL * calories) / 1000);
+  return Math.min(FIBER_MAX_G, Math.max(FIBER_MIN_G, Number.isFinite(fiber) ? fiber : FIBER_MIN_G));
+}
+
+export interface GoalPaceAssessment {
+  /** Changement de poids hebdomadaire demandé (kg, valeur absolue) */
+  weekly_change_kg: number;
+  /** Même valeur en % du poids actuel */
+  weekly_change_pct: number;
+  /** Rythme maximal recommandé (kg/semaine) */
+  max_weekly_change_kg: number;
+  /** Le rythme demandé dépasse le maximum recommandé */
+  is_too_fast: boolean;
+  /** Durée minimale réaliste pour atteindre la cible (semaines entières) */
+  recommended_min_weeks: number;
+}
+
+/**
+ * Évalue le rythme d'un objectif de poids : au-delà de 1 %/semaine en perte
+ * (0,5 % en prise), l'objectif est jugé trop rapide et une durée réaliste est proposée.
+ */
+export function assessGoalPace(
+  currentWeight: number,
+  targetWeight: number,
+  durationWeeks: number,
+  goalType: 'loss' | 'gain'
+): GoalPaceAssessment {
+  const totalChange = Math.abs(targetWeight - currentWeight);
+  const weeks = durationWeeks > 0 ? durationWeeks : 1;
+  const weeklyChange = totalChange / weeks;
+  const maxPct = goalType === 'loss' ? MAX_WEEKLY_LOSS_PCT : MAX_WEEKLY_GAIN_PCT;
+  const maxWeekly = (currentWeight * maxPct) / 100;
+
+  return {
+    weekly_change_kg: Math.round(weeklyChange * 100) / 100,
+    weekly_change_pct: currentWeight > 0 ? Math.round((weeklyChange / currentWeight) * 1000) / 10 : 0,
+    max_weekly_change_kg: Math.round(maxWeekly * 100) / 100,
+    is_too_fast: maxWeekly > 0 && weeklyChange > maxWeekly + 1e-9,
+    recommended_min_weeks: maxWeekly > 0 ? Math.ceil(totalChange / maxWeekly) : weeks,
+  };
 }
 
 export function calculateAge(dateNaissance: string, today: Date = new Date()): number {
@@ -75,16 +162,21 @@ export function calculateTargetCalories(tdee: number, goalType: 'loss' | 'mainta
   return Math.round(tdee * (1 + surplus));
 }
 
+/**
+ * Répartition des macros.
+ * @param referenceWeightKg poids sur lequel sont calculés protéines et lipides
+ *   minimaux (voir calculateReferenceWeight).
+ */
 export function calculateMacros(
   targetCalories: number,
-  poids_kg: number,
+  referenceWeightKg: number,
   protein_g_per_kg: number,
   fat_g_per_kg_min: number
 ): MacroTargets {
   // Utilise la valeur demandée (auparavant un plancher caché de 1.6 g/kg l'écrasait)
-  const protein_g = protein_g_per_kg * poids_kg;
+  const protein_g = protein_g_per_kg * referenceWeightKg;
 
-  const minFatFromWeight = fat_g_per_kg_min * poids_kg;
+  const minFatFromWeight = fat_g_per_kg_min * referenceWeightKg;
   const minFatFromCalories = (0.25 * targetCalories) / 9;
   const fat_g = Math.max(minFatFromWeight, minFatFromCalories);
 
@@ -96,21 +188,27 @@ export function calculateMacros(
     protein_g: Math.round(protein_g * 10) / 10,
     fat_g: Math.round(fat_g * 10) / 10,
     carbs_g: Math.round(carbs_g * 10) / 10,
-    fiber_g: 25,
+    fiber_g: calculateFiberTarget(targetCalories),
   };
 }
 
 export function calculateCompleteTargets(profile: UserProfile, goal: GoalParams): MacroTargets {
   const bmr = calculateBMR(profile, goal.method);
   const tdee = calculateTDEE(bmr, goal.activity_level);
-  const targetCalories = calculateTargetCalories(tdee, goal.type, goal.deficit_or_surplus_pct);
+  const rawCalories = calculateTargetCalories(tdee, goal.type, goal.deficit_or_surplus_pct);
 
-  return calculateMacros(
+  // Garde-fou : un déficit ne doit pas descendre sous le plancher de sécurité
+  const floor = getCalorieFloor(profile, bmr);
+  const floorApplied = goal.type === 'loss' && rawCalories < floor;
+  const targetCalories = floorApplied ? floor : rawCalories;
+
+  const macros = calculateMacros(
     targetCalories,
-    profile.poids_kg,
+    calculateReferenceWeight(profile),
     goal.protein_g_per_kg,
     goal.fat_g_per_kg_min
   );
+  return floorApplied ? { ...macros, calorie_floor_applied: true } : macros;
 }
 
 export interface DailySummary {
@@ -322,8 +420,7 @@ export function calculateOptimalDeficitOrSurplus(
   const totalWeightChange = Math.abs(targetWeight - currentWeight);
   const weeklyWeightChange = totalWeightChange / durationWeeks;
 
-  const caloriesPerKg = 7700;
-  const weeklyCalorieChange = weeklyWeightChange * caloriesPerKg;
+  const weeklyCalorieChange = weeklyWeightChange * KCAL_PER_KG_BODY_WEIGHT;
   const dailyCalorieChange = weeklyCalorieChange / 7;
 
   const deficitOrSurplusPct = (dailyCalorieChange / tdee) * 100;
