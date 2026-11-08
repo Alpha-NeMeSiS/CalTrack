@@ -69,6 +69,37 @@ describe('Dashboard', () => {
     expect(mockedEnsureDailyTarget).toHaveBeenCalledWith('user-1', '2025-03-15', profile, goal);
   });
 
+  it('place les calories et le journal avant la progression de l’objectif', async () => {
+    const goal = makeGoal({ type: 'loss', target_weight_kg: 74, start_weight_kg: 82, duration_weeks: 12, start_date: '2025-01-01' });
+    mockedFetchUserGoals.mockResolvedValue([goal]);
+    mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget());
+    setEntries([makeEntry()]);
+
+    render(<Dashboard activeDate="2025-01-10" />);
+
+    const journal = await screen.findByText('Journal du jour');
+    const calories = screen.getByText('Protéines');
+    const goalCard = screen.getByText("Progression de l'objectif");
+    const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(calories, journal)).toBe(true);
+    expect(follows(journal, goalCard)).toBe(true);
+  });
+
+  it('propose un bouton « Ajouter » flottant (mobile) qui ouvre la fenêtre d’ajout', async () => {
+    mockedFetchUserGoals.mockResolvedValue([makeGoal()]);
+    mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget());
+    setEntries([]);
+
+    render(<Dashboard activeDate="2025-01-10" />);
+    await screen.findByText('Journal du jour');
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Ajouter un aliment' }));
+
+    expect(screen.getByRole('dialog', { name: 'Ajouter un aliment' })).toBeInTheDocument();
+    // Le bouton flottant disparaît tant que la fenêtre est ouverte
+    expect(screen.queryByRole('button', { name: 'Ajouter un aliment' })).not.toBeInTheDocument();
+  });
+
   it("utilise l'objectif en vigueur pour un jour passé, pas l'objectif actif (régression)", async () => {
     // Objectif A jusqu'au 1er mars, puis objectif B (actif) depuis le 1er mars
     const oldGoal = makeGoal({ id: 'goal-old', is_active: false, start_date: '2025-01-01', created_at: '2025-01-01T12:00:00Z' });

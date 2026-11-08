@@ -241,9 +241,11 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
         />
       </div>
 
+      {/* Liste dans le flux (et non en position absolue) : dans la fenêtre d'ajout,
+          qui défile, une liste absolue était coupée et un seul résultat restait visible. */}
       {expanded && (
-        <div className="relative">
-          <div className="absolute z-10 mt-1 max-h-80 w-full overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
+        <div data-testid="food-search-results">
+          <div className="max-h-72 w-full overflow-y-auto overscroll-contain rounded-md border border-gray-200 bg-white shadow-sm">
             {loading && (
               <div className="p-4 text-center text-sm text-gray-500">Recherche…</div>
             )}
@@ -267,16 +269,12 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
                           isActive ? 'bg-blue-50' : 'hover:bg-gray-50'
                         }`}
                       >
-                        {food.imageUrl ? (
+                        {food.imageUrl && (
                           <img
                             src={food.imageUrl}
                             alt=""
+                            loading="lazy"
                             className="h-12 w-12 flex-shrink-0 rounded object-cover"
-                          />
-                        ) : (
-                          <div
-                            className="h-12 w-12 flex-shrink-0 rounded bg-gray-100"
-                            aria-hidden="true"
                           />
                         )}
                         <div className="flex-1">

@@ -2,9 +2,14 @@ interface CalorieRingProps {
   consumed: number;
   target: number;
   status: 'under' | 'ok' | 'over';
+  /**
+   * Journée en cours : être « sous l'objectif » n'est pas un échec (la journée
+   * n'est pas finie). On affiche alors un statut neutre « En cours ».
+   */
+  inProgress?: boolean;
 }
 
-export function CalorieRing({ consumed, target, status }: CalorieRingProps) {
+export function CalorieRing({ consumed, target, status, inProgress = false }: CalorieRingProps) {
   // Garde-fou : un objectif à 0 donnerait NaN / Infinity
   const percentage = target > 0 ? Math.min(Math.max((consumed / target) * 100, 0), 100) : 0;
   const circumference = 2 * Math.PI * 70;
@@ -15,8 +20,9 @@ export function CalorieRing({ consumed, target, status }: CalorieRingProps) {
     ok: { color: 'text-green-600', bg: 'bg-green-100', stroke: '#16a34a', label: 'Objectif atteint' },
     over: { color: 'text-red-600', bg: 'bg-red-100', stroke: '#dc2626', label: 'Au-dessus' },
   };
+  const inProgressConfig = { color: 'text-blue-700', bg: 'bg-blue-50', stroke: '#2563eb', label: 'En cours' };
 
-  const config = statusConfig[status];
+  const config = inProgress && status === 'under' ? inProgressConfig : statusConfig[status];
 
   return (
     <div className="flex flex-col items-center">

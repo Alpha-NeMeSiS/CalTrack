@@ -21,6 +21,18 @@ describe('CalorieRing', () => {
     expect(screen.getByText('Parfait !')).toBeInTheDocument();
   });
 
+  it("affiche « En cours » au lieu de « Sous l'objectif » pour la journée en cours (régression)", () => {
+    render(<CalorieRing consumed={978} target={2150} status="under" inProgress />);
+    expect(screen.getByText('En cours')).toBeInTheDocument();
+    expect(screen.queryByText("Sous l'objectif")).not.toBeInTheDocument();
+    expect(screen.getByText('Encore 1172 kcal')).toBeInTheDocument();
+  });
+
+  it('signale un dépassement même pendant la journée en cours', () => {
+    render(<CalorieRing consumed={2400} target={2150} status="over" inProgress />);
+    expect(screen.getByText('Au-dessus')).toBeInTheDocument();
+  });
+
   it('ne produit pas de NaN avec une cible à 0', () => {
     const { container } = render(<CalorieRing consumed={0} target={0} status="ok" />);
     const progressCircle = container.querySelectorAll('circle')[1];

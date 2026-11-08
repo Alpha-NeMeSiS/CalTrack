@@ -176,10 +176,11 @@ export function Dashboard({
 
       {target && !loading && !loadError && (
         <button
+          type="button"
           onClick={() => setShowAddModal(true)}
-          className="btn-kaizen flex items-center gap-2"
+          className="btn-kaizen hidden sm:flex items-center gap-2"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-5 h-5" aria-hidden="true" />
           Ajouter
         </button>
       )}
@@ -243,6 +244,8 @@ export function Dashboard({
   }
 
   const summary = calculateDailySummary(entries, target, selectedDate);
+  // La journée en cours n'est pas jugée (« sous l'objectif » à midi n'est pas un échec)
+  const isToday = selectedDate === getTodayDate();
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -254,21 +257,20 @@ export function Dashboard({
         </div>
       )}
 
-      {activeGoal && activeGoal.target_weight_kg && profile && (
-        <GoalProgressCard goal={activeGoal} currentWeight={profile.poids_kg} />
-      )}
-
+      {/* 1. Calories et macros du jour : l'information principale, en premier */}
       <div className="card-kaizen">
-        <div className="flex flex-col lg:flex-row items-center gap-8 p-6">
+        <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-8 p-2 sm:p-6">
           <div className="flex-shrink-0">
             <CalorieRing
               consumed={summary.consumed.calories_kcal}
               target={summary.target.calories_kcal}
               status={summary.status}
+              inProgress={isToday}
             />
           </div>
 
-          <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Grille 2×2 sur mobile (auparavant 4 cartes empilées), 4 colonnes au-delà */}
+          <div className="flex-1 w-full grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <MacroCard
               label="Protéines"
               consumed={summary.consumed.protein_g}
@@ -301,8 +303,9 @@ export function Dashboard({
         </div>
       </div>
 
+      {/* 2. Journal du jour */}
       <div className="card-kaizen">
-        <div className="p-6 border-b border-white/20">
+        <div className="p-4 sm:p-6 border-b border-white/20">
           <h2 className="text-lg text-shonen-700">Journal du jour</h2>
         </div>
 
@@ -354,6 +357,23 @@ export function Dashboard({
           </div>
         )}
       </div>
+
+      {/* 3. Progression de l'objectif : information de fond, après le suivi du jour */}
+      {activeGoal && activeGoal.target_weight_kg && profile && (
+        <GoalProgressCard goal={activeGoal} currentWeight={profile.poids_kg} />
+      )}
+
+      {/* Mobile : bouton « Ajouter » flottant, toujours visible au-dessus de la barre d'onglets */}
+      {!showAddModal && (
+        <button
+          type="button"
+          onClick={() => setShowAddModal(true)}
+          aria-label="Ajouter un aliment"
+          className="sm:hidden fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-kaizen-500 text-white shadow-lg shadow-kaizen-500/30 transition-transform active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-kaizen-300"
+        >
+          <Plus className="h-7 w-7" aria-hidden="true" />
+        </button>
+      )}
 
       {showAddModal && (
         <AddEntryModal

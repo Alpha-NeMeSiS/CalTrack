@@ -29,10 +29,12 @@ export function Header() {
             )}
 
             <button
+              type="button"
               onClick={signOut}
+              aria-label="Déconnexion"
               className="btn-shonen-accent flex items-center gap-2"
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-4 h-4" aria-hidden="true" />
               <span className="hidden sm:inline">Déconnexion</span>
             </button>
           </div>

@@ -1,12 +1,16 @@
-// Importation des dépendances React nécessaires
+// Tendances : graphique des calories sur 7 jours et historique détaillé sur 30 jours
 import { useState, useEffect, useCallback } from 'react';
-// Importation de la configuration Supabase
 import { supabase } from '../../lib/supabase';
-// Importation du contexte d'authentification
 import { useAuth } from '../../contexts/useAuth';
-// Importation des fonctions de calcul
 import { calculateDailySummary } from '../../utils/calculations';
 import { addDaysToDateString, getTodayDate, parseLocalDate } from '../../utils/date';
+import {
+  DayStatus,
+  DAY_STATUS_LABELS,
+  getBarColorClass,
+  getCalorieAxisTicks,
+  getDayStatus,
+} from '../../utils/dayStatus';
 
 // Interface pour le résumé des macronutriments
 interface MacroSummary {
@@ -20,42 +24,59 @@ interface MacroSummary {
 // Interface pour le résumé quotidien
 interface DailySummary {
   date: string;
-  consumed: MacroSummary;  // Macronutriments consommés
-  target: MacroSummary;    // Objectifs de macronutriments
-  status: 'under' | 'ok' | 'over';  // Statut par rapport à l'objectif
+  consumed: MacroSummary; // Macronutriments consommés
+  target: MacroSummary; // Objectifs de macronutriments
+  status: 'under' | 'ok' | 'over'; // Statut par rapport à l'objectif
 }
 
-// Type pour les données hebdomadaires
-type WeekDataItem = {
+// Données d'une journée
+type DayItem = {
   date: string;
-  summary: DailySummary | null;  // Peut être null si pas de données pour ce jour
-}
+  summary: DailySummary | null; // null si aucun objectif ce jour-là
+  dayStatus: DayStatus | null; // statut d'affichage (null si aucun objectif)
+};
+
+// Hauteur utilisable du graphique (barres, graduations et grille partagent cette échelle)
+const CHART_HEIGHT_PX = 200;
+
+// Styles des lignes de l'historique selon le statut
+const ROW_STYLES: Record<DayStatus, { bg: string; text: string }> = {
+  not_logged: { bg: 'bg-gray-50', text: 'text-gray-500' },
+  in_progress: { bg: 'bg-blue-50', text: 'text-blue-700' },
+  under: { bg: 'bg-orange-50', text: 'text-orange-600' },
+  ok: { bg: 'bg-green-50', text: 'text-green-600' },
+  over: { bg: 'bg-red-50', text: 'text-red-600' },
+};
+
+// Légende du graphique
+const LEGEND: Array<{ label: string; swatch: string }> = [
+  { label: DAY_STATUS_LABELS.ok, swatch: 'bg-green-500' },
+  { label: DAY_STATUS_LABELS.under, swatch: 'bg-orange-400' },
+  { label: DAY_STATUS_LABELS.over, swatch: 'bg-red-500' },
+  { label: DAY_STATUS_LABELS.in_progress, swatch: 'bg-blue-400' },
+  { label: DAY_STATUS_LABELS.not_logged, swatch: 'bg-gray-200' },
+];
 
 // Composant principal pour afficher les tendances hebdomadaires
 export function WeeklyTrends() {
-  // Récupération de l'utilisateur depuis le contexte d'authentification
   const { user } = useAuth();
-  // États pour gérer le chargement et les données
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [weekData, setWeekData] = useState<WeekDataItem[]>([]); // Données des 7 derniers jours
-  const [monthData, setMonthData] = useState<WeekDataItem[]>([]); // Données des 30 derniers jours
+  const [weekData, setWeekData] = useState<DayItem[]>([]); // 7 derniers jours
+  const [monthData, setMonthData] = useState<DayItem[]>([]); // 30 derniers jours
 
-  // Fonction pour charger les données de la semaine et du mois
+  // Charge les cibles et les entrées des 30 derniers jours
   const loadWeekData = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
     setLoadError(null);
     try {
-      // Calcul des dates pour la période d'analyse
       // Dates locales (et non UTC) pour la période d'analyse
       const endDate = getTodayDate();
-      const startDate = addDaysToDateString(endDate, -30); // Date d'il y a 30 jours
+      const startDate = addDaysToDateString(endDate, -30);
 
-      // Récupération parallèle des objectifs et des entrées depuis Supabase
       const [targetsResult, entriesResult] = await Promise.all([
-        // Requête pour les objectifs quotidiens
         supabase
           .from('daily_targets')
           .select('*')
@@ -63,7 +84,6 @@ export function WeeklyTrends() {
           .gte('date', startDate)
           .lte('date', endDate)
           .order('date'),
-        // Requête pour les entrées du journal
         supabase
           .from('entries')
           .select('*')
@@ -73,60 +93,41 @@ export function WeeklyTrends() {
           .order('date'),
       ]);
 
-      // Vérification des erreurs de requête
       if (targetsResult.error) throw targetsResult.error;
       if (entriesResult.error) throw entriesResult.error;
 
-      // Extraction des données des résultats
       const targets = targetsResult.data || [];
       const entries = entriesResult.data || [];
 
-      // Préparation des données pour le graphique des 7 derniers jours
-      const weekData = [];
-      for (let i = 6; i >= 0; i--) {
-        const dateStr = addDaysToDateString(endDate, -i);
-
-        // Recherche des données pour ce jour
+      const buildDay = (dateStr: string): DayItem => {
         const dayTarget = targets.find((t) => t.date === dateStr);
-        const dayEntries = entries.filter((e) => e.date === dateStr);
-
-        if (dayTarget) {
-          // Calcul du résumé quotidien si un objectif existe
-          const summary = calculateDailySummary(dayEntries, dayTarget, dateStr);
-          weekData.push({ date: dateStr, summary });
-        } else {
-          // Pas de données pour ce jour
-          weekData.push({ date: dateStr, summary: null });
+        if (!dayTarget) {
+          return { date: dateStr, summary: null, dayStatus: null };
         }
-      }
-
-      const monthData: WeekDataItem[] = [];
-      for (let i = 0; i < 30; i++) {
-        const dateStr = addDaysToDateString(endDate, -i);
-
-        const dayTarget = targets.find((t) => t.date === dateStr);
         const dayEntries = entries.filter((e) => e.date === dateStr);
+        const summary = calculateDailySummary(dayEntries, dayTarget, dateStr);
+        return {
+          date: dateStr,
+          summary,
+          dayStatus: getDayStatus({
+            status: summary.status,
+            entryCount: dayEntries.length,
+            isToday: dateStr === endDate,
+          }),
+        };
+      };
 
-        if (dayTarget) {
-          const summary = calculateDailySummary(dayEntries, dayTarget, dateStr);
-          monthData.push({ date: dateStr, summary });
-        } else {
-          monthData.push({ date: dateStr, summary: null });
-        }
-      }
-
-      setWeekData(weekData);
-      setMonthData(monthData);
+      // 7 derniers jours (du plus ancien au plus récent) et 30 derniers (du plus récent)
+      setWeekData([6, 5, 4, 3, 2, 1, 0].map((i) => buildDay(addDaysToDateString(endDate, -i))));
+      setMonthData(Array.from({ length: 30 }, (_, i) => buildDay(addDaysToDateString(endDate, -i))));
     } catch (error) {
       console.error('Error loading week data:', error);
-      // Auparavant : erreur silencieuse, tous les jours affichaient « Pas de données »
       setLoadError("Impossible de charger l'historique.");
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  // Effet pour charger les données au montage du composant
   useEffect(() => {
     if (user) {
       loadWeekData();
@@ -156,138 +157,106 @@ export function WeeklyTrends() {
     );
   }
 
-  // Filtrage des jours avec des données valides
-  const validDays = weekData.filter((d): d is WeekDataItem & { summary: DailySummary } => d.summary !== null);
-  
-  // Calcul du maximum des calories pour l'échelle du graphique
-  // Utilise 2000 comme minimum pour éviter une échelle trop petite
+  // Échelle du graphique : les journées non renseignées ne comptent pas
   const maxCalories = Math.max(
-    ...validDays.map((d) => Math.max(d.summary.consumed.calories_kcal, d.summary.target.calories_kcal)),
-    2000
+    0,
+    ...weekData
+      .filter((d) => d.summary)
+      .map((d) => Math.max(d.summary!.consumed.calories_kcal, d.summary!.target.calories_kcal))
   );
+  const ticks = getCalorieAxisTicks(maxCalories);
+  const axisMax = ticks[ticks.length - 1];
+  const toPx = (value: number) => Math.round((Math.max(0, value) / axisMax) * CHART_HEIGHT_PX);
 
   return (
     <div className="bg-white rounded-lg shadow-md">
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-4 sm:p-6 border-b border-gray-200">
         <h2 className="text-xl text-gray-900">Tendances et historique</h2>
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <div>
           <h3 className="text-sm text-gray-900 mb-4">Graphique des calories</h3>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="relative h-64">
-              {/* Axe Y avec graduations pour l'échelle des calories */}
-              <div className="absolute left-0 top-0 h-full w-16 flex flex-col justify-between text-xs text-gray-500 py-2">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="flex items-center">
-                    <span className="mr-2">{Math.round((maxCalories * (5 - i)) / 5)}</span>
-                    <div className="flex-1 border-t border-gray-200" />
-                  </div>
+          <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+            <div className="flex gap-2" role="img" aria-label="Calories consommées et objectif sur les 7 derniers jours">
+              {/* Axe Y : graduations positionnées sur la même échelle que les barres */}
+              <div className="relative w-10 shrink-0" style={{ height: CHART_HEIGHT_PX }} aria-hidden="true">
+                {ticks.map((tick) => (
+                  <span
+                    key={tick}
+                    className="absolute right-0 translate-y-1/2 text-[11px] leading-none text-gray-500"
+                    style={{ bottom: toPx(tick) }}
+                  >
+                    {tick}
+                  </span>
                 ))}
               </div>
 
-              {/* Container pour les barres du graphique */}
-              <div className="absolute inset-0 flex items-end justify-between gap-2 pb-6 pl-16 pr-4">
-                {(() => {
-                  // Configuration de la hauteur du graphique en pixels pour éviter les problèmes de mise en page
-                  const CHART_HEIGHT_PX = 200; // hauteur utilisable pour les barres en pixels
+              {/* Zone des barres avec lignes de grille */}
+              <div className="relative flex-1" style={{ height: CHART_HEIGHT_PX }}>
+                {ticks.map((tick) => (
+                  <div
+                    key={tick}
+                    className="absolute inset-x-0 border-t border-gray-200"
+                    style={{ bottom: toPx(tick) }}
+                    aria-hidden="true"
+                  />
+                ))}
 
-                  // Fonction pour déterminer la couleur de la barre en fonction du rapport consommé/objectif
-                  const getBarColor = (consumed: number, target: number) => {
-                    if (!target || target <= 0) return 'bg-gray-300';  // Pas d'objectif défini
-                    const percentage = (consumed / target) * 100;
-                    if (percentage >= 95 && percentage <= 105) return 'bg-green-500';  // À l'objectif (±5%)
-                    if (percentage < 95) {
-                      if (percentage < 75) return 'bg-orange-600';  // Très en dessous de l'objectif (<75%)
-                      return 'bg-orange-400';  // En dessous de l'objectif (75-95%)
-                    }
-                    if (percentage > 105) {
-                      if (percentage > 125) return 'bg-red-600';  // Très au-dessus de l'objectif (>125%)
-                      return 'bg-red-400';  // Au-dessus de l'objectif (105-125%)
-                    }
-                    return 'bg-gray-300';  // Cas par défaut
-                  };
-
-                  // Génération des barres du graphique pour chaque jour
-                  return weekData.map((day) => {
-                    // Récupération des calories consommées et de l'objectif
+                <div className="absolute inset-0 flex items-end gap-1.5 sm:gap-2">
+                  {weekData.map((day) => {
                     const consumed = day.summary?.consumed.calories_kcal ?? 0;
                     const target = day.summary?.target.calories_kcal ?? 0;
-
-                    // Calcul de la hauteur de la barre en pixels
-                    // Minimum de 6px pour garantir la visibilité
-                    const heightPx = day.summary
-                      ? Math.max(6, Math.round((consumed / Math.max(1, maxCalories)) * CHART_HEIGHT_PX))
-                      : 6;
-
-                    // Calcul de la hauteur de la ligne d'objectif en pixels
-                    const targetPx = day.summary
-                      ? Math.round((target / Math.max(1, maxCalories)) * CHART_HEIGHT_PX)
-                      : 0;
-
-                    // Détermination de la couleur de la barre selon le rapport consommé/objectif
-                    const statusColor = day.summary ? getBarColor(consumed, target) : 'bg-gray-300';
-
-                    // Préparation du contenu de l'infobulle
-                    const tooltipContent = day.summary
-                      ? `Consommé: ${Math.round(consumed)} kcal\nObjectif: ${Math.round(target)} kcal\n(${Math.round((consumed / Math.max(1, target || 1)) * 100)}%)\nFibre: ${Math.round(day.summary.consumed.fiber_g || 0)} g / ${Math.round(day.summary.target.fiber_g || 0)} g`
-                      : 'Pas de données';
+                    const status = day.dayStatus;
+                    const hasBar = day.summary && status !== 'not_logged';
+                    const label = status ? DAY_STATUS_LABELS[status] : 'Pas d’objectif';
+                    const tooltip = day.summary
+                      ? `${label} — ${Math.round(consumed)} / ${Math.round(target)} kcal`
+                      : label;
 
                     return (
-                      <div key={day.date} className="flex-1 flex flex-col items-center gap-1 relative group">
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-pre-line">
-                          {tooltipContent}
-                        </div>
-
-                        <div className="w-full relative flex items-end justify-center" style={{ height: `${CHART_HEIGHT_PX}px` }}>
-                          {/* vertical grid line */}
-                          <div className="absolute inset-0 border-l border-gray-200" />
-
-                          {day.summary ? (
-                            <>
-                              <div
-                                className="absolute bottom-0 w-full border-t-2 border-dashed border-blue-400"
-                                style={{ bottom: `${targetPx}px` }}
-                                title={`Objectif: ${Math.round(target)} kcal`}
-                              />
-
-                              <div
-                                className={`relative w-full ${statusColor} rounded-t transition-all duration-300 hover:opacity-80 flex items-end justify-center`}
-                                style={{ height: `${heightPx}px` }}
-                                title={`${Math.round(consumed)} kcal`}
-                              />
-                            </>
-                          ) : (
-                            <div className="absolute bottom-0 w-full h-2 bg-gray-200 rounded-t" />
-                          )}
-                        </div>
-
-                        <div className="text-xs text-gray-600 font-medium capitalize">
-                          {parseLocalDate(day.date).toLocaleDateString('fr-FR', { weekday: 'short' })}
-                        </div>
+                      <div key={day.date} className="relative flex h-full flex-1 items-end justify-center group" title={tooltip}>
+                        {day.summary && (
+                          <div
+                            className="absolute inset-x-0 border-t-2 border-dashed border-blue-400"
+                            style={{ bottom: toPx(target) }}
+                            aria-hidden="true"
+                          />
+                        )}
+                        {hasBar ? (
+                          <div
+                            className={`relative w-full rounded-t transition-all duration-300 ${getBarColorClass(status!, consumed, target)}`}
+                            style={{ height: Math.max(4, toPx(consumed)) }}
+                          />
+                        ) : (
+                          // Journée non renseignée (ou sans objectif) : simple repère gris
+                          <div className="w-full h-1 rounded-t bg-gray-200" />
+                        )}
                       </div>
                     );
-                  });
-                })()}
+                  })}
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-center gap-6 mt-4 text-xs">
+            {/* Jours de la semaine, alignés sur les barres */}
+            <div className="flex gap-1.5 sm:gap-2 mt-1 pl-12">
+              {weekData.map((day) => (
+                <div key={day.date} className="flex-1 text-center text-xs text-gray-600 font-medium capitalize">
+                  {parseLocalDate(day.date).toLocaleDateString('fr-FR', { weekday: 'short' })}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 mt-4 text-xs">
+              {LEGEND.map((item) => (
+                <div key={item.label} className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded ${item.swatch}`} />
+                  <span className="text-gray-600">{item.label}</span>
+                </div>
+              ))}
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded" />
-                <span className="text-gray-600">À l'objectif</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-orange-400 rounded" />
-                <span className="text-gray-600">En dessous</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-500 rounded" />
-                <span className="text-gray-600">Au-dessus</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 border-t-2 border-dashed border-blue-400" />
+                <div className="w-6 border-t-2 border-dashed border-blue-400" />
                 <span className="text-gray-600">Objectif</span>
               </div>
             </div>
@@ -297,55 +266,65 @@ export function WeeklyTrends() {
         <div>
           <h3 className="text-sm text-gray-900 mb-3">Historique détaillé (30 jours)</h3>
           <div className="space-y-2 h-[400px] overflow-y-auto pr-2 scrollbar scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400 scrollbar-track-transparent">
-            {monthData.map((day: WeekDataItem) => {
+            {monthData.map((day) => {
               const date = parseLocalDate(day.date);
               const dayName = date.toLocaleDateString('fr-FR', { weekday: 'short' });
               const dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 
-              if (!day.summary) {
+              if (!day.summary || !day.dayStatus) {
                 return (
                   <div key={day.date} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                     <div className="flex items-center gap-3">
-                      <div className="w-16 text-sm font-medium text-gray-600 capitalize">{dayName}</div>
+                      <div className="w-12 text-sm font-medium text-gray-600 capitalize">{dayName}</div>
                       <div className="text-xs text-gray-500">{dateStr}</div>
                     </div>
-                    <div className="text-sm text-gray-400">Pas de données</div>
+                    <div className="text-sm text-gray-400">Pas d’objectif</div>
                   </div>
                 );
               }
 
-              const statusConfig: Record<'under' | 'ok' | 'over', { bg: string; text: string; label: string }> = {
-                under: { bg: 'bg-orange-50', text: 'text-orange-600', label: 'Sous' },
-                ok: { bg: 'bg-green-50', text: 'text-green-600', label: 'OK' },
-                over: { bg: 'bg-red-50', text: 'text-red-600', label: 'Au-dessus' },
-              };
+              const style = ROW_STYLES[day.dayStatus];
+              const statusLabel = DAY_STATUS_LABELS[day.dayStatus];
 
-              const config = statusConfig[day.summary.status];
+              if (day.dayStatus === 'not_logged') {
+                return (
+                  <div key={day.date} className={`flex items-center justify-between p-3 ${style.bg} rounded-md`}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 text-sm font-medium text-gray-600 capitalize">{dayName}</div>
+                      <div className="text-xs text-gray-500">{dateStr}</div>
+                    </div>
+                    <div className={`text-sm ${style.text}`}>
+                      {statusLabel}
+                      <span className="text-gray-400"> · objectif {Math.round(day.summary.target.calories_kcal)} kcal</span>
+                    </div>
+                  </div>
+                );
+              }
 
               return (
-                <div key={day.date} className={`flex items-center justify-between p-3 ${config.bg} rounded-md`}>
+                <div key={day.date} className={`flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3 p-3 ${style.bg} rounded-md`}>
                   <div className="flex items-center gap-3">
-                    <div className="w-16 text-sm font-medium text-gray-900 capitalize">{dayName}</div>
+                    <div className="w-12 text-sm font-medium text-gray-900 capitalize">{dayName}</div>
                     <div className="text-xs text-gray-600">{dateStr}</div>
                   </div>
 
-                    <div className="flex items-center gap-4">
-                      <div className="text-sm text-gray-700">
-                        <div className="flex items-baseline gap-1">
-                          <span className="font-semibold">{Math.round(day.summary.consumed.calories_kcal)}</span>
-                          <span className="text-gray-500"> / {Math.round(day.summary.target.calories_kcal)} kcal</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
-                          <div>P: <span className="font-semibold">{Math.round(day.summary.consumed.protein_g)} g</span> / {Math.round(day.summary.target.protein_g)} g</div>
-                          <div>L: <span className="font-semibold">{Math.round(day.summary.consumed.fat_g)} g</span> / {Math.round(day.summary.target.fat_g)} g</div>
-                          <div>G: <span className="font-semibold">{Math.round(day.summary.consumed.carbs_g)} g</span> / {Math.round(day.summary.target.carbs_g)} g</div>
-                          <div>F: <span className="font-semibold">{Math.round(day.summary.consumed.fiber_g || 0)} g</span> / {Math.round(day.summary.target.fiber_g || 0)} g</div>
-                        </div>
+                  <div className="flex items-start justify-between gap-3 sm:justify-end sm:gap-4">
+                    <div className="text-sm text-gray-700">
+                      <div className="flex items-baseline gap-1">
+                        <span className="font-semibold">{Math.round(day.summary.consumed.calories_kcal)}</span>
+                        <span className="text-gray-500"> / {Math.round(day.summary.target.calories_kcal)} kcal</span>
                       </div>
-                      <div className={`px-2 py-1 rounded text-xs font-medium ${config.text} self-start mt-1`}>
-                        {config.label}
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
+                        <div>P: <span className="font-semibold">{Math.round(day.summary.consumed.protein_g)} g</span> / {Math.round(day.summary.target.protein_g)} g</div>
+                        <div>L: <span className="font-semibold">{Math.round(day.summary.consumed.fat_g)} g</span> / {Math.round(day.summary.target.fat_g)} g</div>
+                        <div>G: <span className="font-semibold">{Math.round(day.summary.consumed.carbs_g)} g</span> / {Math.round(day.summary.target.carbs_g)} g</div>
+                        <div>F: <span className="font-semibold">{Math.round(day.summary.consumed.fiber_g || 0)} g</span> / {Math.round(day.summary.target.fiber_g || 0)} g</div>
                       </div>
                     </div>
+                    <div className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${style.text}`}>
+                      {statusLabel}
+                    </div>
+                  </div>
                 </div>
               );
             })}
