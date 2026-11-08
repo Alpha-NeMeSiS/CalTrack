@@ -42,7 +42,7 @@ export function nutritionForQuantity(food: NormalizedFood, quantity: number) {
 }
 
 /** Valeur la plus fréquente ; à égalité, la première rencontrée (la plus récente). */
-function mostFrequent<T>(values: T[]): T | undefined {
+export function mostFrequent<T>(values: T[]): T | undefined {
   const counts = new Map<T, number>();
   let best: T | undefined;
   let bestCount = 0;

@@ -1,5 +1,6 @@
 // Données de test réutilisables
-import type { DailyTarget, Entry, Goal, Profile } from '../lib/supabase';
+import type { DailyTarget, Entry, Goal, Profile, Recipe } from '../lib/supabase';
+import type { IngredientValues } from '../utils/recipes';
 
 export function makeProfile(overrides: Partial<Profile> = {}): Profile {
   return {
@@ -67,6 +68,34 @@ export function makeEntry(overrides: Partial<Entry> = {}): Entry {
     fiber_g: 0,
     meal_type: 'lunch',
     created_at: '2025-01-10T12:00:00Z',
+    ...overrides,
+  };
+}
+
+/** Ingrédients de la recette de référence (spec des recettes) : chili maison */
+export const CHILI_INGREDIENTS: IngredientValues[] = [
+  { label: 'Haricots rouges, cuits', qty_g: 400, kcal_per_100g: 115, protein_g: 8.7, fat_g: 0.5, carbs_g: 15, fiber_g: 6.5 },
+  { label: 'Bœuf haché 5 %, cru', qty_g: 500, kcal_per_100g: 125, protein_g: 21, fat_g: 5, carbs_g: 0, fiber_g: 0 },
+  { label: 'Tomates concassées', qty_g: 400, kcal_per_100g: 25, protein_g: 1.2, fat_g: 0.2, carbs_g: 4, fiber_g: 1.2 },
+  { label: 'Riz blanc, cuit', qty_g: 600, kcal_per_100g: 130, protein_g: 2.7, fat_g: 0.3, carbs_g: 28, fiber_g: 0.4 },
+];
+
+/** Recette de référence : 4 parts, 1 800 g cuit (1 part = 491 kcal, 450 g) */
+export function makeRecipe(overrides: Partial<Recipe> = {}): Recipe {
+  return {
+    id: 'recipe-1',
+    user_id: 'user-1',
+    name: 'Chili maison',
+    servings: 4,
+    cooked_weight_g: 1800,
+    created_at: '2026-11-08T12:00:00Z',
+    updated_at: '2026-11-08T12:00:00Z',
+    recipe_ingredients: CHILI_INGREDIENTS.map((ingredient, position) => ({
+      id: `ingredient-${position}`,
+      recipe_id: overrides.id ?? 'recipe-1',
+      position,
+      ...ingredient,
+    })),
     ...overrides,
   };
 }
