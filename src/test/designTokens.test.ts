@@ -41,6 +41,20 @@ describe('design system', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('courbes de graphique en nuance 600 au minimum', () => {
+    const offenders = files.flatMap((file) =>
+      [
+        // Courbes SVG
+        ...readFileSync(file, 'utf8').matchAll(/(?<![\w-])stroke-(?:info|success|warning|danger|orange|brand|primary)-(?:50|[1-5]00)(?![\w-])/g),
+        // Lignes pointillées (objectifs) dessinées en bordure
+        ...readFileSync(file, 'utf8').matchAll(/border-dashed[^"'`]*?border-(?:info|success|warning|danger|orange|brand|primary)-(?:50|[1-5]00)(?![\w-])/g),
+      ].map(
+        (m) => `${relative(SRC, file)} : ${m[0]}`
+      )
+    );
+    expect(offenders).toEqual([]);
+  });
+
   it('la police du logo (font-display) ne sert qu’au logo', () => {
     const offenders = files
       .filter((file) => !LOGO_FILES.includes(relative(SRC, file).split('\\').join('/')))

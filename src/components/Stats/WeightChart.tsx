@@ -103,7 +103,7 @@ export function WeightChart({ points, targetWeight }: WeightChartProps) {
               x2={WIDTH - PAD.right}
               y1={y(targetWeight)}
               y2={y(targetWeight)}
-              className="stroke-info-400"
+              className="stroke-info-600"
               strokeWidth="2"
               strokeDasharray="6 4"
             />
@@ -127,7 +127,7 @@ export function WeightChart({ points, targetWeight }: WeightChartProps) {
       <figcaption className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
         <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-5 bg-brand-600" /> Moyenne 7 jours</span>
         <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full border border-brand-700 bg-surface" /> Pesées</span>
-        {showTarget && <span className="flex items-center gap-1.5"><span className="inline-block w-5 border-t-2 border-dashed border-info-400" /> Poids cible</span>}
+        {showTarget && <span className="flex items-center gap-1.5"><span className="inline-block w-5 border-t-2 border-dashed border-info-600" /> Poids cible</span>}
         <span className="ml-auto font-medium text-ink" data-testid="weight-change">
           {change > 0 ? '+' : ''}{formatKg(change)} kg depuis le {formatDate(first.date)}
         </span>

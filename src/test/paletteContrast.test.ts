@@ -64,6 +64,9 @@ const PAIRS: Array<[string, string, number]> = [
   ['primary-600', 'surface', GRAPHIC],
   ['brand-600', 'surface', GRAPHIC],
   ['primary-600', 'canvas', GRAPHIC],
+  // Courbes des tendances : masse grasse (ambre) et poids cible (bleu)
+  ['warning-600', 'surface', GRAPHIC],
+  ['info-600', 'surface', GRAPHIC],
 ];
 
 it('repère un contraste insuffisant (texte blanc sur le vert du logo)', () => {

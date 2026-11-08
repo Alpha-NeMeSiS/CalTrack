@@ -65,6 +65,7 @@ Les paires ci-dessous atteignent 4,5:1 (texte) ou 3:1 (icônes) dans les deux th
 - **Texte vert** (liens, titres) : `primary-700` / `brand-700` et plus.
 - **Graphiques et focus verts** (anneau de focus, anneau des calories, courbes, icône blanche du bouton flottant) : `600` au minimum.
 - **Vert du logo** (`brand-500`, `brand-400`) : décoration uniquement, jamais sous du texte ni pour un trait seul.
+- **Courbes de graphique**, toutes couleurs : nuance `600` au minimum (`stroke-warning-600` pour la masse grasse, `stroke-info-600` pour le poids cible). Vérifié par `designTokens.test.ts`.
 - **Orange vif** (`accent-500`) : jamais pour du texte ; utiliser `accent-700`.
 - **Indications** : `text-subtle`, lisible même sur les lignes teintées des tendances.
 - **Bouton désactivé** : nuance `-300` (`disabled:bg-primary-300`), pour qu'il ne ressemble pas à un bouton actif.

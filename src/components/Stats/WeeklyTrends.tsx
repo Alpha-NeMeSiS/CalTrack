@@ -297,7 +297,7 @@ export function WeeklyTrends() {
                       <div key={day.date} className="relative flex h-full flex-1 items-end justify-center group" title={tooltip}>
                         {day.summary && (
                           <div
-                            className="absolute inset-x-0 border-t-2 border-dashed border-info-400"
+                            className="absolute inset-x-0 border-t-2 border-dashed border-info-600"
                             style={{ bottom: toPx(target) }}
                             aria-hidden="true"
                           />
@@ -335,7 +335,7 @@ export function WeeklyTrends() {
                 </div>
               ))}
               <div className="flex items-center gap-2">
-                <div className="w-6 border-t-2 border-dashed border-info-400" />
+                <div className="w-6 border-t-2 border-dashed border-info-600" />
                 <span className="text-muted">Objectif</span>
               </div>
             </div>
