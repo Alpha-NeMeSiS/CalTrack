@@ -7,6 +7,7 @@ import { useAuth } from './contexts/useAuth';
 import { LoginForm } from './components/Auth/LoginForm';
 import { SignupForm } from './components/Auth/SignupForm';
 import { PasswordRecoveryScreen } from './components/Auth/PasswordRecoveryScreen';
+import { AuthBrand } from './components/Auth/AuthBrand';
 import { OnboardingForm } from './components/Onboarding/OnboardingForm';
 import { Header } from './components/Layout/Header';
 import { AuthNoticeBanner } from './components/Layout/AuthNoticeBanner';
@@ -61,7 +62,8 @@ function AppScreens() {
   // Arrivée depuis le lien « mot de passe oublié » : choisir le nouveau mot de passe
   if (user && passwordRecovery) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col items-center justify-center p-4">
+        <AuthBrand />
         <PasswordRecoveryScreen />
       </div>
     );
@@ -70,7 +72,8 @@ function AppScreens() {
   // Si l'utilisateur n'est pas connecté, afficher le formulaire de connexion / inscription
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col items-center justify-center p-4">
+        <AuthBrand />
         {authMode === 'login' ? (
           <LoginForm onToggle={() => setAuthMode('signup')} />
         ) : (

@@ -6,7 +6,7 @@ import { AccountMenu } from './AccountMenu';
 function setup() {
   const onNavigate = vi.fn();
   const onSignOut = vi.fn();
-  render(<AccountMenu email="eva@example.com" onNavigate={onNavigate} onSignOut={onSignOut} />);
+  render(<AccountMenu identity={{ email: 'eva@example.com' }} onNavigate={onNavigate} onSignOut={onSignOut} />);
   const button = screen.getByRole('button', { name: 'Menu du compte (eva@example.com)' });
   return { onNavigate, onSignOut, button, user: userEvent.setup() };
 }
@@ -79,4 +79,21 @@ describe('AccountMenu', () => {
     await user.click(backdrop);
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
+
+  it('affiche la photo et le nom quand ils sont renseignés', async () => {
+    render(
+      <AccountMenu
+        identity={{ email: 'eva@example.com', first_name: 'Eva', last_name: 'Durand', profile_picture_url: 'https://x.supabase.co/p.jpg' }}
+        onNavigate={vi.fn()}
+        onSignOut={vi.fn()}
+      />
+    );
+    const button = screen.getByRole('button', { name: 'Menu du compte (Eva Durand)' });
+    expect(button.querySelector('img')).toHaveAttribute('src', 'https://x.supabase.co/p.jpg');
+
+    await userEvent.setup().click(button);
+    expect(screen.getByRole('menu')).toHaveTextContent('Eva Durand');
+    expect(screen.getByRole('menu')).toHaveTextContent('eva@example.com');
+  });
 });
+
