@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { parseAuthRedirect } from './authRedirect';
-import { describeEmailChangeError } from './authErrors';
 
 describe('parseAuthRedirect', () => {
   it('reconnaît le lien « mot de passe oublié »', () => {
@@ -39,15 +38,5 @@ describe('parseAuthRedirect', () => {
   it('ignore une URL sans fragment d’authentification', () => {
     expect(parseAuthRedirect('')).toEqual({ isRecovery: false, notice: null, isMessageOnly: false });
     expect(parseAuthRedirect('#section')).toEqual({ isRecovery: false, notice: null, isMessageOnly: false });
-  });
-});
-
-describe('describeEmailChangeError', () => {
-  it('explique les erreurs courantes', () => {
-    expect(describeEmailChangeError(Object.assign(new Error('A user with this email address has already been registered'), { status: 422 })))
-      .toBe('Cette adresse est déjà utilisée par un autre compte.');
-    expect(describeEmailChangeError(Object.assign(new Error('email rate limit exceeded'), { status: 429 })))
-      .toContain('Trop de demandes');
-    expect(describeEmailChangeError(new Error('boom'))).toBe('Le changement d’adresse a échoué : boom');
   });
 });

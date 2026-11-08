@@ -2,6 +2,7 @@
 // Valide localement les mots de passe puis appelle signUp du contexte d'auth
 import { useState } from 'react';
 import { useAuth } from '../../contexts/useAuth';
+import { describeAuthError } from '../../utils/authErrors';
 
 export function SignupForm({ onToggle }: { onToggle: () => void }) {
   const { signUp } = useAuth();
@@ -32,7 +33,7 @@ export function SignupForm({ onToggle }: { onToggle: () => void }) {
     const { error } = await signUp(email, password);
 
     if (error) {
-      setError(error.message);
+      setError(describeAuthError(error, `L'inscription a échoué : ${error.message}`));
       setLoading(false);
     } else {
       setSuccess(true);

@@ -33,13 +33,13 @@ describe('LoginForm', () => {
     expect(screen.queryByText(/Invalid/)).not.toBeInTheDocument();
   });
 
-  it("affiche le message d'erreur renvoyé", async () => {
+  it("affiche l'erreur de connexion en français", async () => {
     signIn.mockResolvedValue({ error: new Error('Invalid login credentials') });
     render(<LoginForm onToggle={vi.fn()} />);
 
     await fillAndSubmit();
 
-    expect(await screen.findByText('Invalid login credentials')).toBeInTheDocument();
+    expect(await screen.findByText('Email ou mot de passe incorrect.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Se connecter' })).toBeEnabled();
   });
 
@@ -80,7 +80,33 @@ describe('LoginForm', () => {
     await user.type(screen.getByLabelText('Email'), 'eva@example.com');
     await user.click(screen.getByRole('button', { name: 'Envoyer le lien' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent("L'email n'a pas pu être envoyé");
+    expect(await screen.findByRole('alert')).toHaveTextContent('Trop de tentatives');
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it("explique quand le service d'envoi refuse l'adresse", async () => {
+    requestPasswordReset.mockResolvedValue({
+      error: Object.assign(new Error('Email address not authorized'), { status: 400, code: 'email_address_not_authorized' }),
+    });
+    render(<LoginForm onToggle={vi.fn()} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Mot de passe oublié ?' }));
+    await user.type(screen.getByLabelText('Email'), 'eva@example.com');
+    await user.click(screen.getByRole('button', { name: 'Envoyer le lien' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('le service d’envoi n’est pas encore ouvert à tous');
+  });
+
+  it("garde un message générique pour une erreur d'envoi inconnue", async () => {
+    requestPasswordReset.mockResolvedValue({ error: new Error('Failed to fetch') });
+    render(<LoginForm onToggle={vi.fn()} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Mot de passe oublié ?' }));
+    await user.type(screen.getByLabelText('Email'), 'eva@example.com');
+    await user.click(screen.getByRole('button', { name: 'Envoyer le lien' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("L'email n'a pas pu être envoyé");
   });
 });

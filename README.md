@@ -137,6 +137,12 @@ src/
   services/        # Accès Supabase (objectifs, cibles quotidiennes)
   utils/           # Calculs métier, dates locales, logique des objectifs (fonctions pures)
   test/            # Outils partagés pour les tests
+supabase/
+  functions/       # Edge Functions (rappels push)
+  migrations/      # Schéma SQL versionné
+  templates/       # Modèles d'emails Supabase Auth en français
+docs/
+  emails.md        # Configurer l'envoi des emails (SMTP, modèles)
 ```
 
 ## Compte utilisateur (RGPD)
@@ -148,6 +154,10 @@ src/
 - **Retour des liens** : un lien expiré ou déjà utilisé, ou la première étape d'un changement d'email, affiche un message en haut de l'écran.
 - **Export** : menu du compte (avatar) → Compte et sécurité → « Télécharger mes données » produit un fichier JSON (profil, objectifs, cibles quotidiennes, journal, pesées, aliments personnels).
 - **Suppression** : menu du compte (avatar) → Compte et sécurité → « Supprimer définitivement mon compte » appelle la fonction SQL `delete_my_account()`, qui supprime l'utilisateur connecté ; toutes ses données sont effacées en cascade.
+
+### Emails (SMTP et modèles en français)
+
+Les emails d'inscription, de mot de passe oublié et de changement d'adresse sont envoyés par Supabase Auth. Le service d'envoi intégré de Supabase n'envoie qu'aux membres de l'organisation Supabase et seulement quelques emails par heure : pour les autres utilisateurs, il faut brancher un SMTP (Resend, Brevo…). Les modèles en français sont dans `supabase/templates/` ; la marche à suivre (SMTP, limites d'envoi, sujets, tests) est dans [docs/emails.md](docs/emails.md). Les erreurs de Supabase Auth sont affichées en français (`src/utils/authErrors.ts`).
 
 ## Paramètres d'affichage
 

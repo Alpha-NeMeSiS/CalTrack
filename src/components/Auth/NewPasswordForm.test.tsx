@@ -49,11 +49,11 @@ describe('NewPasswordForm', () => {
     expect(screen.getByLabelText('Nouveau mot de passe')).toHaveValue('');
   });
 
-  it("affiche l'erreur renvoyée par Supabase", async () => {
+  it("affiche l'erreur de Supabase en français", async () => {
     updatePassword.mockResolvedValue({ error: new Error('New password should be different from the old password.') });
     render(<NewPasswordForm />);
     await fill('secret123', 'secret123');
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('should be different');
+    expect(await screen.findByRole('alert')).toHaveTextContent('doit être différent de l’ancien');
   });
 });

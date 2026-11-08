@@ -3,6 +3,7 @@
 // compte, pour ne pas révéler quelles adresses sont inscrites.
 import { FormEvent, useState } from 'react';
 import { useAuth } from '../../contexts/useAuth';
+import { describeAuthError } from '../../utils/authErrors';
 
 interface ForgotPasswordFormProps {
   initialEmail?: string;
@@ -25,7 +26,9 @@ export function ForgotPasswordForm({ initialEmail = '', onBack }: ForgotPassword
     setLoading(false);
 
     if (error) {
-      setError("L'email n'a pas pu être envoyé. Vérifiez l'adresse ou réessayez dans quelques minutes.");
+      setError(
+        describeAuthError(error, "L'email n'a pas pu être envoyé. Vérifiez l'adresse ou réessayez dans quelques minutes.")
+      );
       return;
     }
     setSent(true);

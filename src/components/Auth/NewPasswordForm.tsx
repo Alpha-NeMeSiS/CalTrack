@@ -3,6 +3,7 @@
 // Paramètres → Compte (changement de mot de passe).
 import { FormEvent, useState } from 'react';
 import { useAuth } from '../../contexts/useAuth';
+import { describeAuthError } from '../../utils/authErrors';
 
 export const MIN_PASSWORD_LENGTH = 6;
 
@@ -39,7 +40,7 @@ export function NewPasswordForm({ onDone, submitLabel = 'Enregistrer le mot de p
     setLoading(false);
 
     if (error) {
-      setError(`Le mot de passe n'a pas pu être modifié : ${error.message}`);
+      setError(describeAuthError(error, `Le mot de passe n'a pas pu être modifié : ${error.message}`));
       return;
     }
     setPassword('');
