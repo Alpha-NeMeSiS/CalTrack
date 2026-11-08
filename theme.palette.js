@@ -29,11 +29,12 @@ const ACCENT_LIGHT = { 50: '#fff8f5', 100: '#ffece1', 300: '#ffb185', 500: '#ff6
 const ACCENT_DARK = { 50: '#2a160d', 100: '#3b1d10', 300: '#c2562d', 500: '#ff7f4f', 700: '#ffab80' };
 
 /**
- * Familles par rôle : alias d'une échelle. `primary` (actions principales)
- * pointe aujourd'hui sur le bleu ; le passer sur `brand` change toute l'app.
+ * Familles par rôle : alias d'une échelle. `primary` (actions principales :
+ * boutons, liens, focus) est le vert de la marque ; `info` reste bleu pour les
+ * messages d'information.
  */
 const ROLE_SCALES = {
-  primary: 'blue',
+  primary: 'brand',
   info: 'blue',
   success: 'green',
   warning: 'amber',
@@ -46,6 +47,7 @@ const ROLE_SCALES = {
  */
 const ROLES = {
   // Fonds
+  canvas: (p, dark) => (dark ? p.gray[50] : '#f3f6f5'), // fond des pages (gris-vert très léger en clair)
   surface: (p, dark) => (dark ? '#111827' : '#ffffff'), // cartes, champs, fenêtres
   'surface-muted': (p) => p.gray[50], // zones grisées, survol
   'surface-sunken': (p) => p.gray[100], // fonds en creux (onglets, pistes)
