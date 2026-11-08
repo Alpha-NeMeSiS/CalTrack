@@ -125,7 +125,7 @@ Rejouer toutes les migrations sur une base vierge donne un schéma identique à 
 netlify/
   functions/       # Fonctions Netlify (proxy Open Food Facts)
 src/
-  components/      # UI par domaine (Auth, Dashboard, Journal, Settings, etc.)
+  components/      # UI par domaine (Auth, Dashboard, Journal, Goals, Profile, Account, etc.)
   contexts/        # Contexte d'authentification (AuthContext) et hook useAuth
   lib/             # Clients/abstractions (supabase, APIs nutrition)
   services/        # Accès Supabase (objectifs, cibles quotidiennes)
@@ -136,8 +136,8 @@ src/
 ## Compte utilisateur (RGPD)
 
 - **Mot de passe oublié** : le lien envoyé par Supabase ramène sur l'application, qui affiche l'écran « Nouveau mot de passe ». L'URL du site (production et, si besoin, `http://localhost:5173`) doit figurer dans **Supabase → Authentication → URL Configuration** (*Site URL* / *Redirect URLs*), sinon le lien renvoie vers l'URL par défaut du projet.
-- **Export** : Paramètres → Compte → « Télécharger mes données » produit un fichier JSON (profil, objectifs, cibles quotidiennes, journal, pesées, aliments personnels).
-- **Suppression** : Paramètres → Compte → « Supprimer définitivement mon compte » appelle la fonction SQL `delete_my_account()`, qui supprime l'utilisateur connecté ; toutes ses données sont effacées en cascade.
+- **Export** : menu du compte (avatar) → Compte et sécurité → « Télécharger mes données » produit un fichier JSON (profil, objectifs, cibles quotidiennes, journal, pesées, aliments personnels).
+- **Suppression** : menu du compte (avatar) → Compte et sécurité → « Supprimer définitivement mon compte » appelle la fonction SQL `delete_my_account()`, qui supprime l'utilisateur connecté ; toutes ses données sont effacées en cascade.
 
 ## Notes
 

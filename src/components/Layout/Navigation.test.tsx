@@ -14,7 +14,7 @@ describe('Navigation', () => {
     render(<Navigation currentView="dashboard" onViewChange={vi.fn()} />);
     const { mobile } = getBars();
 
-    for (const name of ['Journal', 'Tendances', 'Paramètres']) {
+    for (const name of ['Journal', 'Tendances', 'Objectif']) {
       expect(within(mobile).getByRole('button', { name })).toBeInTheDocument();
     }
   });
@@ -34,10 +34,10 @@ describe('Navigation', () => {
     const { desktop, mobile } = getBars();
     const user = userEvent.setup();
 
-    await user.click(within(mobile).getByRole('button', { name: 'Paramètres' }));
+    await user.click(within(mobile).getByRole('button', { name: 'Objectif' }));
     await user.click(within(desktop).getByRole('button', { name: 'Tendances' }));
 
-    expect(onViewChange).toHaveBeenNthCalledWith(1, 'settings');
+    expect(onViewChange).toHaveBeenNthCalledWith(1, 'goal');
     expect(onViewChange).toHaveBeenNthCalledWith(2, 'trends');
   });
 });

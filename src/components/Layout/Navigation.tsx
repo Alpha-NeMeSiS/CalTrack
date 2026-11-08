@@ -1,11 +1,13 @@
 // Barre de navigation principale
-// Permet de naviguer entre les vues : Tableau de bord, Tendances et Paramètres.
+// Permet de naviguer entre les vues du quotidien : Tableau de bord, Tendances et
+// Objectif. Le profil et le compte sont dans le menu de l'avatar (en-tête).
 // - Ordinateur / tablette (≥ sm) : onglets en haut de page.
 // - Mobile : barre d'onglets fixée en bas de l'écran, avec icône ET libellé
 //   (auparavant, seules les icônes s'affichaient, sans nom accessible).
-import { Home, TrendingUp, Settings as SettingsIcon } from 'lucide-react';
+import { Home, Target, TrendingUp } from 'lucide-react';
+import type { AppView } from '../../utils/navigation';
 
-export type AppView = 'dashboard' | 'trends' | 'settings';
+export type { AppView };
 
 interface NavigationProps {
   currentView: AppView;
@@ -15,7 +17,7 @@ interface NavigationProps {
 const tabs = [
   { id: 'dashboard' as const, label: 'Tableau de bord', shortLabel: 'Journal', icon: Home },
   { id: 'trends' as const, label: 'Tendances', shortLabel: 'Tendances', icon: TrendingUp },
-  { id: 'settings' as const, label: 'Paramètres', shortLabel: 'Paramètres', icon: SettingsIcon },
+  { id: 'goal' as const, label: 'Objectif', shortLabel: 'Objectif', icon: Target },
 ];
 
 export function Navigation({ currentView, onViewChange }: NavigationProps) {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { calculateCompleteTargets, UserProfile } from './calculations';
 import {
   buildDailyTargetPayload,
+  buildGoalHistory,
   buildGoalInsertPayload,
   chooseBmrMethod,
   computeGoalEndDate,
@@ -291,3 +292,43 @@ describe('fin d’objectif : bascule en maintien', () => {
     expect(hasGoalStarted(null, '2025-06-01')).toBe(false);
   });
 });
+
+describe('buildGoalHistory', () => {
+  const goal = (id: string, start: string, end: string | null, isActive = false) => ({
+    id,
+    start_date: start,
+    end_date: end,
+    created_at: `${start}T08:00:00Z`,
+    is_active: isActive,
+  });
+
+  it("liste les objectifs passés du plus récent au plus ancien, sans l'objectif actif", () => {
+    const history = buildGoalHistory([
+      goal('a', '2025-01-01', '2025-03-01'),
+      goal('c', '2025-06-01', null, true),
+      goal('b', '2025-03-10', '2025-06-30'),
+    ]);
+
+    expect(history.map((item) => item.goal.id)).toEqual(['b', 'a']);
+    // Terminé à sa date prévue
+    expect(history[1]).toMatchObject({ start: '2025-01-01', end: '2025-03-01', replaced: false });
+    // Remplacé avant sa fin prévue : s'arrête la veille du suivant
+    expect(history[0]).toMatchObject({ start: '2025-03-10', end: '2025-05-31', replaced: true });
+  });
+
+  it('gère un objectif sans fin remplacé, et un remplacement le jour même', () => {
+    const history = buildGoalHistory([
+      goal('a', '2025-01-01', null),
+      goal('b', '2025-02-01', null),
+      goal('c', '2025-02-01', null, true),
+    ]);
+
+    expect(history.find((item) => item.goal.id === 'a')).toMatchObject({ end: '2025-01-31', replaced: true });
+    expect(history.find((item) => item.goal.id === 'b')).toMatchObject({ start: '2025-02-01', end: '2025-02-01', replaced: true });
+  });
+
+  it("renvoie une liste vide s'il n'y a que l'objectif actif", () => {
+    expect(buildGoalHistory([goal('a', '2025-01-01', null, true)])).toEqual([]);
+  });
+});
+

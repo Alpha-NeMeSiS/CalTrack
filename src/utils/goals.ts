@@ -238,3 +238,46 @@ export function buildDailyTargetPayload(
     goal_id: goal.id,
   };
 }
+
+export interface GoalHistoryItem<T> {
+  goal: T;
+  /** Premier jour de l'objectif */
+  start: string | null;
+  /** Dernier jour effectif : fin prévue, ou veille du démarrage de l'objectif suivant */
+  end: string | null;
+  /** true si l'objectif a été remplacé avant sa date de fin prévue */
+  replaced: boolean;
+}
+
+/**
+ * Historique des objectifs passés (le plus récent d'abord), sans l'objectif actif.
+ * Un objectif s'arrête à sa date de fin, ou plus tôt s'il a été remplacé.
+ */
+export function buildGoalHistory<T extends Pick<GoalLike, 'id' | 'start_date' | 'end_date' | 'created_at'> & { is_active?: boolean }>(
+  goals: readonly T[]
+): GoalHistoryItem<T>[] {
+  const byStart = [...goals].sort((a, b) => {
+    const startA = getGoalStartDate(a) ?? '';
+    const startB = getGoalStartDate(b) ?? '';
+    return startA === startB ? (a.created_at ?? '').localeCompare(b.created_at ?? '') : startA.localeCompare(startB);
+  });
+
+  const history = byStart.map((goal, index) => {
+    const start = getGoalStartDate(goal);
+    const next = byStart[index + 1];
+    const nextStart = next ? getGoalStartDate(next) : null;
+    const replacedOn = nextStart ? addDaysToDateString(nextStart, -1) : null;
+    const plannedEnd = goal.end_date ?? null;
+
+    let end = plannedEnd;
+    let replaced = false;
+    if (replacedOn && (!plannedEnd || replacedOn < plannedEnd)) {
+      // Remplacé le jour même de son début : la période est réduite à ce jour
+      end = start && replacedOn < start ? start : replacedOn;
+      replaced = true;
+    }
+    return { goal, start, end, replaced };
+  });
+
+  return history.filter((item) => !item.goal.is_active).reverse();
+}

@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Dashboard } from './Dashboard';
+import { NAVIGATE_EVENT } from '../../utils/navigation';
 import { supabaseMock, hasOperation, getOperationArgs } from '../../test/supabaseMock';
 import { makeDailyTarget, makeEntry, makeGoal, makeProfile } from '../../test/fixtures';
 import { ensureDailyTargetForDate, fetchUserGoals } from '../../services/goals';
@@ -123,7 +124,7 @@ describe('Dashboard', () => {
     render(<Dashboard activeDate="2025-03-15" onActiveDateChange={onActiveDateChange} />);
 
     expect(await screen.findByText('Aucun objectif défini pour cette date')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Aller aux paramètres' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Définir un objectif' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ajouter' })).not.toBeInTheDocument();
 
     // Le sélecteur de date reste disponible : on peut revenir à une autre journée
@@ -141,7 +142,7 @@ describe('Dashboard', () => {
     mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget({ date: '2025-04-10', calories_kcal: 2400 }));
     setEntries([]);
     const listener = vi.fn();
-    window.addEventListener('navigate-to-settings', listener);
+    window.addEventListener(NAVIGATE_EVENT, listener);
 
     render(<Dashboard activeDate="2025-04-10" />);
 
@@ -151,22 +152,22 @@ describe('Dashboard', () => {
     expect(screen.getByText('Journal du jour')).toBeInTheDocument();
 
     await userEvent.setup().click(screen.getByRole('button', { name: 'Définir un nouvel objectif' }));
-    expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual({ tab: 'goal' });
-    window.removeEventListener('navigate-to-settings', listener);
+    expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual({ view: 'goal' });
+    window.removeEventListener(NAVIGATE_EVENT, listener);
   });
 
-  it("« Aller aux paramètres » ouvre l'onglet Objectif", async () => {
+  it("« Définir un objectif » ouvre l'onglet Objectif", async () => {
     mockedFetchUserGoals.mockResolvedValue([]);
     mockedEnsureDailyTarget.mockResolvedValue(null);
     setEntries([]);
     const listener = vi.fn();
-    window.addEventListener('navigate-to-settings', listener);
+    window.addEventListener(NAVIGATE_EVENT, listener);
 
     render(<Dashboard activeDate="2025-03-15" />);
-    await userEvent.setup().click(await screen.findByRole('button', { name: 'Aller aux paramètres' }));
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Définir un objectif' }));
 
-    expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual({ tab: 'goal' });
-    window.removeEventListener('navigate-to-settings', listener);
+    expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual({ view: 'goal' });
+    window.removeEventListener(NAVIGATE_EVENT, listener);
   });
 
   it('ignore un champ date vidé', async () => {
