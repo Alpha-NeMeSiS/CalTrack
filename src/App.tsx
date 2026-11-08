@@ -1,5 +1,6 @@
 // Composant racine de l'application
-// Gère l'authentification et la navigation entre vues (dashboard, tendances, paramètres)
+// Gère l'authentification et la navigation entre vues (tableau de bord, tendances,
+// objectif, et profil / compte depuis le menu de l'avatar)
 import { useState, useEffect } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/useAuth';
@@ -8,11 +9,14 @@ import { SignupForm } from './components/Auth/SignupForm';
 import { PasswordRecoveryScreen } from './components/Auth/PasswordRecoveryScreen';
 import { OnboardingForm } from './components/Onboarding/OnboardingForm';
 import { Header } from './components/Layout/Header';
-import { Navigation, AppView } from './components/Layout/Navigation';
+import { Navigation } from './components/Layout/Navigation';
 import { Dashboard } from './components/Dashboard/Dashboard';
 import { WeeklyTrends } from './components/Stats/WeeklyTrends';
-import { Settings, SettingsTab } from './components/Settings/Settings';
+import { GoalPage } from './components/Goals/GoalPage';
+import { ProfilePage } from './components/Profile/ProfilePage';
+import { AccountPage } from './components/Account/AccountPage';
 import { getTodayDate } from './utils/date';
+import { AppView, isAppView, NAVIGATE_EVENT, NavigateEventDetail } from './utils/navigation';
 
 function AppContent() {
   // Récupère l'état d'authentification et le profil utilisateur
@@ -20,32 +24,24 @@ function AppContent() {
   const [retryingProfile, setRetryingProfile] = useState(false);
   // Mode d'auth (login / signup) pour l'écran d'authentification
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-  // Vue courante affichée dans l'application: dashboard, tendances ou paramètres
+  // Vue courante : tableau de bord, tendances, objectif, profil ou compte
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
   const [dashboardDate, setDashboardDate] = useState<string>(() => getTodayDate());
-  // Onglet à ouvrir dans Paramètres (ex : « Objectif » depuis le tableau de bord)
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>('profile');
 
-  // Écouteur global pour naviguer vers les paramètres depuis d'autres composants
+  // Changement de vue demandé par un composant (menu du compte, bandeau d'objectif…)
   useEffect(() => {
-    const handleNavigateToSettings = (event: Event) => {
-      const tab = (event as CustomEvent<{ tab?: SettingsTab }>).detail?.tab;
-      setSettingsTab(tab === 'goal' || tab === 'account' ? tab : 'profile');
-      setCurrentView('settings');
+    const handleNavigate = (event: Event) => {
+      const view = (event as CustomEvent<NavigateEventDetail>).detail?.view;
+      if (isAppView(view)) setCurrentView(view);
     };
-
-    const handleNavigateToBoard = () => {
-      setCurrentView('dashboard');
-    };
-
-    window.addEventListener('navigate-to-settings', handleNavigateToSettings);
-    window.addEventListener('navigate-to-board', handleNavigateToBoard);
-
-    return () => {
-      window.removeEventListener('navigate-to-settings', handleNavigateToSettings);
-      window.removeEventListener('navigate-to-board', handleNavigateToBoard);
-    };
+    window.addEventListener(NAVIGATE_EVENT, handleNavigate);
+    return () => window.removeEventListener(NAVIGATE_EVENT, handleNavigate);
   }, []);
+
+  // Nouvelle vue : revenir en haut de page
+  useEffect(() => {
+    window.scrollTo?.({ top: 0 });
+  }, [currentView]);
 
   // Affiche un écran de chargement tant que l'authentification/profile n'est pas prête
   if (loading) {
@@ -130,13 +126,7 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <Navigation
-        currentView={currentView}
-        onViewChange={(view) => {
-          if (view === 'settings') setSettingsTab('profile');
-          setCurrentView(view);
-        }}
-      />
+      <Navigation currentView={currentView} onViewChange={setCurrentView} />
 
       {/* pb-28 sur mobile : place pour la barre d'onglets fixée en bas et le bouton « Ajouter » */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-28 sm:py-8">
@@ -144,7 +134,9 @@ function AppContent() {
           <Dashboard activeDate={dashboardDate} onActiveDateChange={setDashboardDate} />
         )}
         {currentView === 'trends' && <WeeklyTrends />}
-        {currentView === 'settings' && <Settings key={settingsTab} initialTab={settingsTab} />}
+        {currentView === 'goal' && <GoalPage />}
+        {currentView === 'profile' && <ProfilePage />}
+        {currentView === 'account' && <AccountPage />}
       </main>
     </div>
   );

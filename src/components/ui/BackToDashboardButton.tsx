@@ -1,3 +1,5 @@
+import { navigateTo } from '../../utils/navigation';
+
 export type Props = {
   href?: string;
   label?: string;
@@ -19,7 +21,7 @@ const BackToDashboardButton = ({
   const classes = className ? `${baseClasses} ${className}` : baseClasses;
 
   const navigate = () => {
-    window.dispatchEvent(new CustomEvent('navigate-to-board'));
+    navigateTo('dashboard');
     if (href !== '/dashboard') {
       window.location.hash = href;
     }

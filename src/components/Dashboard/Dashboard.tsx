@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/useAuth';
 import { calculateDailySummary } from '../../utils/calculations';
 import { addDaysToDateString, getTodayDate, isDateOnlyString, parseLocalDate } from '../../utils/date';
 import { findGoalForDate, isGoalEndedOn } from '../../utils/goals';
+import { navigateTo } from '../../utils/navigation';
 import { formatDateFR } from '../../lib/timeProgress';
 import { ensureDailyTargetForDate, fetchUserGoals } from '../../services/goals';
 import { recordWeight } from '../../services/weights';
@@ -243,9 +244,8 @@ export function Dashboard({
     onActiveDateChange?.(nextDate);
   };
 
-  // Ouvre Paramètres directement sur l'onglet Objectif
-  const openGoalSettings = () =>
-    window.dispatchEvent(new CustomEvent('navigate-to-settings', { detail: { tab: 'goal' } }));
+  // Ouvre l'onglet Objectif
+  const openGoalPage = () => navigateTo('goal');
 
   // En-tête toujours affiché : il permet de changer de date même quand la
   // journée n'a pas d'objectif ou n'a pas pu être chargée.
@@ -320,10 +320,10 @@ export function Dashboard({
             <div className="flex items-center justify-center gap-4">
               <button
                 type="button"
-                onClick={() => openGoalSettings()}
+                onClick={() => openGoalPage()}
                 className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors"
               >
-                Aller aux paramètres
+                Définir un objectif
               </button>
             </div>
           </div>
@@ -353,7 +353,7 @@ export function Dashboard({
             <span className="font-semibold">Objectif terminé le {formatDateFR(parseLocalDate(goalForDate.end_date))}.</span>{' '}
             Vos journées sont maintenant suivies en maintien ({Math.round(target.calories_kcal)} kcal).
           </p>
-          <button type="button" onClick={openGoalSettings} className="btn-kaizen whitespace-nowrap text-sm">
+          <button type="button" onClick={openGoalPage} className="btn-kaizen whitespace-nowrap text-sm">
             Définir un nouvel objectif
           </button>
         </div>

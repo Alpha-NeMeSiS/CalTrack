@@ -1,7 +1,8 @@
 // En-tête global de l'application
-// Affiche le logo, le nom de l'app et l'état de l'utilisateur (email + bouton de déconnexion)
-import { LogOut, User } from 'lucide-react';
+// Affiche le logo, le nom de l'app et le menu du compte (profil, compte, déconnexion)
 import { useAuth } from '../../contexts/useAuth';
+import { navigateTo } from '../../utils/navigation';
+import { AccountMenu } from './AccountMenu';
 import logo from '../../Image/logo.png';
 export function Header() {
   const { profile, signOut } = useAuth();
@@ -20,24 +21,9 @@ export function Header() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            {profile && (
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <User className="w-4 h-4" />
-                <span className="hidden sm:inline">{profile.email}</span>
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={signOut}
-              aria-label="Déconnexion"
-              className="btn-shonen-accent flex items-center gap-2"
-            >
-              <LogOut className="w-4 h-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Déconnexion</span>
-            </button>
-          </div>
+          {profile && (
+            <AccountMenu email={profile.email} onNavigate={navigateTo} onSignOut={() => signOut()} />
+          )}
         </div>
       </div>
     </header>
