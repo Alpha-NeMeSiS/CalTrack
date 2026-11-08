@@ -8,6 +8,7 @@ import { WeightChart } from './WeightChart';
 import { InsightsPanel } from './InsightsPanel';
 import { useAuth } from '../../contexts/useAuth';
 import { calculateBMR, calculateDailySummary, calculateTDEE } from '../../utils/calculations';
+import { chooseBmrMethod } from '../../utils/goals';
 import type { DayIntake } from '../../utils/insights';
 import { addDaysToDateString, getTodayDate, parseLocalDate } from '../../utils/date';
 import {
@@ -78,7 +79,7 @@ export function WeeklyTrends() {
   const formulaExpenditure = useMemo(
     () =>
       activeGoal && profile
-        ? Math.round(calculateTDEE(calculateBMR(profile, activeGoal.method), Number(activeGoal.activity_level)))
+        ? Math.round(calculateTDEE(calculateBMR(profile, chooseBmrMethod(profile)), Number(activeGoal.activity_level)))
         : null,
     [activeGoal, profile]
   );

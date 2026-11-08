@@ -11,6 +11,11 @@ export const PROFILE_LIMITS = {
   poids_kg: { min: 30, max: 300 },
   body_fat_pct: { min: 3, max: 60 },
   age: { min: 10, max: 120 },
+  // Mesures détaillées facultatives (balance impédancemètre, bilan)
+  body_water_pct: { min: 30, max: 80 },
+  visceral_fat_rating: { min: 1, max: 59 },
+  muscle_mass_kg: { min: 10, max: 150 },
+  bone_mass_kg: { min: 0.5, max: 10 },
 } as const;
 
 export const GOAL_LIMITS = {
@@ -26,7 +31,14 @@ export interface ProfileInput {
   taille_cm: number;
   poids_kg: number;
   body_fat_pct?: number | null;
+  body_water_pct?: number | null;
+  visceral_fat_rating?: number | null;
+  muscle_mass_kg?: number | null;
+  bone_mass_kg?: number | null;
 }
+
+/** Nombre au format français (virgule décimale) pour les messages */
+const formatLimit = (value: number) => String(value).replace('.', ',');
 
 export interface GoalFormInput {
   type: GoalType;
@@ -82,6 +94,42 @@ export function validateProfileInput(profile: ProfileInput, today: Date = new Da
     errors.push(
       `Le taux de masse grasse doit être compris entre ${PROFILE_LIMITS.body_fat_pct.min} et ${PROFILE_LIMITS.body_fat_pct.max} %.`
     );
+  }
+
+  // Mesures détaillées : toutes facultatives
+  const { body_water_pct, visceral_fat_rating, muscle_mass_kg, bone_mass_kg } = profile;
+  if (isProvided(body_water_pct) && !isInRange(body_water_pct, PROFILE_LIMITS.body_water_pct)) {
+    errors.push(
+      `Le taux d’eau doit être compris entre ${PROFILE_LIMITS.body_water_pct.min} et ${PROFILE_LIMITS.body_water_pct.max} %.`
+    );
+  }
+  if (
+    isProvided(visceral_fat_rating) &&
+    !(Number.isInteger(visceral_fat_rating) && isInRange(visceral_fat_rating, PROFILE_LIMITS.visceral_fat_rating))
+  ) {
+    errors.push(
+      `L’indice de graisse viscérale doit être un nombre entier entre ${PROFILE_LIMITS.visceral_fat_rating.min} et ${PROFILE_LIMITS.visceral_fat_rating.max}.`
+    );
+  }
+  const muscleValid = isProvided(muscle_mass_kg) && isInRange(muscle_mass_kg, PROFILE_LIMITS.muscle_mass_kg);
+  if (isProvided(muscle_mass_kg) && !muscleValid) {
+    errors.push(
+      `La masse musculaire doit être comprise entre ${PROFILE_LIMITS.muscle_mass_kg.min} et ${PROFILE_LIMITS.muscle_mass_kg.max} kg.`
+    );
+  }
+  const boneValid = isProvided(bone_mass_kg) && isInRange(bone_mass_kg, PROFILE_LIMITS.bone_mass_kg);
+  if (isProvided(bone_mass_kg) && !boneValid) {
+    errors.push(
+      `La masse osseuse doit être comprise entre ${formatLimit(PROFILE_LIMITS.bone_mass_kg.min)} et ${formatLimit(PROFILE_LIMITS.bone_mass_kg.max)} kg.`
+    );
+  }
+  if (
+    muscleValid &&
+    isInRange(profile.poids_kg, PROFILE_LIMITS.poids_kg) &&
+    muscle_mass_kg + (boneValid ? bone_mass_kg : 0) >= profile.poids_kg
+  ) {
+    const subject = boneValid ? 'La masse musculaire et la masse osseuse dépassent' : 'La masse musculaire dépasse';
+    errors.push(`${subject} votre poids (${formatLimit(profile.poids_kg)} kg) : vérifiez les valeurs.`);
   }
 
   return errors;

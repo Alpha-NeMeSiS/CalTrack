@@ -10,7 +10,7 @@ import { calculateBMR, calculateTDEE, calculateOptimalDeficitOrSurplus } from '.
 import { getTodayDate } from '../../utils/date';
 import { activateNewGoal } from '../../services/goals';
 import { validateGoalInput } from '../../utils/validation';
-import { DEFAULT_PROTEIN_G_PER_KG } from '../../utils/goals';
+import { chooseBmrMethod, DEFAULT_PROTEIN_G_PER_KG } from '../../utils/goals';
 import { GoalTargetsPreview } from './GoalTargetsPreview';
 
 const PROTEIN_OPTIONS = [
@@ -188,7 +188,7 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
                       setGoalData({ ...goalData, target_weight_kg: value });
 
                       if (value && goalData.duration_weeks && profile) {
-                        const bmr = calculateBMR(profile, profile.body_fat_pct ? 'katch' : 'mifflin');
+                        const bmr = calculateBMR(profile, chooseBmrMethod(profile));
                         const tdee = calculateTDEE(bmr, goalData.activity_level);
                         const optimal = calculateOptimalDeficitOrSurplus(
                           profile.poids_kg,
@@ -221,7 +221,7 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
                       setGoalData({ ...goalData, duration_weeks: value });
 
                       if (value && goalData.target_weight_kg && profile) {
-                        const bmr = calculateBMR(profile, profile.body_fat_pct ? 'katch' : 'mifflin');
+                        const bmr = calculateBMR(profile, chooseBmrMethod(profile));
                         const tdee = calculateTDEE(bmr, goalData.activity_level);
                         const optimal = calculateOptimalDeficitOrSurplus(
                           profile.poids_kg,
@@ -307,7 +307,7 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
             onApplyDuration={(weeks) => {
               const next = { ...goalData, duration_weeks: weeks };
               if (goalData.target_weight_kg && goalData.goal_type !== 'maintain') {
-                const tdee = calculateTDEE(calculateBMR(profile, profile.body_fat_pct ? 'katch' : 'mifflin'), goalData.activity_level);
+                const tdee = calculateTDEE(calculateBMR(profile, chooseBmrMethod(profile)), goalData.activity_level);
                 next.deficit_or_surplus_pct = calculateOptimalDeficitOrSurplus(
                   profile.poids_kg, goalData.target_weight_kg, weeks, tdee, goalData.goal_type
                 );

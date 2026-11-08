@@ -121,6 +121,8 @@ Les migrations SQL se trouvent dans `supabase/migrations/`. Elles sont **aligné
 | `20261108023725` | Rappels push : table `push_subscriptions` (un abonnement par appareil), heures et fuseau des rappels, fonction `claim_due_reminders` |
 | `20261108024047` | Planification des rappels : clés VAPID et secret dans Supabase Vault, tâche `pg_cron` toutes les 15 min appelant l'Edge Function `send-reminders` |
 | `20261108125514` | Identité du profil : prénom, nom et photo (contraintes), suppression de ses photos et limites du stockage `profile-pictures` (2 Mo, JPEG / PNG / WebP) |
+| `20261108162630` | Correctif : prénom et nom `NULL` par défaut (le `''` hérité bloquait la création du profil à l'onboarding depuis les contraintes d'identité) |
+| `20261108162648` | Mesures détaillées facultatives du profil : taux d'eau, graisse viscérale, masse musculaire, masse osseuse (avec bornes) |
 
 Rejouer toutes les migrations sur une base vierge donne un schéma identique à la production (vérifié par empreinte des colonnes, contraintes, index, politiques RLS et buckets).
 
@@ -151,6 +153,7 @@ docs/
 
 - **Mot de passe oublié** : le lien envoyé par Supabase ramène sur l'application, qui affiche l'écran « Nouveau mot de passe ». L'URL du site (production et, si besoin, `http://localhost:5173`) doit figurer dans **Supabase → Authentication → URL Configuration** (*Site URL* / *Redirect URLs*), sinon le lien renvoie vers l'URL par défaut du projet.
 - **Mon profil** (menu de l'avatar) : photo de profil (recadrée et réduite dans le navigateur, stockée dans `profile-pictures/<id utilisateur>/`), prénom, nom, email, mot de passe, repères, pesée et données corporelles. La photo et le nom s'affichent dans l'en-tête.
+- **Mesures détaillées** (Mon profil → Données corporelles, facultatives) : masse musculaire, masse osseuse, eau corporelle, graisse viscérale (valeurs d'une balance impédancemètre ou d'un bilan). Elles servent à estimer la masse maigre (`estimateLeanMass`, dans cet ordre : masse grasse, puis muscles + os, puis muscles seuls, puis eau ÷ 0,732 ; une estimation invraisemblable est écartée). Avec une masse maigre connue, le métabolisme de base utilise Katch-McArdle, sinon Mifflin-St Jeor ; la formule suit les mesures actuelles du profil, y compris pour un objectif déjà créé. La graisse viscérale est un simple indicateur, sans effet sur le calcul.
 - **Changement d'email** : menu du compte (avatar) → Mon profil. Supabase envoie un lien de confirmation (à l'ancienne et à la nouvelle adresse si *Secure email change* est activé dans Authentication → Providers → Email). L'adresse ne change qu'après confirmation ; `profiles.email` est alors mis à jour par un déclencheur SQL.
 - **Déconnexion** : « Se déconnecter » (menu de l'avatar) ferme la session de cet appareil uniquement ; « Se déconnecter de tous les appareils » (Compte et sécurité) révoque toutes les sessions. La suppression du compte efface aussi les photos de profil.
 - **Retour des liens** : un lien expiré ou déjà utilisé, ou la première étape d'un changement d'email, affiche un message en haut de l'écran.

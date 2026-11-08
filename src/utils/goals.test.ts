@@ -45,6 +45,13 @@ describe('chooseBmrMethod', () => {
     expect(chooseBmrMethod({ body_fat_pct: 0 })).toBe('mifflin');
     expect(chooseBmrMethod({})).toBe('mifflin');
   });
+
+  it('Katch aussi avec les mesures détaillées (masse musculaire, eau)', () => {
+    expect(chooseBmrMethod({ poids_kg: 80, muscle_mass_kg: 58.5, bone_mass_kg: 3.1 })).toBe('katch');
+    expect(chooseBmrMethod({ poids_kg: 80, body_water_pct: 55 })).toBe('katch');
+    // La graisse viscérale seule ne permet pas d'estimer la masse maigre
+    expect(chooseBmrMethod({ poids_kg: 80, visceral_fat_rating: 9 })).toBe('mifflin');
+  });
 });
 
 describe('computeGoalEndDate', () => {
@@ -190,6 +197,24 @@ describe('computeTargetsForGoal / buildDailyTargetPayload', () => {
       fat_g_per_kg_min: 0.8,
     });
     expect(computeTargetsForGoal(profile, maintainGoal)).toEqual(expected);
+  });
+
+  it('utilise les mesures du profil actuel, même ajoutées après la création de l’objectif', () => {
+    // Objectif créé sans masse grasse connue (method « mifflin »)
+    const withLeanMass = { ...profile, muscle_mass_kg: 52, bone_mass_kg: 2.8 };
+    const expected = calculateCompleteTargets(withLeanMass, {
+      type: 'maintain',
+      activity_level: 1.375,
+      method: 'katch',
+      deficit_or_surplus_pct: 0,
+      protein_g_per_kg: 2,
+      fat_g_per_kg_min: 0.8,
+    });
+    expect(maintainGoal.method).toBe('mifflin');
+    expect(computeTargetsForGoal(withLeanMass, maintainGoal)).toEqual(expected);
+    expect(computeTargetsForGoal(withLeanMass, maintainGoal).calories_kcal).not.toBe(
+      computeTargetsForGoal(profile, maintainGoal).calories_kcal
+    );
   });
 
   it('construit la ligne daily_targets liée à l’objectif', () => {

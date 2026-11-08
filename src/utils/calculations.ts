@@ -6,6 +6,12 @@ export interface UserProfile {
   taille_cm: number;
   poids_kg: number;
   body_fat_pct?: number | null;
+  /** Mesures détaillées facultatives (balance impédancemètre, bilan) */
+  body_water_pct?: number | null;
+  /** Indice de graisse viscérale : indicateur de santé, non utilisé dans les calculs */
+  visceral_fat_rating?: number | null;
+  muscle_mass_kg?: number | null;
+  bone_mass_kg?: number | null;
 }
 
 export interface GoalParams {
@@ -128,13 +134,71 @@ export function calculateAge(dateNaissance: string, today: Date = new Date()): n
   return age;
 }
 
+// --- Masse maigre (masse sans graisse) ---------------------------------------
+
+/** Mesure qui a servi à estimer la masse maigre */
+export type LeanMassSource = 'body_fat' | 'muscle_bone' | 'muscle' | 'water';
+
+export interface LeanMassEstimate {
+  kg: number;
+  source: LeanMassSource;
+}
+
+/** La masse maigre contient environ 73 % d'eau (constante d'hydratation). */
+export const LEAN_MASS_HYDRATION = 0.732;
+/** Les os représentent environ 5 % de la masse maigre. */
+export const BONE_SHARE_OF_LEAN_MASS = 0.05;
+/** Part plausible de la masse maigre dans le poids (masse grasse de 3 à 60 %). */
+const LEAN_MASS_RATIO = { min: 0.4, max: 0.97 };
+
+const isPositive = (value: number | null | undefined): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0;
+
+/**
+ * Estime la masse maigre à partir de la mesure la plus directe disponible :
+ * 1. taux de masse grasse : poids × (1 − masse grasse) ;
+ * 2. masse musculaire + masse osseuse (balances impédancemètres : graisse +
+ *    muscles + os ≈ poids) ;
+ * 3. masse musculaire seule (os estimés à 5 % de la masse maigre) ;
+ * 4. taux d'eau : eau ÷ 0,732.
+ * Une estimation invraisemblable (hors 40-97 % du poids) est écartée au profit
+ * de la mesure suivante. La graisse viscérale n'intervient pas.
+ * Retourne null si aucune mesure n'est exploitable (on utilise alors Mifflin).
+ */
+export function estimateLeanMass(profile: Partial<UserProfile>): LeanMassEstimate | null {
+  const weight = profile.poids_kg;
+  if (!isPositive(weight)) return null;
+
+  const candidates: [LeanMassSource, number | null][] = [
+    ['body_fat', isPositive(profile.body_fat_pct) ? weight * (1 - profile.body_fat_pct / 100) : null],
+    [
+      'muscle_bone',
+      isPositive(profile.muscle_mass_kg) && isPositive(profile.bone_mass_kg)
+        ? profile.muscle_mass_kg + profile.bone_mass_kg
+        : null,
+    ],
+    ['muscle', isPositive(profile.muscle_mass_kg) ? profile.muscle_mass_kg / (1 - BONE_SHARE_OF_LEAN_MASS) : null],
+    ['water', isPositive(profile.body_water_pct) ? (weight * profile.body_water_pct) / 100 / LEAN_MASS_HYDRATION : null],
+  ];
+
+  for (const [source, kg] of candidates) {
+    if (kg === null) continue;
+    const ratio = kg / weight;
+    if (ratio >= LEAN_MASS_RATIO.min && ratio <= LEAN_MASS_RATIO.max) {
+      return { kg: Math.round(kg * 10) / 10, source };
+    }
+  }
+  return null;
+}
+
 export function calculateBMR(profile: UserProfile, method: 'mifflin' | 'katch' = 'mifflin'): number {
-  const { sexe, date_naissance, taille_cm, poids_kg, body_fat_pct } = profile;
+  const { sexe, date_naissance, taille_cm, poids_kg } = profile;
   const age = calculateAge(date_naissance);
 
-  if (method === 'katch' && body_fat_pct !== undefined && body_fat_pct !== null) {
-    const lbm = poids_kg * (1 - body_fat_pct / 100);
-    return 370 + 21.6 * lbm;
+  // Katch-McArdle : basée sur la masse maigre, plus précise quand elle est connue
+  const leanMass = method === 'katch' ? estimateLeanMass(profile) : null;
+  if (leanMass) {
+    return 370 + 21.6 * leanMass.kg;
   }
 
   if (sexe === 'M') {
