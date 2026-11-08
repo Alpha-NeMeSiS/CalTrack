@@ -1,5 +1,10 @@
-export type FoodSource = 'ciqual' | 'off';
-export type SearchCategory = FoodSource;
+/**
+ * Origine d'un aliment : base Ciqual, Open Food Facts, aliment personnel
+ * (« Mes aliments ») ou historique (favoris et récents).
+ */
+export type FoodSource = 'ciqual' | 'off' | 'custom' | 'history';
+/** Catégories de la recherche */
+export type SearchCategory = 'ciqual' | 'off';
 
 export interface NormalizedFood {
   source: FoodSource;
@@ -17,4 +22,8 @@ export interface NormalizedFood {
   servingGrams?: number;
   /** Libellé de la portion (ex : « 1 pot (125 g) ») */
   servingLabel?: string;
+  /** Identifiant de l'aliment personnel (table foods), relié à l'entrée du journal */
+  foodId?: string;
+  /** Code-barres d'un aliment personnel */
+  barcode?: string;
 }

@@ -1,21 +1,31 @@
-// Modal pour ajouter une entrée alimentaire
-// Permet de rechercher un aliment, saisir la quantité et obtenir les valeurs nutritionnelles calculées
+// Fenêtre d'ajout d'un aliment au journal, en trois onglets :
+// - Recherche : favoris et récents (ajout en un tap), recherche Ciqual / Open
+//   Food Facts / mes aliments, scanner de code-barres, choix de la quantité ;
+// - Saisie manuelle : valeurs saisies à la main, enregistrables dans « Mes
+//   aliments » (avec le code-barres d'un produit scanné inconnu) ;
+// - Mes aliments : aliments personnels (utiliser, supprimer).
 import { KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, X } from 'lucide-react';
+import { Star, X } from 'lucide-react';
 import { FoodSearch } from '../Foods/FoodSearch';
+import { QuickFoods } from '../Foods/QuickFoods';
+import { useFoodLibrary } from '../Foods/useFoodLibrary';
 import { useAuth } from '../../contexts/useAuth';
 import { usePreferences } from '../../contexts/usePreferences';
 import { getMealLabel, getVisibleMeals } from '../../utils/preferences';
-import { Entry, supabase } from '../../lib/supabase';
+import { Entry } from '../../lib/supabase';
 import type { NormalizedFood } from '../../types/food';
 import { parseLocalDate } from '../../utils/date';
+import { cleanBarcodeInput, isValidGtin } from '../../utils/barcode';
+import { foodLabel, nutritionForQuantity, QuickFood } from '../../utils/foodLibrary';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 type AddEntryPayload = Pick<
   Entry,
   'food_id' | 'label' | 'qty_grammes' | 'kcal' | 'protein_g' | 'fat_g' | 'carbs_g' | 'fiber_g' | 'meal_type'
 >;
-type AddEntryMode = 'search' | 'manual' | 'quick';
+type AddEntryMode = 'search' | 'manual' | 'mine';
+/** Les valeurs de la saisie manuelle portent sur la quantité indiquée ou sur 100 g (étiquette) */
+type ValuesBasis = 'portion' | 'per100';
 
 type ManualFormState = {
   label: string;
@@ -37,7 +47,7 @@ interface AddEntryModalProps {
 const tabOptions: Array<{ value: AddEntryMode; label: string }> = [
   { value: 'search', label: 'Recherche' },
   { value: 'manual', label: 'Saisie manuelle' },
-  { value: 'quick', label: 'Ajout rapide' },
+  { value: 'mine', label: 'Mes aliments' },
 ];
 
 const defaultManualForm: ManualFormState = {
@@ -51,28 +61,14 @@ const defaultManualForm: ManualFormState = {
   meal_type: undefined,
 };
 
+const ADD_ERROR = "L'ajout a échoué. Vérifiez votre connexion puis réessayez.";
+
 function roundToOneDecimal(value: number) {
   return Math.round(value * 10) / 10;
 }
 
-function formatRecentDate(value: string) {
-  return new Intl.DateTimeFormat('fr-FR', {
-    day: '2-digit',
-    month: 'short',
-  }).format(parseLocalDate(value));
-}
-
-function getRecentEntryKey(entry: Pick<Entry, 'label' | 'qty_grammes' | 'kcal' | 'protein_g' | 'fat_g' | 'carbs_g' | 'fiber_g' | 'meal_type'>) {
-  return [
-    entry.label ?? '',
-    entry.qty_grammes,
-    entry.kcal,
-    entry.protein_g,
-    entry.fat_g,
-    entry.carbs_g,
-    entry.fiber_g,
-    entry.meal_type ?? '',
-  ].join('::');
+function formatEntryDate(value: string) {
+  return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(parseLocalDate(value));
 }
 
 function MealTypeSelector({
@@ -112,89 +108,28 @@ function MealTypeSelector({
 export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   const { user } = useAuth();
   const { preferences } = usePreferences();
+  const library = useFoodLibrary(user?.id);
   const [activeTab, setActiveTab] = useState<AddEntryMode>('search');
   const [selectedFood, setSelectedFood] = useState<NormalizedFood | null>(null);
   const [quantity, setQuantity] = useState<number>(100);
   const [mealType, setMealType] = useState<MealType | undefined>(undefined);
   const [manualForm, setManualForm] = useState<ManualFormState>(defaultManualForm);
   const [manualSubmitAttempted, setManualSubmitAttempted] = useState(false);
-  const [recentEntries, setRecentEntries] = useState<Entry[]>([]);
-  const [recentEntriesLoading, setRecentEntriesLoading] = useState(false);
-  const [recentEntriesLoaded, setRecentEntriesLoaded] = useState(false);
-  const [recentEntriesError, setRecentEntriesError] = useState<string | null>(null);
-  const [selectedRecentFood, setSelectedRecentFood] = useState<Entry | null>(null);
-  const [isQuickAddDialogOpen, setIsQuickAddDialogOpen] = useState(false);
-  const [quickQuantity, setQuickQuantity] = useState<number>(100);
-  const [quickMealType, setQuickMealType] = useState<MealType | undefined>(undefined);
+  const [valuesBasis, setValuesBasis] = useState<ValuesBasis>('portion');
+  const [saveToMyFoods, setSaveToMyFoods] = useState(false);
+  const [manualBarcode, setManualBarcode] = useState('');
+  const [manualFromScan, setManualFromScan] = useState(false);
+  const [barcodeError, setBarcodeError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [libraryMessage, setLibraryMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const quickQuantityInputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    if (activeTab !== 'quick' || recentEntriesLoaded || !user) {
-      return;
-    }
-
-    let isMounted = true;
-
-    const loadRecentEntries = async () => {
-      setRecentEntriesLoading(true);
-      setRecentEntriesError(null);
-
-      try {
-        const { data, error } = await supabase
-          .from('entries')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(50);
-
-        if (error) {
-          throw error;
-        }
-
-        if (!isMounted) return;
-
-        const deduped = new Map<string, Entry>();
-        for (const entry of (data as Entry[]) ?? []) {
-          const key = getRecentEntryKey(entry);
-          if (!deduped.has(key)) {
-            deduped.set(key, entry);
-          }
-          if (deduped.size >= 12) {
-            break;
-          }
-        }
-
-        setRecentEntries(Array.from(deduped.values()));
-        setRecentEntriesLoaded(true);
-      } catch (error) {
-        console.error('Erreur lors du chargement des aliments récents', error);
-        if (!isMounted) return;
-        setRecentEntriesError('Impossible de charger les aliments récents.');
-        setRecentEntriesLoaded(true);
-      } finally {
-        if (isMounted) {
-          setRecentEntriesLoading(false);
-        }
-      }
-    };
-
-    loadRecentEntries();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [activeTab, recentEntriesLoaded, user]);
 
   const isSearchQuantityValid = Number.isFinite(quantity) && quantity > 0;
-  const multiplier = isSearchQuantityValid ? quantity / 100 : 0;
-  const calculatedCalories = selectedFood ? Math.round(selectedFood.kcal_per_100g * multiplier) : 0;
-  const calculatedProtein = selectedFood ? roundToOneDecimal(selectedFood.protein_g * multiplier) : 0;
-  const calculatedFat = selectedFood ? roundToOneDecimal(selectedFood.fat_g * multiplier) : 0;
-  const calculatedCarbs = selectedFood ? roundToOneDecimal(selectedFood.carbs_g * multiplier) : 0;
-  const calculatedFiber = selectedFood ? roundToOneDecimal(selectedFood.fiber_g * multiplier) : 0;
+  const calculated = selectedFood
+    ? nutritionForQuantity(selectedFood, quantity)
+    : { kcal: 0, protein_g: 0, fat_g: 0, carbs_g: 0, fiber_g: 0 };
 
   const manualErrors = useMemo(() => {
     const errors: Partial<Record<keyof ManualFormState, string>> = {};
@@ -234,11 +169,24 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     setMealType(undefined);
   };
 
-  const resetQuickState = () => {
-    setSelectedRecentFood(null);
-    setIsQuickAddDialogOpen(false);
-    setQuickQuantity(100);
-    setQuickMealType(undefined);
+  const resetManualExtras = () => {
+    setSaveToMyFoods(false);
+    setManualBarcode('');
+    setManualFromScan(false);
+    setValuesBasis('portion');
+    setBarcodeError(null);
+  };
+
+  const switchTab = (tab: AddEntryMode) => {
+    setActiveTab(tab);
+    setSubmitError(null);
+    setLibraryMessage(null);
+    setConfirmDeleteId(null);
+    if (tab !== 'search') resetSearchState();
+    if (tab !== 'manual') {
+      setManualSubmitAttempted(false);
+      resetManualExtras();
+    }
   };
 
   const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -259,8 +207,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
       nextIndex = tabOptions.length - 1;
     }
 
-    const nextTab = tabOptions[nextIndex];
-    setActiveTab(nextTab.value);
+    switchTab(tabOptions[nextIndex].value);
     tabRefs.current[nextIndex]?.focus();
   };
 
@@ -273,16 +220,28 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
         onClose();
       } else {
         // Auparavant : aucun retour visible, le bouton revenait simplement à « Ajouter »
-        setSubmitError("L'ajout a échoué. Vérifiez votre connexion puis réessayez.");
+        setSubmitError(ADD_ERROR);
       }
       return success;
     } catch (error) {
       console.error("Erreur lors de l'ajout", error);
-      setSubmitError("L'ajout a échoué. Vérifiez votre connexion puis réessayez.");
+      setSubmitError(ADD_ERROR);
       return false;
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // --- Recherche ------------------------------------------------------------
+
+  const selectFood = (food: NormalizedFood, grams?: number, meal?: MealType) => {
+    // Aliment déjà connu (favori, journal) : sa quantité et son repas habituels
+    const usual = grams === undefined ? library.usualFor(food) : null;
+    setSelectedFood(food);
+    // Quantité habituelle, sinon portion du fabricant (ex : 1 pot de 125 g), sinon 100 g
+    setQuantity(grams ?? usual?.usualQty ?? food.servingGrams ?? 100);
+    setMealType(meal ?? usual?.usualMeal);
+    setLibraryMessage(null);
   };
 
   const handleSearchSubmit = async (event: React.FormEvent) => {
@@ -293,111 +252,136 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     }
 
     const id =
-      selectedFood.source === 'ciqual' && selectedFood.extCode
+      selectedFood.foodId ??
+      (selectedFood.source === 'ciqual' && selectedFood.extCode
         ? `ciqual:${selectedFood.extCode}`
         : selectedFood.source === 'off' && selectedFood.offCode
           ? `off:${selectedFood.offCode}`
-          : undefined;
+          : undefined);
 
     await submitEntry({
-      food_id: id,
-      label: selectedFood.brand ? `${selectedFood.brand} ${selectedFood.name}` : selectedFood.name,
+      ...(id ? { food_id: id } : {}),
+      label: foodLabel(selectedFood),
       qty_grammes: quantity,
-      kcal: calculatedCalories,
-      protein_g: calculatedProtein,
-      fat_g: calculatedFat,
-      carbs_g: calculatedCarbs,
-      fiber_g: calculatedFiber,
+      ...calculated,
       meal_type: mealType,
     });
+  };
+
+  /** Ajout en un tap : quantité et repas habituels */
+  const handleQuickAdd = async (item: QuickFood) => {
+    await submitEntry({
+      label: item.label,
+      qty_grammes: item.usualQty,
+      ...nutritionForQuantity(item.food, item.usualQty),
+      meal_type: item.usualMeal,
+    });
+  };
+
+  const toggleFavorite = async (food: NormalizedFood, grams: number) => {
+    setLibraryMessage(null);
+    try {
+      await library.toggleFavorite(food, Number.isFinite(grams) && grams > 0 ? grams : 100);
+    } catch (error) {
+      console.error('Erreur sur les favoris', error);
+      setLibraryMessage('Les favoris n’ont pas pu être mis à jour. Réessayez.');
+    }
+  };
+
+  /** Produit scanné inconnu : saisie manuelle pré-remplie, enregistrée dans mes aliments */
+  const handleCreateFood = (draft: { barcode: string; name?: string }) => {
+    switchTab('manual');
+    setManualForm({ ...defaultManualForm, label: draft.name ?? '' });
+    setSaveToMyFoods(true);
+    setManualBarcode(draft.barcode);
+    setManualFromScan(true);
+    setValuesBasis('per100');
+  };
+
+  // --- Saisie manuelle --------------------------------------------------------
+
+  /** Valeurs de l'entrée pour la quantité indiquée */
+  const manualEntryValues = () => {
+    const ratio = valuesBasis === 'per100' ? manualForm.qty_grammes / 100 : 1;
+    return {
+      kcal: valuesBasis === 'per100' ? Math.round(manualForm.kcal * ratio) : manualForm.kcal,
+      protein_g: valuesBasis === 'per100' ? roundToOneDecimal(manualForm.protein_g * ratio) : manualForm.protein_g,
+      fat_g: valuesBasis === 'per100' ? roundToOneDecimal(manualForm.fat_g * ratio) : manualForm.fat_g,
+      carbs_g: valuesBasis === 'per100' ? roundToOneDecimal(manualForm.carbs_g * ratio) : manualForm.carbs_g,
+      fiber_g: valuesBasis === 'per100' ? roundToOneDecimal(manualForm.fiber_g * ratio) : manualForm.fiber_g,
+    };
   };
 
   const handleManualSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setManualSubmitAttempted(true);
+    setBarcodeError(null);
 
     if (!isManualFormValid) {
       return;
     }
 
+    const barcode = cleanBarcodeInput(manualBarcode);
+    if (saveToMyFoods && barcode && !isValidGtin(barcode)) {
+      setBarcodeError('Code-barres invalide : vérifiez les 8, 12 ou 13 chiffres, ou laissez le champ vide.');
+      return;
+    }
+
+    let foodId: string | undefined;
+    if (saveToMyFoods) {
+      setSubmitting(true);
+      try {
+        const saved = await library.savePersonal(
+          {
+            name: manualForm.label,
+            // Valeurs de l'étiquette : déjà pour 100 g
+            qty_grammes: valuesBasis === 'per100' ? 100 : manualForm.qty_grammes,
+            kcal: manualForm.kcal,
+            protein_g: manualForm.protein_g,
+            fat_g: manualForm.fat_g,
+            carbs_g: manualForm.carbs_g,
+            fiber_g: manualForm.fiber_g,
+          },
+          saveToMyFoods && barcode ? barcode : null
+        );
+        foodId = saved.id;
+      } catch (error) {
+        console.error("Erreur lors de l'enregistrement de l'aliment", error);
+        setSubmitError("L'aliment n'a pas pu être enregistré dans vos aliments. Réessayez, ou décochez la case pour l'ajouter seulement au journal.");
+        setSubmitting(false);
+        return;
+      }
+    }
+
     await submitEntry({
+      ...(foodId ? { food_id: foodId } : {}),
       label: manualForm.label.trim(),
       qty_grammes: manualForm.qty_grammes,
-      kcal: manualForm.kcal,
-      protein_g: manualForm.protein_g,
-      fat_g: manualForm.fat_g,
-      carbs_g: manualForm.carbs_g,
-      fiber_g: manualForm.fiber_g,
+      ...manualEntryValues(),
       meal_type: manualForm.meal_type,
     });
   };
 
-  const handleRecentFoodSelect = (entry: Entry) => {
-    const initialQuantity = entry.qty_grammes > 0 ? entry.qty_grammes : 100;
+  // --- Mes aliments -----------------------------------------------------------
 
-    setSelectedRecentFood(entry);
-    setIsQuickAddDialogOpen(true);
-    setQuickQuantity(initialQuantity);
-    setQuickMealType(entry.meal_type);
+  const handleUsePersonal = (food: NormalizedFood) => {
+    switchTab('search');
+    selectFood(food);
   };
 
-  const quickBaseQuantity = selectedRecentFood?.qty_grammes && selectedRecentFood.qty_grammes > 0
-    ? selectedRecentFood.qty_grammes
-    : 100;
-  const quickRatio = quickBaseQuantity > 0 ? quickQuantity / quickBaseQuantity : 0;
-  const quickCalories = selectedRecentFood ? Math.round(selectedRecentFood.kcal * quickRatio) : 0;
-  const quickProtein = selectedRecentFood ? roundToOneDecimal(selectedRecentFood.protein_g * quickRatio) : 0;
-  const quickFat = selectedRecentFood ? roundToOneDecimal(selectedRecentFood.fat_g * quickRatio) : 0;
-  const quickCarbs = selectedRecentFood ? roundToOneDecimal(selectedRecentFood.carbs_g * quickRatio) : 0;
-  const quickFiber = selectedRecentFood ? roundToOneDecimal(selectedRecentFood.fiber_g * quickRatio) : 0;
-  const isQuickQuantityValid = Number.isFinite(quickQuantity) && quickQuantity > 0;
-
-  const handleQuickSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    if (!selectedRecentFood || !isQuickQuantityValid) {
-      return;
-    }
-
-    const success = await submitEntry({
-      label: selectedRecentFood.label ?? 'Aliment sans nom',
-      qty_grammes: quickQuantity,
-      kcal: quickCalories,
-      protein_g: quickProtein,
-      fat_g: quickFat,
-      carbs_g: quickCarbs,
-      fiber_g: quickFiber,
-      meal_type: quickMealType,
-    });
-
-    if (success) {
-      resetQuickState();
+  const handleDeletePersonal = async (food: NormalizedFood) => {
+    if (!food.foodId) return;
+    setLibraryMessage(null);
+    try {
+      await library.deletePersonal(food.foodId);
+      setConfirmDeleteId(null);
+    } catch (error) {
+      console.error("Erreur lors de la suppression de l'aliment", error);
+      setLibraryMessage("L'aliment n'a pas pu être supprimé. Réessayez.");
     }
   };
 
-
   useEffect(() => {
-    if (!isQuickAddDialogOpen) {
-      return;
-    }
-
-    quickQuantityInputRef.current?.focus();
-
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        resetQuickState();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isQuickAddDialogOpen]);
-
-  useEffect(() => {
-    if (isQuickAddDialogOpen) {
-      return;
-    }
-
     const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === 'Escape' && !submitting) {
         onClose();
@@ -406,130 +390,162 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isQuickAddDialogOpen, onClose, submitting]);
+  }, [onClose, submitting]);
 
-  const renderSearchTab = () => (
-    <form onSubmit={handleSearchSubmit} className="space-y-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Aliment</label>
-        <FoodSearch
-          onSelect={(food) => {
-            setSelectedFood(food);
-            // Portion du fabricant si elle est connue (ex : 1 pot de 125 g), sinon 100 g
-            setQuantity(food.servingGrams ?? 100);
-          }}
-        />
-        {selectedFood && (
-          <div className="mt-3 flex items-center gap-3 rounded-md border border-blue-200 bg-blue-50 p-3">
-            {selectedFood.imageUrl && (
-              <img
-                src={selectedFood.imageUrl}
-                alt=""
-                className="h-12 w-12 flex-shrink-0 rounded object-cover"
-              />
-            )}
-            <div>
-              <div className="font-medium text-blue-900">
-                {selectedFood.brand ? `${selectedFood.brand} ${selectedFood.name}` : selectedFood.name}
-              </div>
-              <div className="mt-1 text-sm text-blue-700">
-                {Math.round(selectedFood.kcal_per_100g)} kcal pour 100 g
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {selectedFood && (
-        <>
-          <div>
-            <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
-              Quantité (grammes)
-            </label>
-            <input
-              type="number"
-              id="quantity"
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              min="1"
-              step="1"
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            {/* Portions rapides : évite de taper la quantité */}
-            <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Portions rapides">
-              {selectedFood.servingGrams && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(selectedFood.servingGrams!)}
-                    aria-pressed={quantity === selectedFood.servingGrams}
-                    className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === selectedFood.servingGrams ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-                  >
-                    1 portion ({selectedFood.servingGrams} g)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity(selectedFood.servingGrams! * 2)}
-                    aria-pressed={quantity === selectedFood.servingGrams * 2}
-                    className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === selectedFood.servingGrams * 2 ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-                  >
-                    2 portions
-                  </button>
-                </>
-              )}
-              {[50, 100, 150, 200].map((grams) => (
-                <button
-                  key={grams}
-                  type="button"
-                  onClick={() => setQuantity(grams)}
-                  aria-pressed={quantity === grams}
-                  className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === grams ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-                >
-                  {grams} g
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <MealTypeSelector value={mealType} onChange={setMealType} />
-
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h3 className="text-sm text-gray-900 mb-2">Valeurs nutritionnelles</h3>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="text-gray-600">Calories :</div>
-              <div className="font-medium text-gray-900">{calculatedCalories} kcal</div>
-              <div className="text-gray-600">Protéines :</div>
-              <div className="font-medium text-gray-900">{calculatedProtein} g</div>
-              <div className="text-gray-600">Lipides :</div>
-              <div className="font-medium text-gray-900">{calculatedFat} g</div>
-              <div className="text-gray-600">Glucides :</div>
-              <div className="font-medium text-gray-900">{calculatedCarbs} g</div>
-              <div className="text-gray-600">Fibres :</div>
-              <div className="font-medium text-gray-900">{calculatedFiber} g</div>
-            </div>
-          </div>
-        </>
-      )}
-
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
-        >
-          Annuler
-        </button>
-        <button
-          type="submit"
-          disabled={!selectedFood || !isSearchQuantityValid || submitting}
-          className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors"
-        >
-          {submitting ? 'Ajout en cours…' : 'Ajouter'}
-        </button>
-      </div>
-    </form>
+  const libraryAlert = libraryMessage && (
+    <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+      {libraryMessage}
+    </p>
   );
+
+  const renderSearchTab = () => {
+    const isFavorite = selectedFood ? library.isFavorite(selectedFood) : false;
+    return (
+      <form onSubmit={handleSearchSubmit} className="space-y-6">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Aliment</label>
+          <FoodSearch
+            onSelect={(food) => selectFood(food)}
+            personalFoods={library.personalFoods}
+            onCreateFood={handleCreateFood}
+            idleContent={
+              !selectedFood && (
+                <QuickFoods
+                  favorites={library.favoriteFoods}
+                  recents={library.recentFoods}
+                  loading={library.loading}
+                  error={library.error}
+                  mealLabel={(meal) => getMealLabel(preferences, meal)}
+                  onPick={(item) => selectFood(item.food, item.usualQty, item.usualMeal)}
+                  onQuickAdd={handleQuickAdd}
+                  onToggleFavorite={(item) => toggleFavorite(item.food, item.usualQty)}
+                  disabled={submitting}
+                />
+              )
+            }
+          />
+          {selectedFood && (
+            <div className="mt-3 flex items-center gap-3 rounded-md border border-blue-200 bg-blue-50 p-3">
+              {selectedFood.imageUrl && (
+                <img
+                  src={selectedFood.imageUrl}
+                  alt=""
+                  className="h-12 w-12 flex-shrink-0 rounded object-cover"
+                />
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-blue-900">{foodLabel(selectedFood)}</div>
+                <div className="mt-1 text-sm text-blue-700">
+                  {Math.round(selectedFood.kcal_per_100g)} kcal pour 100 g
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggleFavorite(selectedFood, quantity)}
+                aria-pressed={isFavorite}
+                aria-label={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                className="flex-shrink-0 rounded-md p-2 text-blue-400 hover:bg-blue-100 hover:text-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                <Star className={`h-5 w-5 ${isFavorite ? 'fill-amber-400 text-amber-500' : ''}`} aria-hidden="true" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {libraryAlert}
+
+        {selectedFood && (
+          <>
+            <div>
+              <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
+                Quantité (grammes)
+              </label>
+              <input
+                type="number"
+                id="quantity"
+                value={quantity}
+                onChange={(e) => setQuantity(Number(e.target.value))}
+                min="1"
+                step="1"
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {/* Portions rapides : évite de taper la quantité */}
+              <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Portions rapides">
+                {selectedFood.servingGrams && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(selectedFood.servingGrams!)}
+                      aria-pressed={quantity === selectedFood.servingGrams}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === selectedFood.servingGrams ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      1 portion ({selectedFood.servingGrams} g)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity(selectedFood.servingGrams! * 2)}
+                      aria-pressed={quantity === selectedFood.servingGrams * 2}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === selectedFood.servingGrams * 2 ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      2 portions
+                    </button>
+                  </>
+                )}
+                {[50, 100, 150, 200].map((grams) => (
+                  <button
+                    key={grams}
+                    type="button"
+                    onClick={() => setQuantity(grams)}
+                    aria-pressed={quantity === grams}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === grams ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                  >
+                    {grams} g
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <MealTypeSelector value={mealType} onChange={setMealType} />
+
+            <div className="bg-gray-50 p-4 rounded-md">
+              <h3 className="text-sm text-gray-900 mb-2">Valeurs nutritionnelles</h3>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="text-gray-600">Calories :</div>
+                <div className="font-medium text-gray-900">{calculated.kcal} kcal</div>
+                <div className="text-gray-600">Protéines :</div>
+                <div className="font-medium text-gray-900">{calculated.protein_g} g</div>
+                <div className="text-gray-600">Lipides :</div>
+                <div className="font-medium text-gray-900">{calculated.fat_g} g</div>
+                <div className="text-gray-600">Glucides :</div>
+                <div className="font-medium text-gray-900">{calculated.carbs_g} g</div>
+                <div className="text-gray-600">Fibres :</div>
+                <div className="font-medium text-gray-900">{calculated.fiber_g} g</div>
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            disabled={!selectedFood || !isSearchQuantityValid || submitting}
+            className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors"
+          >
+            {submitting ? 'Ajout en cours…' : 'Ajouter'}
+          </button>
+        </div>
+      </form>
+    );
+  };
 
   const renderManualField = (
     field: keyof ManualFormState,
@@ -573,109 +589,208 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     );
   };
 
-  const renderManualTab = () => (
-    <form onSubmit={handleManualSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="md:col-span-2">
-          {renderManualField('label', 'Nom de l\'aliment', { type: 'text', required: true })}
-        </div>
-        {renderManualField('qty_grammes', 'Quantité (g)', { min: 1, step: '1', required: true })}
-        {renderManualField('kcal', 'Calories (kcal)', { min: 0, step: '1', required: true })}
-        {renderManualField('protein_g', 'Protéines (g)', { min: 0, step: '0.1', required: true })}
-        {renderManualField('fat_g', 'Lipides (g)', { min: 0, step: '0.1', required: true })}
-        {renderManualField('carbs_g', 'Glucides (g)', { min: 0, step: '0.1', required: true })}
-        {renderManualField('fiber_g', 'Fibres (g)', { min: 0, step: '0.1' })}
-      </div>
+  const renderManualTab = () => {
+    const totals = manualEntryValues();
+    return (
+      <form onSubmit={handleManualSubmit} className="space-y-6">
+        {manualFromScan && (
+          <p className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+            Produit scanné : recopiez les valeurs de l’étiquette pour 100 g, puis indiquez la quantité mangée. Il sera
+            enregistré dans vos aliments et reconnu au prochain scan.
+          </p>
+        )}
 
-      <MealTypeSelector
-        value={manualForm.meal_type}
-        onChange={(value) => setManualForm((current) => ({ ...current, meal_type: value }))}
-      />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            {renderManualField('label', 'Nom de l\'aliment', { type: 'text', required: true })}
+          </div>
+          {renderManualField('qty_grammes', 'Quantité (g)', { min: 1, step: '1', required: true })}
 
-      <div className="rounded-md bg-gray-50 p-4 text-sm text-gray-600">
-        Les valeurs saisies correspondent à la portion entrée, pas à 100 g.
-      </div>
-
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
-        >
-          Annuler
-        </button>
-        <button
-          type="submit"
-          disabled={!isManualFormValid || submitting}
-          className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors"
-        >
-          {submitting ? 'Ajout en cours…' : 'Ajouter'}
-        </button>
-      </div>
-    </form>
-  );
-
-  const renderQuickTab = () => (
-    <div className="space-y-4">
-      <div className="rounded-md bg-gray-50 p-4 text-sm text-gray-600">
-        Sélectionnez un aliment récent puis ajustez la quantité et le repas avant de l’ajouter au {formatRecentDate(date)}.
-      </div>
-
-      {recentEntriesLoading && (
-        <div className="flex items-center justify-center gap-2 rounded-md border border-gray-200 bg-white p-6 text-sm text-gray-600">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Chargement des aliments récents…
-        </div>
-      )}
-
-      {!recentEntriesLoading && recentEntriesError && (
-        <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {recentEntriesError}
-        </div>
-      )}
-
-      {!recentEntriesLoading && !recentEntriesError && recentEntries.length === 0 && (
-        <div className="rounded-md border border-gray-200 bg-white p-6 text-center text-sm text-gray-600">
-          Aucun aliment récent.
-        </div>
-      )}
-
-      {!recentEntriesLoading && !recentEntriesError && recentEntries.length > 0 && (
-        <div className="space-y-3">
-          {recentEntries.map((entry) => (
-            <div key={entry.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-medium text-gray-900">{entry.label}</h3>
-                    {entry.meal_type && (
-                      <span className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-700">
-                        {entry.meal_type ? getMealLabel(preferences, entry.meal_type) : null}
-                      </span>
-                    )}
-                    <span className="text-xs text-gray-500">
-                      Dernier ajout : {formatRecentDate(entry.created_at)}
-                    </span>
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    {entry.qty_grammes} g · {Math.round(entry.kcal)} kcal
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    P {entry.protein_g} g · L {entry.fat_g} g · G {entry.carbs_g} g · F {entry.fiber_g} g
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleRecentFoodSelect(entry)}
-                  className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          <fieldset className="md:col-span-2">
+            <legend className="mb-2 block text-sm font-medium text-gray-700">Valeurs saisies pour</legend>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'portion' as const, label: 'La quantité indiquée' },
+                { value: 'per100' as const, label: '100 g (étiquette)' },
+              ].map((option) => (
+                <label
+                  key={option.value}
+                  className={`flex cursor-pointer items-center gap-2 rounded-md border-2 px-3 py-2 text-sm ${
+                    valuesBasis === option.value ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700'
+                  }`}
                 >
-                  Utiliser
-                </button>
-              </div>
+                  <input
+                    type="radio"
+                    name="values-basis"
+                    value={option.value}
+                    checked={valuesBasis === option.value}
+                    onChange={() => setValuesBasis(option.value)}
+                  />
+                  {option.label}
+                </label>
+              ))}
             </div>
-          ))}
+          </fieldset>
+
+          {renderManualField('kcal', 'Calories (kcal)', { min: 0, step: '1', required: true })}
+          {renderManualField('protein_g', 'Protéines (g)', { min: 0, step: '0.1', required: true })}
+          {renderManualField('fat_g', 'Lipides (g)', { min: 0, step: '0.1', required: true })}
+          {renderManualField('carbs_g', 'Glucides (g)', { min: 0, step: '0.1', required: true })}
+          {renderManualField('fiber_g', 'Fibres (g)', { min: 0, step: '0.1' })}
         </div>
+
+        <MealTypeSelector
+          value={manualForm.meal_type}
+          onChange={(value) => setManualForm((current) => ({ ...current, meal_type: value }))}
+        />
+
+        <div className="space-y-3 rounded-md border border-gray-200 p-4">
+          <label className="flex items-start gap-3 text-sm text-gray-800">
+            <input
+              type="checkbox"
+              checked={saveToMyFoods}
+              onChange={(event) => setSaveToMyFoods(event.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium">Enregistrer dans mes aliments</span>
+              <span className="block text-xs text-gray-500">Pour le retrouver dans la recherche et l’ajouter en un tap.</span>
+            </span>
+          </label>
+          {saveToMyFoods && (
+            <div>
+              <label htmlFor="manual-barcode" className="mb-1 block text-sm font-medium text-gray-700">
+                Code-barres
+              </label>
+              <input
+                id="manual-barcode"
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="Facultatif (ex. 3017620422003)"
+                value={manualBarcode}
+                onChange={(event) => setManualBarcode(event.target.value)}
+                aria-invalid={barcodeError ? true : undefined}
+                aria-describedby={barcodeError ? 'manual-barcode-error' : 'manual-barcode-hint'}
+                className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  barcodeError ? 'border-red-400' : 'border-gray-300'
+                }`}
+              />
+              {barcodeError ? (
+                <p id="manual-barcode-error" className="mt-1 text-sm text-red-600">
+                  {barcodeError}
+                </p>
+              ) : (
+                <p id="manual-barcode-hint" className="mt-1 text-xs text-gray-500">
+                  Le produit sera reconnu quand vous le scannerez.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-md bg-gray-50 p-4 text-sm text-gray-600">
+          {valuesBasis === 'per100'
+            ? `Pour ${Number.isFinite(manualForm.qty_grammes) ? manualForm.qty_grammes : 0} g : ${totals.kcal} kcal · P ${totals.protein_g} g · L ${totals.fat_g} g · G ${totals.carbs_g} g.`
+            : 'Les valeurs saisies correspondent à la quantité indiquée, pas à 100 g.'}
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            disabled={!isManualFormValid || submitting}
+            className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors"
+          >
+            {submitting ? 'Ajout en cours…' : 'Ajouter'}
+          </button>
+        </div>
+      </form>
+    );
+  };
+
+  const renderMineTab = () => (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-600">
+        Vos aliments personnels apparaissent dans la recherche et sont reconnus au scan grâce à leur code-barres.
+      </p>
+      <button
+        type="button"
+        onClick={() => {
+          switchTab('manual');
+          setManualForm(defaultManualForm);
+          setSaveToMyFoods(true);
+          setValuesBasis('per100');
+        }}
+        className="rounded-md border border-blue-600 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
+      >
+        Créer un aliment
+      </button>
+
+      {libraryAlert}
+
+      {library.loading ? (
+        <p className="text-sm text-gray-500">Chargement de vos aliments…</p>
+      ) : library.personalFoods.length === 0 ? (
+        <p className="rounded-md border border-dashed border-gray-300 p-4 text-center text-sm text-gray-500">
+          Aucun aliment personnel pour l’instant. Créez-en un, ou scannez un produit introuvable.
+        </p>
+      ) : (
+        <ul aria-label="Mes aliments" className="divide-y divide-gray-100 rounded-md border border-gray-200">
+          {library.personalFoods.map((food) => (
+            <li key={food.foodId} className="flex flex-wrap items-center gap-2 p-3">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium text-gray-900">{food.name}</div>
+                <div className="text-xs text-gray-500">{Math.round(food.kcal_per_100g)} kcal pour 100 g</div>
+                {food.barcode && <div className="text-xs text-gray-400">Code-barres {food.barcode}</div>}
+              </div>
+              {confirmDeleteId === food.foodId ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePersonal(food)}
+                    aria-label={`Confirmer la suppression de « ${food.name} »`}
+                    className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
+                  >
+                    Supprimer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteId(null)}
+                    className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    Annuler
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleUsePersonal(food)}
+                    aria-label={`Utiliser « ${food.name} »`}
+                    className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+                  >
+                    Utiliser
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteId(food.foodId ?? null)}
+                    aria-label={`Supprimer « ${food.name} »`}
+                    className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    Supprimer
+                  </button>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
 
       <button
@@ -688,129 +803,6 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     </div>
   );
 
-  const renderQuickAddDialog = () => {
-    if (!selectedRecentFood || !isQuickAddDialogOpen) {
-      return null;
-    }
-
-    return (
-      <div
-        className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 p-4"
-        onClick={resetQuickState}
-        role="presentation"
-      >
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="quick-add-dialog-title"
-          className="w-full max-w-lg rounded-lg bg-white shadow-2xl"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-            <div>
-              <h3 id="quick-add-dialog-title" className="text-lg font-medium text-gray-900">
-                Finaliser l’ajout rapide
-              </h3>
-              <p className="mt-1 text-sm text-gray-600">
-                {selectedRecentFood.label ?? 'Aliment sans nom'}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={resetQuickState}
-              className="text-gray-400 transition-colors hover:text-gray-600"
-              aria-label="Fermer l’ajout rapide"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          <form onSubmit={handleQuickSubmit} className="space-y-4 p-6">
-            {submitError && (
-              <div role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                {submitError}
-              </div>
-            )}
-            {selectedRecentFood.qty_grammes <= 0 && (
-              <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
-                La quantité d’origine était invalide. Le recalcul est basé sur 100 g par défaut.
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <label htmlFor="quick-label" className="mb-1 block text-sm font-medium text-gray-700">
-                  Nom de l’aliment
-                </label>
-                <div id="quick-label" className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-900">
-                  {selectedRecentFood.label ?? 'Aliment sans nom'}
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="quick-quantity" className="mb-1 block text-sm font-medium text-gray-700">
-                  Quantité (g)
-                </label>
-                <input
-                  ref={quickQuantityInputRef}
-                  id="quick-quantity"
-                  type="number"
-                  value={quickQuantity}
-                  onChange={(event) => setQuickQuantity(Number(event.target.value))}
-                  min="1"
-                  step="1"
-                  required
-                  aria-invalid={!isQuickQuantityValid}
-                  className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    isQuickQuantityValid ? 'border-gray-300 bg-white' : 'border-red-400 bg-white'
-                  }`}
-                />
-                {!isQuickQuantityValid && (
-                  <p className="mt-1 text-sm text-red-600">La quantité doit être supérieure à 0.</p>
-                )}
-              </div>
-            </div>
-
-            <MealTypeSelector value={quickMealType} onChange={setQuickMealType} />
-
-            <div className="rounded-md bg-gray-50 p-4">
-              <h4 className="mb-2 text-sm font-medium text-gray-900">Récapitulatif</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="text-gray-600">Calories :</div>
-                <div className="font-medium text-gray-900">{quickCalories} kcal</div>
-                <div className="text-gray-600">Protéines :</div>
-                <div className="font-medium text-gray-900">{quickProtein} g</div>
-                <div className="text-gray-600">Lipides :</div>
-                <div className="font-medium text-gray-900">{quickFat} g</div>
-                <div className="text-gray-600">Glucides :</div>
-                <div className="font-medium text-gray-900">{quickCarbs} g</div>
-                <div className="text-gray-600">Fibres :</div>
-                <div className="font-medium text-gray-900">{quickFiber} g</div>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={resetQuickState}
-                className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-              >
-                Annuler
-              </button>
-              <button
-                type="submit"
-                disabled={!isQuickQuantityValid || submitting}
-                className="flex-1 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
-              >
-                {submitting ? 'Ajout en cours…' : 'Ajouter au journal'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div
@@ -820,7 +812,10 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
         className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between px-8 pt-8 pb-6 border-b border-gray-200">
-          <h2 id="add-entry-title" className="text-xl text-gray-900">Ajouter un aliment</h2>
+          <div>
+            <h2 id="add-entry-title" className="text-xl text-gray-900">Ajouter un aliment</h2>
+            <p className="mt-1 text-sm text-gray-500 first-letter:uppercase">{formatEntryDate(date)}</p>
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Fermer la fenêtre">
             <X className="w-6 h-6" />
           </button>
@@ -840,19 +835,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                 tabIndex={activeTab === tab.value ? 0 : -1}
                 aria-selected={activeTab === tab.value}
                 aria-controls={`add-entry-panel-${tab.value}`}
-                onClick={() => {
-                  setActiveTab(tab.value);
-                  setSubmitError(null);
-                  if (tab.value !== 'search') {
-                    resetSearchState();
-                  }
-                  if (tab.value !== 'manual') {
-                    setManualSubmitAttempted(false);
-                  }
-                  if (tab.value !== 'quick') {
-                    resetQuickState();
-                  }
-                }}
+                onClick={() => switchTab(tab.value)}
                 onKeyDown={(event) => handleTabKeyDown(event, index)}
                 className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                   activeTab === tab.value
@@ -879,11 +862,10 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
           >
             {activeTab === 'search' && renderSearchTab()}
             {activeTab === 'manual' && renderManualTab()}
-            {activeTab === 'quick' && renderQuickTab()}
+            {activeTab === 'mine' && renderMineTab()}
           </div>
         </div>
       </div>
-      {renderQuickAddDialog()}
     </div>
   );
 }

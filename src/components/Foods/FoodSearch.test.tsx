@@ -49,10 +49,10 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function setup() {
+function setup(props: Partial<React.ComponentProps<typeof FoodSearch>> = {}) {
   const onSelect = vi.fn();
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
-  render(<FoodSearch onSelect={onSelect} />);
+  render(<FoodSearch onSelect={onSelect} {...props} />);
   return { user, onSelect, input: screen.getByRole('combobox', { name: "Recherche d'aliment" }) };
 }
 
@@ -188,6 +188,83 @@ describe('FoodSearch', () => {
 
       expect(screen.queryByRole('button', { name: 'Simuler la lecture' })).not.toBeInTheDocument();
       expect(mockedFetchOFFProduct).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('mes aliments et contenu au repos', () => {
+    const granola: NormalizedFood = {
+      source: 'custom',
+      name: 'Pomme au four maison',
+      foodId: 'food-1',
+      barcode: '3245678901236',
+      kcal_per_100g: 120,
+      protein_g: 0.5,
+      fat_g: 3,
+      carbs_g: 22,
+      fiber_g: 2,
+    };
+
+    it('affiche le contenu au repos tant que rien n’est saisi', async () => {
+      const { user, input } = setup({ idleContent: <p>Favoris et récents</p> });
+      expect(screen.getByText('Favoris et récents')).toBeInTheDocument();
+
+      await user.type(input, 'po');
+      expect(screen.queryByText('Favoris et récents')).not.toBeInTheDocument();
+
+      await user.clear(input);
+      expect(screen.getByText('Favoris et récents')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Scanner un code-barres' }));
+      expect(screen.queryByText('Favoris et récents')).not.toBeInTheDocument();
+    });
+
+    it('propose mes aliments en premier dans les résultats', async () => {
+      mockedSearchCiqual.mockResolvedValue([pomme]);
+      const { user, input, onSelect } = setup({ personalFoods: [granola] });
+
+      await user.type(input, 'pomme');
+      await wait(400);
+
+      const options = await screen.findAllByRole('option');
+      expect(options[0]).toHaveTextContent('Pomme au four maison');
+      expect(options[0]).toHaveTextContent('PERSO');
+      expect(options[1]).toHaveTextContent('Pomme, crue');
+
+      await user.click(options[0]);
+      expect(onSelect).toHaveBeenCalledWith(granola);
+    });
+
+    it('retrouve au scan un produit de mes aliments sans interroger Open Food Facts', async () => {
+      const { user, onSelect } = setup({ personalFoods: [{ ...granola, barcode: '3017620422003' }] });
+
+      await user.click(screen.getByRole('button', { name: 'Scanner un code-barres' }));
+      await user.click(screen.getByRole('button', { name: 'Simuler la lecture' }));
+
+      expect(onSelect).toHaveBeenCalledWith({ ...granola, barcode: '3017620422003' });
+      expect(mockedFetchOFFProduct).not.toHaveBeenCalled();
+    });
+
+    it('propose de créer un produit inconnu avec son code-barres', async () => {
+      mockedFetchOFFProduct.mockResolvedValue({ status: 'not_found' });
+      const onCreateFood = vi.fn();
+      const { user } = setup({ onCreateFood });
+
+      await user.click(screen.getByRole('button', { name: 'Scanner un code-barres' }));
+      await user.click(screen.getByRole('button', { name: 'Simuler la lecture' }));
+      await user.click(await screen.findByRole('button', { name: 'Créer cet aliment' }));
+
+      expect(onCreateFood).toHaveBeenCalledWith({ barcode: '3017620422003' });
+    });
+
+    it('garde le nom connu d’un produit sans valeurs nutritionnelles', async () => {
+      mockedFetchOFFProduct.mockResolvedValue({ status: 'no_nutrition', name: 'Mystère' });
+      const onCreateFood = vi.fn();
+      const { user } = setup({ onCreateFood });
+
+      await user.click(screen.getByRole('button', { name: 'Scanner un code-barres' }));
+      await user.click(screen.getByRole('button', { name: 'Simuler la lecture' }));
+      await user.click(await screen.findByRole('button', { name: 'Créer cet aliment' }));
+
+      expect(onCreateFood).toHaveBeenCalledWith({ barcode: '3017620422003', name: 'Mystère' });
     });
   });
 });

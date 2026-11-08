@@ -1,5 +1,6 @@
 import {
   KeyboardEvent,
+  ReactNode,
   useCallback,
   useEffect,
   useId,
@@ -11,11 +12,20 @@ import { ScanBarcode, Search } from 'lucide-react';
 import type { NormalizedFood, SearchCategory } from '../../types/food';
 import { searchCiqual } from '../../lib/ciqual';
 import { fetchOFFProduct, searchOFF } from '../../lib/openfoodfacts';
+import { searchPersonalFoods } from '../../utils/foodLibrary';
 import { BarcodeScanner } from './BarcodeScanner';
 
 interface FoodSearchProps {
   onSelect: (food: NormalizedFood) => void;
+  /** Aliments personnels : proposés en premier et reconnus au scan */
+  personalFoods?: NormalizedFood[];
+  /** Contenu affiché quand rien n'est saisi (ex : favoris et récents) */
+  idleContent?: ReactNode;
+  /** Produit scanné inconnu : ouvre la création d'un aliment personnel */
+  onCreateFood?: (draft: { barcode: string; name?: string }) => void;
 }
+
+const EMPTY_FOODS: NormalizedFood[] = [];
 
 // Nombre minimal de caractères avant de lancer une recherche
 const CIQUAL_MIN_QUERY_LENGTH = 2;
@@ -34,7 +44,7 @@ function useDebounce<T>(value: T, ms = CIQUAL_SEARCH_DEBOUNCE_MS) {
   return debounced;
 }
 
-export function FoodSearch({ onSelect }: FoodSearchProps) {
+export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent, onCreateFood }: FoodSearchProps) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<SearchCategory>('ciqual');
   const minChars = category === 'off' ? OFF_MIN_QUERY_LENGTH : CIQUAL_MIN_QUERY_LENGTH;
@@ -49,8 +59,16 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
   const listboxId = useId();
   // Scanner de code-barres : le produit est recherché dans Open Food Facts
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [barcodeMessage, setBarcodeMessage] = useState<{ type: 'info' | 'error'; text: string } | null>(null);
+  const [barcodeMessage, setBarcodeMessage] = useState<{
+    type: 'info' | 'error';
+    text: string;
+    /** Produit inconnu : de quoi pré-remplir sa création */
+    draft?: { barcode: string; name?: string };
+  } | null>(null);
   const barcodeAbortRef = useRef<AbortController | null>(null);
+  // Lu dans les effets sans relancer la recherche à chaque rendu du parent
+  const personalFoodsRef = useRef(personalFoods);
+  personalFoodsRef.current = personalFoods;
 
   useEffect(() => () => barcodeAbortRef.current?.abort(), []);
 
@@ -93,9 +111,11 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
             : await searchOFF(trimmed, controller?.signal);
 
         if (!mounted) return;
-        setItems(results);
-        setHighlightedIndex(results.length > 0 ? 0 : -1);
-        setStatusMessage(results.length === 0 ? 'Aucun résultat' : null);
+        // Mes aliments d'abord, puis la base choisie
+        const merged = [...searchPersonalFoods(personalFoodsRef.current, trimmed), ...results];
+        setItems(merged);
+        setHighlightedIndex(merged.length > 0 ? 0 : -1);
+        setStatusMessage(merged.length === 0 ? 'Aucun résultat' : null);
       } catch (error) {
         if (!mounted) return;
         if (category === 'off' && controller?.signal.aborted) {
@@ -104,8 +124,14 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
         if (import.meta.env.DEV) {
           console.error('Erreur lors de la recherche', error);
         }
-        setItems([]);
-        setHighlightedIndex(-1);
+        // Mes aliments restent proposés même si la base en ligne ne répond pas
+        const personal = searchPersonalFoods(personalFoodsRef.current, trimmed);
+        setItems(personal);
+        setHighlightedIndex(personal.length > 0 ? 0 : -1);
+        if (personal.length > 0) {
+          setStatusMessage(null);
+          return;
+        }
         setStatusMessage(
           category === 'off'
             ? 'Service OFF indisponible, réessayez dans un instant.'
@@ -146,6 +172,13 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
   const handleBarcode = useCallback(
     async (code: string) => {
       setScannerOpen(false);
+      // Produit déjà créé dans mes aliments : inutile d'interroger Open Food Facts
+      const personal = personalFoodsRef.current.find((food) => food.barcode === code);
+      if (personal) {
+        setBarcodeMessage(null);
+        handleSelect(personal);
+        return;
+      }
       setBarcodeMessage({ type: 'info', text: `Recherche du produit ${code}…` });
       barcodeAbortRef.current?.abort();
       const controller = new AbortController();
@@ -165,8 +198,9 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
           type: 'info',
           text:
             result.status === 'not_found'
-              ? `Aucun produit trouvé pour le code ${code} dans Open Food Facts. Cherchez-le par son nom.`
-              : `« ${result.name} » est dans Open Food Facts, mais sans valeurs nutritionnelles. Cherchez un produit équivalent par son nom.`,
+              ? `Aucun produit trouvé pour le code ${code} dans Open Food Facts. Créez-le dans vos aliments, ou cherchez-le par son nom.`
+              : `« ${result.name} » est dans Open Food Facts, mais sans valeurs nutritionnelles. Créez-le avec les valeurs de l’étiquette, ou cherchez un produit équivalent.`,
+          draft: result.status === 'not_found' ? { barcode: code } : { barcode: code, name: result.name },
         });
       } catch {
         if (controller.signal.aborted) return;
@@ -319,8 +353,19 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
           }`}
         >
           {barcodeMessage.text}
+          {barcodeMessage.draft && onCreateFood && (
+            <button
+              type="button"
+              onClick={() => onCreateFood(barcodeMessage.draft!)}
+              className="mt-2 block rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Créer cet aliment
+            </button>
+          )}
         </p>
       )}
+
+      {idleContent && !query.trim() && !scannerOpen && !barcodeMessage && idleContent}
 
       {/* Liste dans le flux (et non en position absolue) : dans la fenêtre d'ajout,
           qui défile, une liste absolue était coupée et un seul résultat restait visible. */}
@@ -337,7 +382,7 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
                   const isActive = index === highlightedIndex;
                   return (
                     <li
-                      key={`${food.source}-${food.offCode ?? food.extCode ?? food.name}-${index}`}
+                      key={`${food.source}-${food.foodId ?? food.offCode ?? food.extCode ?? food.name}-${index}`}
                     >
                       <button
                         type="button"
@@ -370,7 +415,7 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
                           </div>
                         </div>
                         <span className="rounded bg-gray-100 px-2 py-1 text-[10px] font-semibold text-gray-600">
-                          {food.source === 'ciqual' ? 'CIQUAL' : 'OFF'}
+                          {food.source === 'ciqual' ? 'CIQUAL' : food.source === 'custom' ? 'PERSO' : 'OFF'}
                         </span>
                       </button>
                     </li>
