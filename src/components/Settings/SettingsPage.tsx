@@ -1,6 +1,6 @@
 // Page « Paramètres » (menu du compte) : thème, affichage des calories et des
 // macros, noms et visibilité des repas, rappels.
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Palette, Save, UtensilsCrossed } from 'lucide-react';
 import { usePreferences } from '../../contexts/usePreferences';
 import { MEAL_LABELS } from '../../utils/entries';
@@ -8,6 +8,7 @@ import {
   ALL_MEALS,
   CalorieDisplay,
   DEFAULT_PREFERENCES,
+  DEFAULT_REMINDER_TIMES,
   MacroDisplay,
   deviceTimezone,
   MEAL_LABEL_MAX_LENGTH,
@@ -84,10 +85,38 @@ export function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Préférences chargées (ou enregistrées) : le formulaire les reprend
+  // Préférences chargées (ou enregistrées) : le formulaire les reprend. Si
+  // l'utilisateur a des modifications non enregistrées, elles sont gardées et
+  // seuls les rappels (qui peuvent être enregistrés à part) sont repris.
+  const syncedPreferences = useRef(preferences);
   useEffect(() => {
-    setForm(preferences);
+    setForm((current) =>
+      JSON.stringify(current) === JSON.stringify(syncedPreferences.current)
+        ? preferences
+        : { ...current, reminderWeighInTime: preferences.reminderWeighInTime, reminderLogTime: preferences.reminderLogTime }
+    );
+    syncedPreferences.current = preferences;
   }, [preferences]);
+
+  /**
+   * Notifications activées sur cet appareil : si aucun rappel n'est encore
+   * programmé, on les programme tout de suite (heures cochées dans le
+   * formulaire, sinon heures par défaut), sans attendre « Enregistrer ».
+   */
+  const handleDeviceEnabled = async (): Promise<string | null> => {
+    if (preferences.reminderWeighInTime || preferences.reminderLogTime) return null;
+    const chosen = form.reminderWeighInTime || form.reminderLogTime;
+    const weighInTime = chosen ? form.reminderWeighInTime : DEFAULT_REMINDER_TIMES.weighIn;
+    const logTime = chosen ? form.reminderLogTime : DEFAULT_REMINDER_TIMES.log;
+    await savePreferences({
+      ...preferences,
+      reminderWeighInTime: weighInTime,
+      reminderLogTime: logTime,
+      timezone: deviceTimezone(),
+    });
+    const parts = [weighInTime && `pesée à ${weighInTime}`, logTime && `journal à ${logTime}`].filter(Boolean);
+    return `Rappels programmés : ${parts.join(' et ')} (heures modifiables ci-dessus).`;
+  };
 
   // Aperçu immédiat du thème choisi ; en quittant la page sans enregistrer,
   // le thème mémorisé est rétabli
@@ -219,6 +248,7 @@ export function SettingsPage() {
           onChange={({ weighInTime, logTime }) =>
             setForm({ ...form, reminderWeighInTime: weighInTime, reminderLogTime: logTime })
           }
+          onDeviceEnabled={handleDeviceEnabled}
         />
 
         {message && (

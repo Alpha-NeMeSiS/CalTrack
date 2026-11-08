@@ -73,4 +73,26 @@ describe('RemindersSection', () => {
     render(<RemindersSection weighInTime={null} logTime={null} onChange={vi.fn()} />);
     expect(await screen.findByText(/notifications sont bloquées/)).toBeInTheDocument();
   });
+
+  it("programme les rappels à l'activation et l'annonce", async () => {
+    const onDeviceEnabled = vi.fn().mockResolvedValue('Rappels programmés : pesée à 08:00 et journal à 20:30.');
+    render(<RemindersSection weighInTime={null} logTime={null} onChange={vi.fn()} onDeviceEnabled={onDeviceEnabled} />);
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Activer les notifications sur cet appareil' }));
+
+    expect(onDeviceEnabled).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Notifications activées sur cet appareil. Rappels programmés : pesée à 08:00 et journal à 20:30.'
+    );
+  });
+
+  it("signale que les rappels n'ont pas pu être programmés", async () => {
+    const onDeviceEnabled = vi.fn().mockRejectedValue(new Error('réseau'));
+    render(<RemindersSection weighInTime={null} logTime={null} onChange={vi.fn()} onDeviceEnabled={onDeviceEnabled} />);
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Activer les notifications sur cet appareil' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("les rappels n'ont pas pu être programmés");
+  });
 });
+

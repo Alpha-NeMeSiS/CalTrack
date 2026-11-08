@@ -153,7 +153,7 @@ Menu du compte (avatar) → Paramètres : thème (automatique, clair ou sombre �
 
 ## Rappels (notifications push)
 
-Paramètres → Rappels : rappel de pesée (si aucune pesée ce jour-là) et rappel du journal (si le dîner n'est pas noté), à l'heure choisie, sur les appareils où les notifications sont activées. Sur iPhone / iPad, l'application doit d'abord être installée sur l'écran d'accueil.
+Paramètres → Rappels : rappel de pesée (si aucune pesée ce jour-là) et rappel du journal (si le dîner n'est pas noté), à l'heure choisie, sur les appareils où les notifications sont activées. À la première activation des notifications, les deux rappels sont programmés automatiquement (pesée 08:00, journal 20:30, ou les heures déjà cochées) ; les heures restent modifiables. Sur iPhone / iPad, l'application doit d'abord être installée sur l'écran d'accueil.
 
 Fonctionnement :
 

@@ -15,6 +15,11 @@ interface RemindersSectionProps {
   weighInTime: string | null;
   logTime: string | null;
   onChange: (times: { weighInTime: string | null; logTime: string | null }) => void;
+  /**
+   * Appelé après l'activation des notifications sur cet appareil (programme
+   * les rappels s'il n'y en a pas). Renvoie un message à afficher, ou null.
+   */
+  onDeviceEnabled?: () => Promise<string | null>;
 }
 
 const DEVICE_MESSAGES: Record<Exclude<PushDeviceState, 'enabled' | 'disabled'>, string> = {
@@ -26,7 +31,7 @@ const DEVICE_MESSAGES: Record<Exclude<PushDeviceState, 'enabled' | 'disabled'>, 
     'Les notifications sont bloquées pour CalTrack. Autorisez-les dans les réglages du navigateur, puis revenez ici.',
 };
 
-export function RemindersSection({ weighInTime, logTime, onChange }: RemindersSectionProps) {
+export function RemindersSection({ weighInTime, logTime, onChange, onDeviceEnabled }: RemindersSectionProps) {
   const [deviceState, setDeviceState] = useState<PushDeviceState | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -59,7 +64,15 @@ export function RemindersSection({ weighInTime, logTime, onChange }: RemindersSe
   const enable = () =>
     run(async () => {
       await enablePushOnThisDevice();
-      return 'Notifications activées sur cet appareil.';
+      let scheduled: string | null = null;
+      try {
+        scheduled = (await onDeviceEnabled?.()) ?? null;
+      } catch {
+        throw new Error(
+          "Notifications activées, mais les rappels n'ont pas pu être programmés : cochez-les puis enregistrez les paramètres."
+        );
+      }
+      return ['Notifications activées sur cet appareil.', scheduled].filter(Boolean).join(' ');
     });
   const disable = () =>
     run(async () => {
