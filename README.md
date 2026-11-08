@@ -103,13 +103,19 @@ supabaseMock.setHandler((call) =>
 
 ## Base de données
 
-Les migrations SQL se trouvent dans:
+Les migrations SQL se trouvent dans `supabase/migrations/`. Elles sont **alignées sur l'historique de la base de production** (mêmes versions et mêmes noms) : `supabase migration list` doit afficher les mêmes migrations en local et à distance.
 
-- `supabase/migrations/20251023212206_create_calorie_tracker_schema.sql`
-- `supabase/migrations/20251024092148_add_goal_duration_and_target_weight.sql`
-- `supabase/migrations/20261107235000_add_goal_start_weight.sql` : poids de départ des objectifs (`goals.start_weight_kg`), utilisé pour mesurer l'évolution réelle du poids. **À appliquer avant de déployer le code qui l'utilise.**
+| Version | Rôle |
+| --- | --- |
+| `20251023212206` | Schéma initial : `profiles`, `goals`, `daily_targets`, `foods`, `entries`, politiques RLS, 12 aliments de base |
+| `20251024092148` | Durée et poids cible des objectifs |
+| `20251105090451` → `20251205192400` | Migrations historiques de la base (catégories d'aliments, champs de profil, jetons de réinitialisation, bucket `profile-pictures`) |
+| `20261107235401` | Poids de départ des objectifs (`goals.start_weight_kg`) |
+| `20261108001500` | **Réconciliation** : une partie du schéma de production a été modifiée hors migrations. Cette migration amène une base neuve exactement au même état que la production (sans effet sur la production elle-même). |
 
-Elles créent les tables principales et les politiques de sécurité RLS pour isoler les données par utilisateur.
+Rejouer toutes les migrations sur une base vierge donne un schéma identique à la production (vérifié par empreinte des colonnes, contraintes, index, politiques RLS et buckets).
+
+> Pour toute évolution du schéma, créer une nouvelle migration (`supabase migration new <nom>`) plutôt que de modifier la base depuis l'éditeur SQL, afin de garder l'historique aligné.
 
 ## Structure simplifiée
 
