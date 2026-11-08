@@ -96,4 +96,10 @@ export const fakeSupabase = {
     supabaseMock.calls.push(call);
     return createQueryBuilder(call);
   },
+  /** Appel de fonction Postgres : enregistré comme la « table » `rpc:<nom>`. */
+  rpc(fn: string, args?: unknown) {
+    const call: QueryCall = { table: `rpc:${fn}`, operations: [{ method: 'rpc', args: args === undefined ? [] : [args] }] };
+    supabaseMock.calls.push(call);
+    return createQueryBuilder(call);
+  },
 };

@@ -1,7 +1,7 @@
 // Page des paramètres utilisateur
-// Contient les onglets Profil et Objectif, ainsi que la logique de sauvegarde
+// Contient les onglets Profil, Objectif et Compte, ainsi que la logique de sauvegarde
 import { useState, useEffect, useCallback } from 'react';
-import { User, Target, Save } from 'lucide-react';
+import { User, Target, Save, ShieldCheck } from 'lucide-react';
 import { supabase, Goal } from '../../lib/supabase';
 import { useAuth } from '../../contexts/useAuth';
 import { calculateBMR, calculateTDEE, calculateOptimalDeficitOrSurplus } from '../../utils/calculations';
@@ -11,6 +11,15 @@ import { upsertWeightLog } from '../../services/weights';
 import { PROFILE_LIMITS, validateGoalInput, validateProfileInput } from '../../utils/validation';
 import { DEFAULT_PROTEIN_G_PER_KG } from '../../utils/goals';
 import { GoalTargetsPreview } from '../Goals/GoalTargetsPreview';
+import { AccountSettings } from './AccountSettings';
+
+export type SettingsTab = 'profile' | 'goal' | 'account';
+
+const TABS: { id: SettingsTab; label: string; icon: typeof User }[] = [
+  { id: 'profile', label: 'Profil', icon: User },
+  { id: 'goal', label: 'Objectif', icon: Target },
+  { id: 'account', label: 'Compte', icon: ShieldCheck },
+];
 
 const PROTEIN_OPTIONS = [
   { value: 1.6, label: '1,6 g/kg — modéré' },
@@ -19,14 +28,14 @@ const PROTEIN_OPTIONS = [
   { value: 2.2, label: '2,2 g/kg — sportif / sèche' },
 ];
 
-export function Settings({ initialTab = 'profile' }: { initialTab?: 'profile' | 'goal' } = {}) {
+export function Settings({ initialTab = 'profile' }: { initialTab?: SettingsTab } = {}) {
   // Récupère l'utilisateur, le profil et la fonction pour rafraîchir le profil
   const { user, profile, refreshProfile } = useAuth();
   const getErrorMessage = (err: unknown, fallback: string): string =>
     err instanceof Error ? err.message : fallback;
 
   // États d'interface
-  const [activeTab, setActiveTab] = useState<'profile' | 'goal'>(initialTab);
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -209,30 +218,22 @@ export function Settings({ initialTab = 'profile' }: { initialTab?: 'profile' | 
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="border-b border-gray-200">
           <div className="flex">
-            <button
-              type="button"
-              onClick={() => { setActiveTab('profile'); setError(''); setSuccess(''); }}
-              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
-                activeTab === 'profile'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <User className="w-5 h-5" />
-              Profil
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('goal'); setError(''); setSuccess(''); }}
-              className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
-                activeTab === 'goal'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Target className="w-5 h-5" />
-              Objectif
-            </button>
+            {TABS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={activeTab === id}
+                onClick={() => { setActiveTab(id); setError(''); setSuccess(''); }}
+                className={`flex flex-1 sm:flex-none items-center justify-center gap-2 px-3 sm:px-6 py-4 font-medium transition-colors ${
+                  activeTab === id
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Icon className="w-5 h-5" aria-hidden="true" />
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -249,7 +250,9 @@ export function Settings({ initialTab = 'profile' }: { initialTab?: 'profile' | 
             </div>
           )}
 
-          {activeTab === 'profile' ? (
+          {activeTab === 'account' ? (
+            <AccountSettings />
+          ) : activeTab === 'profile' ? (
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Sexe</label>

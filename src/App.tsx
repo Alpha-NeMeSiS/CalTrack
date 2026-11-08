@@ -5,17 +5,18 @@ import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/useAuth';
 import { LoginForm } from './components/Auth/LoginForm';
 import { SignupForm } from './components/Auth/SignupForm';
+import { PasswordRecoveryScreen } from './components/Auth/PasswordRecoveryScreen';
 import { OnboardingForm } from './components/Onboarding/OnboardingForm';
 import { Header } from './components/Layout/Header';
 import { Navigation, AppView } from './components/Layout/Navigation';
 import { Dashboard } from './components/Dashboard/Dashboard';
 import { WeeklyTrends } from './components/Stats/WeeklyTrends';
-import { Settings } from './components/Settings/Settings';
+import { Settings, SettingsTab } from './components/Settings/Settings';
 import { getTodayDate } from './utils/date';
 
 function AppContent() {
   // Récupère l'état d'authentification et le profil utilisateur
-  const { user, profile, loading, profileError, refreshProfile, signOut } = useAuth();
+  const { user, profile, loading, profileError, refreshProfile, signOut, passwordRecovery } = useAuth();
   const [retryingProfile, setRetryingProfile] = useState(false);
   // Mode d'auth (login / signup) pour l'écran d'authentification
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -23,13 +24,13 @@ function AppContent() {
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
   const [dashboardDate, setDashboardDate] = useState<string>(() => getTodayDate());
   // Onglet à ouvrir dans Paramètres (ex : « Objectif » depuis le tableau de bord)
-  const [settingsTab, setSettingsTab] = useState<'profile' | 'goal'>('profile');
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>('profile');
 
   // Écouteur global pour naviguer vers les paramètres depuis d'autres composants
   useEffect(() => {
     const handleNavigateToSettings = (event: Event) => {
-      const tab = (event as CustomEvent<{ tab?: 'profile' | 'goal' }>).detail?.tab;
-      setSettingsTab(tab === 'goal' ? 'goal' : 'profile');
+      const tab = (event as CustomEvent<{ tab?: SettingsTab }>).detail?.tab;
+      setSettingsTab(tab === 'goal' || tab === 'account' ? tab : 'profile');
       setCurrentView('settings');
     };
 
@@ -54,6 +55,15 @@ function AppContent() {
           <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <div className="text-gray-600">Chargement...</div>
         </div>
+      </div>
+    );
+  }
+
+  // Arrivée depuis le lien « mot de passe oublié » : choisir le nouveau mot de passe
+  if (user && passwordRecovery) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
+        <PasswordRecoveryScreen />
       </div>
     );
   }

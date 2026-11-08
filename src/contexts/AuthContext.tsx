@@ -1,10 +1,11 @@
 // Contexte d'authentification
 // Ce fichier expose AuthProvider + AuthContext pour accéder à l'utilisateur,
-// au profil et aux méthodes d'auth (signIn, signUp, signOut, refreshProfile).
+// au profil et aux méthodes d'auth (signIn, signUp, signOut, refreshProfile,
+// mot de passe oublié, changement de mot de passe, suppression du compte).
 // Le hook useAuth est dans ./useAuth.ts.
 import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
-import { supabase, Profile } from '../lib/supabase';
+import { openedFromPasswordRecoveryLink, supabase, Profile } from '../lib/supabase';
 
 // Type du contexte d'authentification exposé aux composants
 export interface AuthContextType {
@@ -18,6 +19,16 @@ export interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  /** true quand l'utilisateur arrive depuis le lien « mot de passe oublié » */
+  passwordRecovery: boolean;
+  /** Envoie l'email de réinitialisation du mot de passe */
+  requestPasswordReset: (email: string) => Promise<{ error: Error | null }>;
+  /** Définit un nouveau mot de passe pour l'utilisateur connecté */
+  updatePassword: (password: string) => Promise<{ error: Error | null }>;
+  /** Quitte l'écran « nouveau mot de passe » sans le changer */
+  dismissPasswordRecovery: () => void;
+  /** Supprime définitivement le compte et toutes ses données, puis déconnecte */
+  deleteAccount: () => Promise<{ error: Error | null }>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [passwordRecovery, setPasswordRecovery] = useState(openedFromPasswordRecoveryLink);
 
   // Identifiant de l'utilisateur courant (undefined = session pas encore connue).
   // Sert à ignorer les événements qui ne changent pas d'utilisateur
@@ -110,7 +122,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // ce callback (risque de blocage) : le traitement est différé.
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
       setTimeout(() => {
         if (active) applySession(session);
       }, 0);
@@ -160,21 +173,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Déconnexion : l'état local est vidé même si l'appel réseau échoue
-  const signOut = async () => {
+  const signOut = async (scope: 'global' | 'local' = 'global') => {
     try {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({ scope });
       if (error) console.error('Error signing out:', error);
     } catch (error) {
       console.error('Error signing out:', error);
     } finally {
+      setPasswordRecovery(false);
       applySession(null);
     }
+  };
+
+  // Mot de passe oublié : Supabase envoie un lien qui ramène sur l'application.
+  // L'URL de retour doit être autorisée dans Supabase (Authentication → URL Configuration).
+  const requestPasswordReset = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      });
+      return { error: error ?? null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  };
+
+  const updatePassword = async (password: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) return { error };
+      setPasswordRecovery(false);
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  };
+
+  const dismissPasswordRecovery = useCallback(() => setPasswordRecovery(false), []);
+
+  // Suppression du compte (RGPD) : la fonction SQL delete_my_account() supprime
+  // l'utilisateur connecté ; ses données sont effacées en cascade.
+  const deleteAccount = async () => {
+    try {
+      const { error } = await supabase.rpc('delete_my_account');
+      if (error) return { error: new Error(error.message) };
+    } catch (error) {
+      return { error: error as Error };
+    }
+    // Le compte n'existe plus : on ne révoque que la session locale.
+    await signOut('local');
+    return { error: null };
   };
 
   // Fournit le contexte aux composants enfants
   return (
     <AuthContext.Provider
-      value={{ user, profile, loading, profileError, signUp, signIn, signOut, refreshProfile }}
+      value={{
+        user,
+        profile,
+        loading,
+        profileError,
+        signUp,
+        signIn,
+        signOut: () => signOut(),
+        refreshProfile,
+        passwordRecovery,
+        requestPasswordReset,
+        updatePassword,
+        dismissPasswordRecovery,
+        deleteAccount,
+      }}
     >
       {children}
     </AuthContext.Provider>
