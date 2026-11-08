@@ -47,6 +47,11 @@ export interface Profile {
   taille_cm: number;
   poids_kg: number;
   body_fat_pct?: number | null;
+  /** Identité (migration 20261108125514) : facultatifs */
+  first_name?: string | null;
+  last_name?: string | null;
+  /** URL publique de la photo (stockage « profile-pictures ») */
+  profile_picture_url?: string | null;
   created_at: string;
   updated_at: string;
 }

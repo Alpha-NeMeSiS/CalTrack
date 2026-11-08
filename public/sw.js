@@ -13,8 +13,8 @@
 // Notifications : les rappels envoyés par l'Edge Function send-reminders
 // arrivent par l'événement « push » ; un clic ouvre (ou ramène) l'application.
 
-const CACHE_NAME = 'caltrack-v1';
-const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/favicon.svg'];
+const CACHE_NAME = 'caltrack-v2';
+const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/favicon-32.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

@@ -1,9 +1,10 @@
-// Page « Mon profil » (menu du compte) : identité, données corporelles,
-// pesée et repères calculés (âge, IMC, métabolisme de base, dépense estimée).
+// Page « Mon profil » (menu du compte) : identité (photo, prénom, nom),
+// connexion (email, mot de passe), repères calculés (âge, IMC, métabolisme de
+// base, dépense estimée), pesée et données corporelles.
 // Le poids n'est plus un champ du profil : il vient du journal de pesées
 // (une seule source de vérité, comme sur le tableau de bord).
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import { Save } from 'lucide-react';
+import { KeyRound, Save } from 'lucide-react';
 import { supabase, Goal } from '../../lib/supabase';
 import { useAuth } from '../../contexts/useAuth';
 import { fetchActiveGoal, upsertDailyTargetForGoal } from '../../services/goals';
@@ -11,7 +12,9 @@ import { recordWeight } from '../../services/weights';
 import { calculateAge, calculateBMR, calculateTDEE } from '../../utils/calculations';
 import { getTodayDate } from '../../utils/date';
 import { PROFILE_LIMITS, validateProfileInput } from '../../utils/validation';
-import { getAvatarInitial } from '../../utils/avatar';
+import { EmailChangeForm } from '../Account/EmailChangeForm';
+import { NewPasswordForm } from '../Auth/NewPasswordForm';
+import { IdentityCard } from './IdentityCard';
 import { WeightQuickLog } from '../Weight/WeightQuickLog';
 
 const formatNumber = (value: number, digits = 0) =>
@@ -124,21 +127,17 @@ export function ProfilePage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <h1 className="text-2xl text-gray-900">Mon profil</h1>
 
-      <section className="flex items-center gap-4 rounded-lg bg-white p-4 shadow-md sm:p-6" aria-label="Identité">
-        <span
-          aria-hidden="true"
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-kaizen-500 text-xl font-semibold text-white"
-        >
-          {getAvatarInitial(profile.email)}
-        </span>
-        <div className="min-w-0">
-          <p className="truncate font-medium text-gray-900">{profile.email}</p>
-          {profile.created_at && (
-            <p className="text-sm text-gray-500">
-              Membre depuis {new Date(profile.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-            </p>
-          )}
-        </div>
+      <IdentityCard />
+
+      <section aria-label="Connexion" className="space-y-8 rounded-lg bg-white p-4 shadow-md sm:p-6">
+        <EmailChangeForm />
+        <section aria-labelledby="profile-password-title" className="space-y-3 border-t border-gray-200 pt-6">
+          <h2 id="profile-password-title" className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+            <KeyRound className="h-5 w-5 text-gray-500" aria-hidden="true" />
+            Mot de passe
+          </h2>
+          <NewPasswordForm submitLabel="Changer le mot de passe" />
+        </section>
       </section>
 
       <section aria-labelledby="indicators-title" className="rounded-lg bg-white p-4 shadow-md sm:p-6">

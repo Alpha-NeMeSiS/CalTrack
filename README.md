@@ -119,6 +119,7 @@ Les migrations SQL se trouvent dans `supabase/migrations/`. Elles sont **aligné
 | `20261108022855` | Thème clair / sombre / automatique (`user_preferences.theme`) |
 | `20261108023725` | Rappels push : table `push_subscriptions` (un abonnement par appareil), heures et fuseau des rappels, fonction `claim_due_reminders` |
 | `20261108024047` | Planification des rappels : clés VAPID et secret dans Supabase Vault, tâche `pg_cron` toutes les 15 min appelant l'Edge Function `send-reminders` |
+| `20261108125514` | Identité du profil : prénom, nom et photo (contraintes), suppression de ses photos et limites du stockage `profile-pictures` (2 Mo, JPEG / PNG / WebP) |
 
 Rejouer toutes les migrations sur une base vierge donne un schéma identique à la production (vérifié par empreinte des colonnes, contraintes, index, politiques RLS et buckets).
 
@@ -141,8 +142,9 @@ src/
 ## Compte utilisateur (RGPD)
 
 - **Mot de passe oublié** : le lien envoyé par Supabase ramène sur l'application, qui affiche l'écran « Nouveau mot de passe ». L'URL du site (production et, si besoin, `http://localhost:5173`) doit figurer dans **Supabase → Authentication → URL Configuration** (*Site URL* / *Redirect URLs*), sinon le lien renvoie vers l'URL par défaut du projet.
-- **Changement d'email** : menu du compte (avatar) → Compte et sécurité. Supabase envoie un lien de confirmation (à l'ancienne et à la nouvelle adresse si *Secure email change* est activé dans Authentication → Providers → Email). L'adresse ne change qu'après confirmation ; `profiles.email` est alors mis à jour par un déclencheur SQL.
-- **Déconnexion** : « Se déconnecter » (menu de l'avatar) ferme la session de cet appareil uniquement ; « Se déconnecter de tous les appareils » (Compte et sécurité) révoque toutes les sessions.
+- **Mon profil** (menu de l'avatar) : photo de profil (recadrée et réduite dans le navigateur, stockée dans `profile-pictures/<id utilisateur>/`), prénom, nom, email, mot de passe, repères, pesée et données corporelles. La photo et le nom s'affichent dans l'en-tête.
+- **Changement d'email** : menu du compte (avatar) → Mon profil. Supabase envoie un lien de confirmation (à l'ancienne et à la nouvelle adresse si *Secure email change* est activé dans Authentication → Providers → Email). L'adresse ne change qu'après confirmation ; `profiles.email` est alors mis à jour par un déclencheur SQL.
+- **Déconnexion** : « Se déconnecter » (menu de l'avatar) ferme la session de cet appareil uniquement ; « Se déconnecter de tous les appareils » (Compte et sécurité) révoque toutes les sessions. La suppression du compte efface aussi les photos de profil.
 - **Retour des liens** : un lien expiré ou déjà utilisé, ou la première étape d'un changement d'email, affiche un message en haut de l'écran.
 - **Export** : menu du compte (avatar) → Compte et sécurité → « Télécharger mes données » produit un fichier JSON (profil, objectifs, cibles quotidiennes, journal, pesées, aliments personnels).
 - **Suppression** : menu du compte (avatar) → Compte et sécurité → « Supprimer définitivement mon compte » appelle la fonction SQL `delete_my_account()`, qui supprime l'utilisateur connecté ; toutes ses données sont effacées en cascade.

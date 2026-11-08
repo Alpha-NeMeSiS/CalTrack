@@ -9,10 +9,12 @@ import { CSSProperties, KeyboardEvent, useEffect, useId, useRef, useState } from
 import { createPortal } from 'react-dom';
 import { ChevronDown, LogOut, Settings, ShieldCheck, User } from 'lucide-react';
 import type { AppView } from '../../utils/navigation';
-import { getAvatarInitial } from '../../utils/avatar';
+import { getDisplayName, IdentityLike } from '../../utils/avatar';
+import { Avatar } from '../Profile/Avatar';
 
 interface AccountMenuProps {
-  email: string;
+  /** Identité affichée : photo, prénom et nom (facultatifs), email */
+  identity: IdentityLike & { profile_picture_url?: string | null };
   onNavigate: (view: Extract<AppView, 'profile' | 'account' | 'settings'>) => void;
   onSignOut: () => void;
 }
@@ -21,7 +23,9 @@ interface AccountMenuProps {
 const getMenuItems = (menu: HTMLElement | null) =>
   Array.from(menu?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
 
-export function AccountMenu({ email, onNavigate, onSignOut }: AccountMenuProps) {
+export function AccountMenu({ identity, onNavigate, onSignOut }: AccountMenuProps) {
+  const displayName = getDisplayName(identity);
+  const hasName = displayName !== identity.email;
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, right: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -99,7 +103,7 @@ export function AccountMenu({ email, onNavigate, onSignOut }: AccountMenuProps) 
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        aria-label={`Menu du compte (${email})`}
+        aria-label={`Menu du compte (${displayName})`}
         onClick={() => setOpen((value) => !value)}
         onKeyDown={(event) => {
           if (event.key === 'ArrowDown' && !open) {
@@ -109,13 +113,8 @@ export function AccountMenu({ email, onNavigate, onSignOut }: AccountMenuProps) 
         }}
         className="flex min-h-[44px] items-center gap-2 rounded-full p-1 text-sm text-gray-700 hover:bg-white/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-kaizen-500 sm:pr-3"
       >
-        <span
-          aria-hidden="true"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-kaizen-500 font-semibold text-white"
-        >
-          {getAvatarInitial(email)}
-        </span>
-        <span className="hidden max-w-[16rem] truncate sm:inline">{email}</span>
+        <Avatar identity={identity} className="h-9 w-9 text-sm" />
+        <span className="hidden max-w-[16rem] truncate sm:inline">{displayName}</span>
         <ChevronDown className="hidden h-4 w-4 text-gray-500 sm:block" aria-hidden="true" />
       </button>
 
@@ -136,7 +135,8 @@ export function AccountMenu({ email, onNavigate, onSignOut }: AccountMenuProps) 
               <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-gray-300 sm:hidden" aria-hidden="true" />
               <div className="px-3 py-2" role="none">
                 <p className="text-xs text-gray-500">Connecté en tant que</p>
-                <p className="truncate text-sm font-medium text-gray-900">{email}</p>
+                <p className="truncate text-sm font-medium text-gray-900">{displayName}</p>
+                {hasName && <p className="truncate text-xs text-gray-500">{identity.email}</p>}
               </div>
               <div className="my-1 border-t border-gray-100" role="none" />
               <button type="button" role="menuitem" className={itemClass} onClick={() => choose(() => onNavigate('profile'))}>

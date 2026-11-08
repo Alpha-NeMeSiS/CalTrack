@@ -17,12 +17,18 @@ vi.mock('../../contexts/useAuth', () => ({
   }),
 }));
 
+const deleteAllProfilePhotos = vi.fn();
+vi.mock('../../services/profilePhoto', () => ({
+  deleteAllProfilePhotos: (...args: unknown[]) => deleteAllProfilePhotos(...args),
+}));
+
 vi.mock('../../services/account', () => ({
   exportUserData: (...args: unknown[]) => exportUserData(...args),
   downloadJson: (...args: unknown[]) => downloadJson(...args),
 }));
 
 beforeEach(() => {
+  deleteAllProfilePhotos.mockReset().mockResolvedValue(undefined);
   deleteAccount.mockReset();
   exportUserData.mockReset();
   downloadJson.mockReset();
@@ -69,6 +75,8 @@ describe('AccountSettings', () => {
     await user.click(deleteButton);
 
     expect(deleteAccount).toHaveBeenCalledTimes(1);
+    // Les photos de profil sont supprimées avant le compte
+    expect(deleteAllProfilePhotos).toHaveBeenCalledWith('user-1');
   });
 
   it('affiche une erreur si la suppression échoue', async () => {
