@@ -31,4 +31,11 @@ describe('MacroCard', () => {
     const { container } = render(<MacroCard label="Fibres" consumed={10} target={0} unit="g" color="bg-x" />);
     expect(getBar(container)).toHaveStyle({ width: '0%' });
   });
+
+  it("affiche le pourcentage de l'objectif si demandé", () => {
+    render(<MacroCard label="Protéines" consumed={69} target={158} unit="g" color="bg-kaizen-500" display="percent" />);
+    expect(screen.getByText('44 %')).toBeInTheDocument();
+    expect(screen.getByText('69 / 158 g')).toBeInTheDocument();
+  });
 });
+

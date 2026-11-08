@@ -12,7 +12,9 @@ import { formatDateFR } from '../../lib/timeProgress';
 import { ensureDailyTargetForDate, fetchUserGoals } from '../../services/goals';
 import { recordWeight } from '../../services/weights';
 import { copyDayEntries, updateEntry } from '../../services/entries';
-import { groupEntriesByMeal, MEAL_LABELS, MealType } from '../../utils/entries';
+import { groupEntriesByMeal, MealType } from '../../utils/entries';
+import { usePreferences } from '../../contexts/usePreferences';
+import { getMealLabel, getVisibleMeals } from '../../utils/preferences';
 import { WeightQuickLog } from '../Weight/WeightQuickLog';
 import { CalorieRing } from './CalorieRing';
 import { MacroCard } from './MacroCard';
@@ -33,6 +35,7 @@ export function Dashboard({
   onActiveDateChange,
 }: DashboardProps) {
   const { user, profile, refreshProfile } = useAuth();
+  const { preferences } = usePreferences();
   const [selectedDate, setSelectedDate] = useState(activeDate ?? getTodayDate());
   const [target, setTarget] = useState<DailyTarget | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -368,6 +371,7 @@ export function Dashboard({
               target={summary.target.calories_kcal}
               status={summary.status}
               inProgress={isToday}
+              display={preferences.calorieDisplay}
             />
           </div>
 
@@ -379,6 +383,7 @@ export function Dashboard({
               target={summary.target.protein_g}
               unit="g"
               color="bg-kaizen-500"
+              display={preferences.macroDisplay}
             />
             <MacroCard
               label="Lipides"
@@ -386,6 +391,7 @@ export function Dashboard({
               target={summary.target.fat_g}
               unit="g"
               color="bg-shonen-300"
+              display={preferences.macroDisplay}
             />
             <MacroCard
               label="Glucides"
@@ -393,6 +399,7 @@ export function Dashboard({
               target={summary.target.carbs_g}
               unit="g"
               color="bg-kaizen-300"
+              display={preferences.macroDisplay}
             />
             <MacroCard
               label="Fibres"
@@ -400,6 +407,7 @@ export function Dashboard({
               target={summary.target.fiber_g ?? 25}
               unit="g"
               color="bg-emerald-400"
+              display={preferences.macroDisplay}
             />
           </div>
         </div>
@@ -435,7 +443,7 @@ export function Dashboard({
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {groupEntriesByMeal(entries).map((group) => (
+            {groupEntriesByMeal(entries, (meal) => getMealLabel(preferences, meal)).map((group) => (
               <section key={group.meal} aria-label={group.label} className="py-2">
                 <div className="flex items-baseline justify-between px-4 pt-2 sm:px-6">
                   <h3 className="text-sm font-semibold text-gray-700">{group.label}</h3>
@@ -504,9 +512,12 @@ export function Dashboard({
                             className="rounded-md border border-gray-300 px-2 py-1.5"
                           >
                             <option value="">Sans repas</option>
-                            {(['breakfast', 'lunch', 'dinner', 'snack'] as const).map((meal) => (
-                              <option key={meal} value={meal}>{MEAL_LABELS[meal]}</option>
-                            ))}
+                            {/* Repas visibles, plus celui de l'entrée s'il a été masqué depuis */}
+                            {getVisibleMeals(preferences)
+                              .concat(editing.meal && !getVisibleMeals(preferences).includes(editing.meal) ? [editing.meal] : [])
+                              .map((meal) => (
+                                <option key={meal} value={meal}>{getMealLabel(preferences, meal)}</option>
+                              ))}
                           </select>
                         </div>
                         <div className="flex gap-2">

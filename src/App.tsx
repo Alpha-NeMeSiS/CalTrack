@@ -16,6 +16,8 @@ import { WeeklyTrends } from './components/Stats/WeeklyTrends';
 import { GoalPage } from './components/Goals/GoalPage';
 import { ProfilePage } from './components/Profile/ProfilePage';
 import { AccountPage } from './components/Account/AccountPage';
+import { SettingsPage } from './components/Settings/SettingsPage';
+import { PreferencesProvider } from './contexts/PreferencesContext';
 import { getTodayDate } from './utils/date';
 import { AppView, isAppView, NAVIGATE_EVENT, NavigateEventDetail } from './utils/navigation';
 
@@ -138,6 +140,7 @@ function AppScreens() {
         {currentView === 'goal' && <GoalPage />}
         {currentView === 'profile' && <ProfilePage />}
         {currentView === 'account' && <AccountPage />}
+        {currentView === 'settings' && <SettingsPage />}
       </main>
     </div>
   );
@@ -156,7 +159,9 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <PreferencesProvider>
+        <AppContent />
+      </PreferencesProvider>
     </AuthProvider>
   );
 }

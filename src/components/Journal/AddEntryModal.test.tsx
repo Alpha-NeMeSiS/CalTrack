@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AddEntryModal } from './AddEntryModal';
 import { supabaseMock } from '../../test/supabaseMock';
+import { PreferencesContext } from '../../contexts/preferencesContextValue';
+import { DEFAULT_PREFERENCES } from '../../utils/preferences';
 
 const authValue = { user: { id: 'user-1' } };
 
@@ -129,4 +131,23 @@ describe('AddEntryModal', () => {
     render(<AddEntryModal date="2025-01-10" onAdd={vi.fn()} onClose={vi.fn()} />);
     expect(screen.getByRole('dialog', { name: 'Ajouter un aliment' })).toBeInTheDocument();
   });
+
+  it('propose les repas visibles avec leurs noms personnalisés', async () => {
+    render(
+      <PreferencesContext.Provider
+        value={{
+          preferences: { ...DEFAULT_PREFERENCES, mealLabels: { snack: 'Goûter' }, hiddenMeals: ['dinner'] },
+          savePreferences: vi.fn(),
+        }}
+      >
+        <AddEntryModal date="2025-01-10" onAdd={vi.fn()} onClose={vi.fn()} />
+      </PreferencesContext.Provider>
+    );
+    await userEvent.setup().click(screen.getByRole('tab', { name: 'Saisie manuelle' }));
+
+    expect(screen.getByRole('button', { name: 'Goûter' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Dîner' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Petit-déjeuner' })).toBeInTheDocument();
+  });
 });
+

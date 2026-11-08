@@ -3,7 +3,7 @@
 // demandent un changement de vue via un événement global écouté par App.
 
 /** Vues principales (barre de navigation) et pages du menu du compte */
-export type AppView = 'dashboard' | 'trends' | 'goal' | 'profile' | 'account';
+export type AppView = 'dashboard' | 'trends' | 'goal' | 'profile' | 'account' | 'settings';
 
 export const NAVIGATE_EVENT = 'caltrack:navigate';
 
@@ -11,7 +11,7 @@ export interface NavigateEventDetail {
   view: AppView;
 }
 
-const APP_VIEWS: readonly AppView[] = ['dashboard', 'trends', 'goal', 'profile', 'account'];
+const APP_VIEWS: readonly AppView[] = ['dashboard', 'trends', 'goal', 'profile', 'account', 'settings'];
 
 export function isAppView(value: unknown): value is AppView {
   return typeof value === 'string' && (APP_VIEWS as readonly string[]).includes(value);

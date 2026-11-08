@@ -1,5 +1,5 @@
 // Menu du compte (en haut à droite) : avatar → Mon profil, Compte et sécurité,
-// Se déconnecter.
+// Paramètres, Se déconnecter.
 // - Ordinateur : liste déroulante sous le bouton.
 // - Mobile : panneau qui monte du bas de l'écran (plus facile à atteindre au pouce).
 // Le menu est rendu dans <body> (portail) : l'en-tête crée un contexte
@@ -7,13 +7,13 @@
 // Accessibilité : motif « menu bouton » (aria-haspopup, flèches, Échap, Tab).
 import { CSSProperties, KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, LogOut, ShieldCheck, User } from 'lucide-react';
+import { ChevronDown, LogOut, Settings, ShieldCheck, User } from 'lucide-react';
 import type { AppView } from '../../utils/navigation';
 import { getAvatarInitial } from '../../utils/avatar';
 
 interface AccountMenuProps {
   email: string;
-  onNavigate: (view: Extract<AppView, 'profile' | 'account'>) => void;
+  onNavigate: (view: Extract<AppView, 'profile' | 'account' | 'settings'>) => void;
   onSignOut: () => void;
 }
 
@@ -146,6 +146,10 @@ export function AccountMenu({ email, onNavigate, onSignOut }: AccountMenuProps) 
               <button type="button" role="menuitem" className={itemClass} onClick={() => choose(() => onNavigate('account'))}>
                 <ShieldCheck className="h-4 w-4 text-gray-500" aria-hidden="true" />
                 Compte et sécurité
+              </button>
+              <button type="button" role="menuitem" className={itemClass} onClick={() => choose(() => onNavigate('settings'))}>
+                <Settings className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                Paramètres
               </button>
               <div className="my-1 border-t border-gray-100" role="none" />
               <button type="button" role="menuitem" className={itemClass} onClick={() => choose(onSignOut)}>

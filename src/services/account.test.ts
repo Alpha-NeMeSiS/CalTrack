@@ -34,10 +34,11 @@ describe('exportUserData', () => {
       goals: [],
       daily_targets: [],
       foods: [],
+      user_preferences: [],
     });
 
     // Chaque table est filtrée sur l'utilisateur connecté
-    for (const table of ['goals', 'daily_targets', 'entries', 'weight_logs', 'foods']) {
+    for (const table of ['goals', 'daily_targets', 'entries', 'weight_logs', 'foods', 'user_preferences']) {
       const [call] = supabaseMock.callsFor(table);
       expect(getOperationArgs(call, 'eq')).toEqual(['user_id', 'user-1']);
     }

@@ -115,6 +115,7 @@ Les migrations SQL se trouvent dans `supabase/migrations/`. Elles sont **aligné
 | `20261108011723` | Journal de pesées (`weight_logs`, une pesée par jour, RLS) avec reprise des poids existants |
 | `20261108012607` | Suppression de compte RGPD : fonction `delete_my_account()` (supprime l'utilisateur connecté, données effacées en cascade) |
 | `20261108020455` | Synchronisation de `profiles.email` quand l'adresse du compte change (déclencheur sur `auth.users`) |
+| `20261108021351` | Préférences d'affichage (`user_preferences` : calories, macros, noms et visibilité des repas ; RLS) |
 
 Rejouer toutes les migrations sur une base vierge donne un schéma identique à la production (vérifié par empreinte des colonnes, contraintes, index, politiques RLS et buckets).
 
@@ -142,6 +143,10 @@ src/
 - **Retour des liens** : un lien expiré ou déjà utilisé, ou la première étape d'un changement d'email, affiche un message en haut de l'écran.
 - **Export** : menu du compte (avatar) → Compte et sécurité → « Télécharger mes données » produit un fichier JSON (profil, objectifs, cibles quotidiennes, journal, pesées, aliments personnels).
 - **Suppression** : menu du compte (avatar) → Compte et sécurité → « Supprimer définitivement mon compte » appelle la fonction SQL `delete_my_account()`, qui supprime l'utilisateur connecté ; toutes ses données sont effacées en cascade.
+
+## Paramètres d'affichage
+
+Menu du compte (avatar) → Paramètres : calories du jour affichées « consommées / objectif » ou « restantes », macros en grammes ou en % de l'objectif, noms et visibilité des repas (un repas masqué n'est plus proposé à la saisie, les aliments déjà saisis restent affichés). Les choix sont enregistrés dans `user_preferences` ; sans ligne, les valeurs par défaut s'appliquent.
 
 ## Notes
 
