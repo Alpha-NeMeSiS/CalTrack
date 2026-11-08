@@ -1,28 +1,66 @@
 // Saisie rapide d'une pesée depuis le tableau de bord.
 // Enregistre la pesée pour la date affichée (permet aussi de rattraper un jour
-// passé) et affiche la dernière pesée avec l'évolution sur 7 jours.
+// passé), avec la composition facultative d'une balance impédancemètre, et
+// affiche la dernière pesée avec l'évolution sur 7 jours.
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { Scale } from 'lucide-react';
-import type { WeightLog } from '../../lib/supabase';
+import type { BodyComposition, WeightLog } from '../../lib/supabase';
 import { fetchWeightLogs } from '../../services/weights';
 import { addDaysToDateString, getTodayDate, parseLocalDate } from '../../utils/date';
-import { PROFILE_LIMITS } from '../../utils/validation';
+import { PROFILE_LIMITS, validateBodyComposition } from '../../utils/validation';
+import { hasComposition, pickComposition } from '../../utils/bodyComposition';
 import { getLatestWeight, weightChangeSince } from '../../utils/weights';
 
 interface WeightQuickLogProps {
   userId: string;
   date: string;
   currentWeight: number;
-  /** Enregistre la pesée (et met à jour le profil si besoin) */
-  onSave: (weightKg: number, date: string) => Promise<void>;
+  /** Enregistre la pesée (et met à jour le profil si besoin) ; composition seulement si saisie */
+  onSave: (weightKg: number, date: string, composition?: BodyComposition) => Promise<void>;
 }
+
+type CompositionField = keyof BodyComposition;
+
+/** Champs de composition : libellés courts (la carte est compacte) */
+const COMPOSITION_INPUTS: { key: CompositionField; label: string }[] = [
+  { key: 'body_fat_pct', label: 'Masse grasse (%)' },
+  { key: 'muscle_mass_kg', label: 'Muscles (kg)' },
+  { key: 'bone_mass_kg', label: 'Os (kg)' },
+  { key: 'body_water_pct', label: 'Eau (%)' },
+  { key: 'visceral_fat_rating', label: 'Graisse viscérale' },
+];
+
+const emptyComposition = (): Record<CompositionField, string> => ({
+  body_fat_pct: '',
+  muscle_mass_kg: '',
+  bone_mass_kg: '',
+  body_water_pct: '',
+  visceral_fat_rating: '',
+});
+
+const parseDecimal = (value: string) => (value.trim() ? Number(value.replace(',', '.')) : undefined);
 
 const formatKg = (value: number) =>
   `${value.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`;
+const formatOne = (value: number) => value.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+
+/** Résumé de la composition d'une pesée (ex : « Masse grasse 18,5 % · muscles 60,1 kg ») */
+function compositionSummary(log: BodyComposition): string | null {
+  const parts = [
+    log.body_fat_pct != null && `masse grasse ${formatOne(Number(log.body_fat_pct))} %`,
+    log.muscle_mass_kg != null && `muscles ${formatOne(Number(log.muscle_mass_kg))} kg`,
+    log.body_water_pct != null && `eau ${formatOne(Number(log.body_water_pct))} %`,
+    log.visceral_fat_rating != null && `graisse viscérale ${log.visceral_fat_rating}`,
+  ].filter(Boolean) as string[];
+  if (parts.length === 0) return null;
+  const text = parts.join(' · ');
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
 
 export function WeightQuickLog({ userId, date, currentWeight, onSave }: WeightQuickLogProps) {
   const [logs, setLogs] = useState<WeightLog[]>([]);
   const [value, setValue] = useState('');
+  const [composition, setComposition] = useState(emptyComposition);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -55,10 +93,25 @@ export function WeightQuickLog({ userId, date, currentWeight, onSave }: WeightQu
       return;
     }
 
+    const roundedWeight = Math.round(weight * 10) / 10;
+    const measured = pickComposition(
+      Object.fromEntries(COMPOSITION_INPUTS.map(({ key }) => [key, parseDecimal(composition[key])])) as BodyComposition
+    );
+    const compositionErrors = validateBodyComposition({ poids_kg: roundedWeight, ...measured });
+    if (compositionErrors.length > 0) {
+      setMessage({ type: 'error', text: compositionErrors.join(' ') });
+      return;
+    }
+
     setSaving(true);
     try {
-      await onSave(Math.round(weight * 10) / 10, date);
+      if (hasComposition(measured)) {
+        await onSave(roundedWeight, date, measured);
+      } else {
+        await onSave(roundedWeight, date);
+      }
       setValue('');
+      setComposition(emptyComposition());
       setMessage({ type: 'success', text: 'Pesée enregistrée.' });
       await loadLogs();
     } catch (error) {
@@ -90,9 +143,12 @@ export function WeightQuickLog({ userId, date, currentWeight, onSave }: WeightQu
               <>Poids du profil : {formatKg(currentWeight)}. Enregistrez une pesée pour suivre votre évolution.</>
             )}
           </p>
+          {latest && compositionSummary(latest) && (
+            <p className="mt-0.5 text-xs text-gray-500">{compositionSummary(latest)}</p>
+          )}
         </div>
 
-        <form onSubmit={handleSubmit} className="flex items-end gap-2">
+        <form id="weight-quick-log-form" onSubmit={handleSubmit} className="flex items-end gap-2">
           <div>
             <label htmlFor="weight-input" className="block text-xs font-medium text-gray-600 mb-1">
               {isToday ? "Poids aujourd'hui (kg)" : 'Poids ce jour-là (kg)'}
@@ -115,6 +171,37 @@ export function WeightQuickLog({ userId, date, currentWeight, onSave }: WeightQu
           </button>
         </form>
       </div>
+
+      <details className="mx-2 mb-2 rounded-md border border-gray-200 sm:mx-4">
+        <summary className="cursor-pointer select-none px-3 py-2 text-sm text-gray-700">
+          Composition (facultatif)
+        </summary>
+        <div className="space-y-2 border-t border-gray-200 p-3">
+          <p className="text-xs text-gray-500">
+            Valeurs de votre balance impédancemètre, enregistrées avec la pesée. Elles alimentent la courbe masse grasse /
+            masse maigre (Tendances) et, pour la dernière pesée, le calcul de vos besoins.
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {COMPOSITION_INPUTS.map((field) => (
+              <div key={field.key}>
+                <label htmlFor={`weigh-in-${field.key}`} className="mb-1 block text-xs font-medium text-gray-600">
+                  {field.label}
+                </label>
+                <input
+                  id={`weigh-in-${field.key}`}
+                  form="weight-quick-log-form"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={composition[field.key]}
+                  onChange={(e) => setComposition((current) => ({ ...current, [field.key]: e.target.value }))}
+                  className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-kaizen-500"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </details>
 
       {message && (
         <p

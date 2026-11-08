@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getGoalWarnings, validateGoalInput, validateProfileInput } from './validation';
+import { getGoalWarnings, validateBodyComposition, validateGoalInput, validateProfileInput } from './validation';
 
 const today = new Date(2025, 5, 15);
 const validProfile = { date_naissance: '1990-04-20', taille_cm: 175, poids_kg: 70, body_fat_pct: null };
@@ -149,5 +149,18 @@ describe('getGoalWarnings', () => {
     expect(getGoalWarnings({ ...base, type: 'loss', target_weight_kg: 76, duration_weeks: 10 }, 80)).toEqual([]);
     expect(getGoalWarnings({ ...base, type: 'maintain' }, 80)).toEqual([]);
     expect(getGoalWarnings({ ...base, type: 'loss', target_weight_kg: 70 }, 80)).toEqual([]);
+  });
+});
+
+describe('validateBodyComposition', () => {
+  it('valide la composition saisie avec une pesée (même règles que le profil)', () => {
+    expect(validateBodyComposition({ poids_kg: 70, body_fat_pct: 18.5, muscle_mass_kg: 54, bone_mass_kg: 2.9 })).toEqual([]);
+    expect(validateBodyComposition({ poids_kg: 70 })).toEqual([]);
+    expect(validateBodyComposition({ poids_kg: 70, body_fat_pct: 75 })).toEqual([
+      'Le taux de masse grasse doit être compris entre 3 et 60 %.',
+    ]);
+    expect(validateBodyComposition({ poids_kg: 70, muscle_mass_kg: 68, bone_mass_kg: 3 })).toEqual([
+      'La masse musculaire et la masse osseuse dépassent votre poids (70 kg) : vérifiez les valeurs.',
+    ]);
   });
 });

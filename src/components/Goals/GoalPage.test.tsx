@@ -10,14 +10,17 @@ vi.mock('../../contexts/useAuth', () => ({ useAuth: () => authValue }));
 
 const fetchUserGoals = vi.fn<[string], Promise<Goal[]>>();
 const activateNewGoal = vi.fn();
+const applyCalorieAdjustment = vi.fn();
 vi.mock('../../services/goals', () => ({
   fetchUserGoals: (userId: string) => fetchUserGoals(userId),
   activateNewGoal: (...args: unknown[]) => activateNewGoal(...args),
+  applyCalorieAdjustment: (...args: unknown[]) => applyCalorieAdjustment(...args),
 }));
 
 beforeEach(() => {
   fetchUserGoals.mockReset();
   activateNewGoal.mockReset();
+  applyCalorieAdjustment.mockReset().mockResolvedValue({});
 });
 
 const lossGoal = makeGoal({
@@ -106,5 +109,30 @@ describe('GoalPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Impossible de charger vos objectifs');
     await userEvent.setup().click(screen.getByRole('button', { name: 'Réessayer' }));
     expect(await screen.findByRole('region', { name: 'Objectif actuel' })).toBeInTheDocument();
+  });
+
+  it('affiche l’ajustement des calories accepté et permet de l’annuler', async () => {
+    const adjusted = { ...lossGoal, calorie_adjustment_kcal: 150, calorie_adjustment_at: '2026-11-08T10:00:00Z' };
+    fetchUserGoals.mockResolvedValueOnce([adjusted]).mockResolvedValue([{ ...adjusted, calorie_adjustment_kcal: 0 }]);
+    render(<GoalPage />);
+    const user = userEvent.setup();
+
+    const current = await screen.findByRole('region', { name: 'Objectif actuel' });
+    expect(current.textContent?.replace(/[\u202f\u00a0]/g, ' ')).toContain('+150 kcal/j d’après votre dépense réelle');
+
+    await user.click(within(current).getByRole('button', { name: 'Annuler l’ajustement' }));
+
+    expect(applyCalorieAdjustment).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-1', goal: adjusted, adjustmentKcal: 0 })
+    );
+    expect(fetchUserGoals).toHaveBeenCalledTimes(2);
+    expect(await screen.findByRole('status')).toHaveTextContent('Ajustement annulé');
+  });
+
+  it('n’affiche rien sans ajustement', async () => {
+    fetchUserGoals.mockResolvedValue([lossGoal]);
+    render(<GoalPage />);
+    const current = await screen.findByRole('region', { name: 'Objectif actuel' });
+    expect(within(current).queryByRole('button', { name: 'Annuler l’ajustement' })).not.toBeInTheDocument();
   });
 });

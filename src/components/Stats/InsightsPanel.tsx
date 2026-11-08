@@ -109,8 +109,8 @@ export function InsightsPanel({ days, weights, today, formulaExpenditureKcal = n
               {formulaExpenditureKcal ? ` · formule : ${formatNumber(formulaExpenditureKcal)} kcal/j` : ''}.
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              Fiable si vos journées sont saisies en entier. Un écart durable avec la formule peut justifier
-              d’ajuster votre niveau d’activité dans Paramètres → Objectif.
+              Fiable si vos journées sont saisies en entier. Quand l’écart avec votre objectif dépasse 100 kcal/j,
+              un ajustement des calories vous est proposé ci-dessous.
             </p>
           </>
         ) : expenditure.status === 'unreliable' ? (

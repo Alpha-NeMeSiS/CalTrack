@@ -22,6 +22,7 @@ export interface GoalLike {
   start_date?: string | null;
   end_date?: string | null;
   created_at?: string | null;
+  calorie_adjustment_kcal?: number | null;
 }
 
 /** Données saisies par l'utilisateur pour créer un objectif. */
@@ -222,6 +223,7 @@ export function computeTargetsForGoal(profile: UserProfile, goal: GoalLike): Mac
     deficit_or_surplus_pct: goal.deficit_or_surplus_pct,
     protein_g_per_kg: goal.protein_g_per_kg,
     fat_g_per_kg_min: goal.fat_g_per_kg_min,
+    calorie_adjustment_kcal: goal.calorie_adjustment_kcal,
   });
 }
 

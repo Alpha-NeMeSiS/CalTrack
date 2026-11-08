@@ -90,14 +90,31 @@ export function validateProfileInput(profile: ProfileInput, today: Date = new Da
     );
   }
 
-  if (isProvided(profile.body_fat_pct) && !isInRange(profile.body_fat_pct, PROFILE_LIMITS.body_fat_pct)) {
+  errors.push(...validateBodyComposition(profile));
+
+  return errors;
+}
+
+export type BodyCompositionInput = Pick<
+  ProfileInput,
+  'poids_kg' | 'body_fat_pct' | 'body_water_pct' | 'visceral_fat_rating' | 'muscle_mass_kg' | 'bone_mass_kg'
+>;
+
+/**
+ * Erreurs de la composition corporelle (toutes les valeurs sont facultatives) :
+ * bornes de chaque mesure et cohérence avec le poids. Sert au profil et aux pesées.
+ */
+export function validateBodyComposition(input: BodyCompositionInput): string[] {
+  const errors: string[] = [];
+
+  if (isProvided(input.body_fat_pct) && !isInRange(input.body_fat_pct, PROFILE_LIMITS.body_fat_pct)) {
     errors.push(
       `Le taux de masse grasse doit être compris entre ${PROFILE_LIMITS.body_fat_pct.min} et ${PROFILE_LIMITS.body_fat_pct.max} %.`
     );
   }
 
   // Mesures détaillées : toutes facultatives
-  const { body_water_pct, visceral_fat_rating, muscle_mass_kg, bone_mass_kg } = profile;
+  const { body_water_pct, visceral_fat_rating, muscle_mass_kg, bone_mass_kg } = input;
   if (isProvided(body_water_pct) && !isInRange(body_water_pct, PROFILE_LIMITS.body_water_pct)) {
     errors.push(
       `Le taux d’eau doit être compris entre ${PROFILE_LIMITS.body_water_pct.min} et ${PROFILE_LIMITS.body_water_pct.max} %.`
@@ -125,11 +142,11 @@ export function validateProfileInput(profile: ProfileInput, today: Date = new Da
   }
   if (
     muscleValid &&
-    isInRange(profile.poids_kg, PROFILE_LIMITS.poids_kg) &&
-    muscle_mass_kg + (boneValid ? bone_mass_kg : 0) >= profile.poids_kg
+    isInRange(input.poids_kg, PROFILE_LIMITS.poids_kg) &&
+    muscle_mass_kg + (boneValid ? bone_mass_kg : 0) >= input.poids_kg
   ) {
     const subject = boneValid ? 'La masse musculaire et la masse osseuse dépassent' : 'La masse musculaire dépasse';
-    errors.push(`${subject} votre poids (${formatLimit(profile.poids_kg)} kg) : vérifiez les valeurs.`);
+    errors.push(`${subject} votre poids (${formatLimit(input.poids_kg)} kg) : vérifiez les valeurs.`);
   }
 
   return errors;

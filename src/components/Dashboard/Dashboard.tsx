@@ -2,7 +2,7 @@
 // Affiche l'anneau calorique, les macrocarts, le journal du jour et gère la création/suppression d'entrées
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Calendar } from 'lucide-react';
-import { supabase, DailyTarget, Entry, Goal } from '../../lib/supabase';
+import { supabase, DailyTarget, Entry, Goal, BodyComposition } from '../../lib/supabase';
 import { useAuth } from '../../contexts/useAuth';
 import { calculateDailySummary } from '../../utils/calculations';
 import { addDaysToDateString, getTodayDate, isDateOnlyString, parseLocalDate } from '../../utils/date';
@@ -124,12 +124,13 @@ export function Dashboard({
 
   // Enregistre une pesée ; si c'est la plus récente, le poids du profil et la
   // cible du jour sont mis à jour.
-  const handleSaveWeight = async (weightKg: number, date: string) => {
+  const handleSaveWeight = async (weightKg: number, date: string, composition?: BodyComposition) => {
     if (!user || !profile) return;
     const profileUpdated = await recordWeight({
       userId: user.id,
       date,
       weightKg,
+      composition,
       profile,
       goalForToday: activeGoal,
       today: getTodayDate(),

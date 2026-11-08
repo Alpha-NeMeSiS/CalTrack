@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { History, Target } from 'lucide-react';
 import type { Goal } from '../../lib/supabase';
 import { useAuth } from '../../contexts/useAuth';
-import { fetchUserGoals } from '../../services/goals';
+import { applyCalorieAdjustment, fetchUserGoals } from '../../services/goals';
 import { getActivityLevelLabel, getGoalTypeLabel } from '../../utils/calculations';
 import { getTodayDate, parseLocalDate } from '../../utils/date';
 import { buildGoalHistory, getGoalStartDate, isGoalEndedOn } from '../../utils/goals';
@@ -57,11 +57,59 @@ function GoalSummary({ goal }: { goal: Goal }) {
   );
 }
 
+/** Ajustement des calories accepté depuis Tendances, annulable */
+function CalorieAdjustmentInfo({ goal, onCancel }: { goal: Goal; onCancel: () => Promise<void> }) {
+  const [cancelling, setCancelling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const adjustment = Number(goal.calorie_adjustment_kcal);
+  const since = goal.calorie_adjustment_at
+    ? new Date(goal.calorie_adjustment_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+    : null;
+
+  const handleCancel = async () => {
+    setCancelling(true);
+    setError(null);
+    try {
+      await onCancel();
+    } catch (cancelError) {
+      console.error('Error cancelling calorie adjustment:', cancelError);
+      setError("L'ajustement n'a pas pu être annulé. Réessayez.");
+      setCancelling(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 flex flex-col gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 sm:flex-row sm:items-center sm:justify-between">
+      <p>
+        <span className="font-semibold">
+          {adjustment > 0 ? '+' : '−'}
+          {Math.abs(adjustment).toLocaleString('fr-FR')} kcal/j d’après votre dépense réelle
+        </span>
+        {since ? ` (depuis le ${since})` : ''}. Les jours passés gardent leur cible.
+      </p>
+      <button
+        type="button"
+        onClick={handleCancel}
+        disabled={cancelling}
+        className="shrink-0 rounded-md border border-blue-300 px-3 py-1.5 font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-50"
+      >
+        {cancelling ? 'Annulation…' : 'Annuler l’ajustement'}
+      </button>
+      {error && (
+        <p role="alert" className="text-red-700">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function GoalPage() {
   const { user, profile } = useAuth();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [adjustmentCancelled, setAdjustmentCancelled] = useState(false);
 
   const loadGoals = useCallback(async () => {
     if (!user) return;
@@ -109,6 +157,21 @@ export function GoalPage() {
             Objectif actuel
           </h2>
           <GoalSummary goal={activeGoal} />
+          {(Number(activeGoal.calorie_adjustment_kcal) || 0) !== 0 && profile && user && (
+            <CalorieAdjustmentInfo
+              goal={activeGoal}
+              onCancel={async () => {
+                await applyCalorieAdjustment({ userId: user.id, goal: activeGoal, adjustmentKcal: 0, profile, today: getTodayDate() });
+                setAdjustmentCancelled(true);
+                await loadGoals();
+              }}
+            />
+          )}
+          {adjustmentCancelled && (
+            <p role="status" className="mt-3 text-sm text-kaizen-700">
+              Ajustement annulé : vos calories suivent de nouveau le calcul de la formule.
+            </p>
+          )}
         </section>
       )}
 

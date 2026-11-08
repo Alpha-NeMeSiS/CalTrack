@@ -12,6 +12,8 @@ Application web de suivi calorique construite avec **React + TypeScript + Vite**
 - Recherche d'aliments : base Ciqual locale et produits du commerce Open Food Facts (via une fonction Netlify qui interroge `search.openfoodfacts.org`).
 - Scanner de code-barres : avec l'appareil photo (ou en saisissant le code), le produit est retrouvé dans Open Food Facts et ses portions proposées.
 - Favoris et aliments récents en haut de la recherche, ajoutables en un tap ; « Mes aliments » pour les produits saisis à la main (reconnus au scan).
+- Composition corporelle saisie avec les pesées (balance impédancemètre) et courbe masse grasse / masse maigre.
+- Ajustement des calories proposé d'après la dépense réelle (repas saisis et pesées), à accepter ou non.
 - Persistance des données via Supabase (tables `profiles`, `goals`, `daily_targets`, `foods`, `entries`).
 
 ## Stack technique
@@ -125,6 +127,7 @@ Les migrations SQL se trouvent dans `supabase/migrations/`. Elles sont **aligné
 | `20261108162630` | Correctif : prénom et nom `NULL` par défaut (le `''` hérité bloquait la création du profil à l'onboarding depuis les contraintes d'identité) |
 | `20261108162648` | Mesures détaillées facultatives du profil : taux d'eau, graisse viscérale, masse musculaire, masse osseuse (avec bornes) |
 | `20261108170840` | Bibliothèque d'aliments : code-barres des aliments personnels (unique par utilisateur) et table `favorite_foods` (valeurs pour 100 g, quantité habituelle, RLS) |
+| `20261108172544` | Composition corporelle facultative dans `weight_logs` (masse grasse, muscles, os, eau, graisse viscérale) et ajustement des calories accepté sur l'objectif (`goals.calorie_adjustment_kcal`, `calorie_adjustment_at`) |
 
 Rejouer toutes les migrations sur une base vierge donne un schéma identique à la production (vérifié par empreinte des colonnes, contraintes, index, politiques RLS et buckets).
 
@@ -165,6 +168,12 @@ docs/
 ### Emails (SMTP et modèles en français)
 
 Les emails d'inscription, de mot de passe oublié et de changement d'adresse sont envoyés par Supabase Auth. Le service d'envoi intégré de Supabase n'envoie qu'aux membres de l'organisation Supabase et seulement quelques emails par heure : pour les autres utilisateurs, il faut brancher un SMTP (Resend, Brevo…). Les modèles en français sont dans `supabase/templates/` ; la marche à suivre (SMTP, limites d'envoi, sujets, tests) est dans [docs/emails.md](docs/emails.md). Les erreurs de Supabase Auth sont affichées en français (`src/utils/authErrors.ts`).
+
+## Composition corporelle et ajustement des calories
+
+- **Composition avec la pesée** : la carte « Ma pesée » a une section « Composition (facultatif) » (masse grasse, muscles, os, eau, graisse viscérale), enregistrée dans `weight_logs`. Une mesure laissée vide ne remplace pas celle déjà saisie ce jour-là. Pour la pesée la plus récente, les valeurs mettent aussi à jour le profil (et donc le métabolisme de base et la cible du jour).
+- **Tendances → Composition corporelle** : masse grasse et masse maigre de chaque pesée avec composition (`compositionPoints`, même estimation de la masse maigre que le profil), avec leur évolution sur 90 jours.
+- **Ajustement des calories** (`src/utils/calorieAdjustment.ts`) : à partir de la dépense réelle estimée sur 28 jours (`estimateExpenditure`), la cible qui garde le déficit ou le surplus de l'objectif est recalculée. Si elle s'écarte de plus de 100 kcal/j de la cible actuelle, Tendances propose de corriger : par pas de 300 kcal au plus, jamais sous le plancher de sécurité, au plus une fois par semaine. « Appliquer » enregistre `goals.calorie_adjustment_kcal` (ajouté aux calories calculées, protéines et lipides inchangés) et recalcule la cible du jour ; « Pas maintenant » masque la proposition 7 jours sur cet appareil. L'onglet Objectif affiche l'ajustement en cours et permet de l'annuler ; un nouvel objectif repart sans ajustement.
 
 ## Favoris, récents et mes aliments
 

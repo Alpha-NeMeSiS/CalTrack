@@ -154,6 +154,18 @@ describe('ProfilePage', () => {
     expect(indicators).not.toHaveTextContent('Graisse viscérale');
   });
 
+  it('reprend la composition enregistrée avec une pesée (pas d’écrasement par d’anciennes valeurs)', () => {
+    const { rerender } = render(<ProfilePage />);
+    expect(screen.getByLabelText('Masse musculaire (kg)')).toHaveValue(null);
+
+    // Profil rafraîchi après une pesée avec composition
+    authValue.profile = makeProfile({ ...baseProfile, muscle_mass_kg: 43.1, body_fat_pct: 24.5 });
+    rerender(<ProfilePage />);
+
+    expect(screen.getByLabelText('Masse musculaire (kg)')).toHaveValue(43.1);
+    expect(screen.getByLabelText('Masse grasse (%, optionnel)')).toHaveValue(24.5);
+  });
+
   it('refuse des données invalides', async () => {
     render(<ProfilePage />);
     const user = userEvent.setup();
