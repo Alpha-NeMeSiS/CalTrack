@@ -11,6 +11,38 @@ describe('validateProfileInput', () => {
     expect(validateProfileInput({ ...validProfile, body_fat_pct: 18 }, today)).toEqual([]);
   });
 
+  it('mesures détaillées facultatives : acceptées si plausibles', () => {
+    expect(
+      validateProfileInput(
+        { ...validProfile, body_water_pct: 55.4, visceral_fat_rating: 8, muscle_mass_kg: 54.2, bone_mass_kg: 2.9 },
+        today
+      )
+    ).toEqual([]);
+    expect(validateProfileInput({ ...validProfile, body_water_pct: null, muscle_mass_kg: undefined }, today)).toEqual([]);
+  });
+
+  it('mesures détaillées : bornes et cohérence avec le poids', () => {
+    expect(validateProfileInput({ ...validProfile, body_water_pct: 95 }, today)).toEqual([
+      'Le taux d’eau doit être compris entre 30 et 80 %.',
+    ]);
+    expect(validateProfileInput({ ...validProfile, visceral_fat_rating: 8.5 }, today)).toEqual([
+      'L’indice de graisse viscérale doit être un nombre entier entre 1 et 59.',
+    ]);
+    expect(validateProfileInput({ ...validProfile, muscle_mass_kg: 5 }, today)).toEqual([
+      'La masse musculaire doit être comprise entre 10 et 150 kg.',
+    ]);
+    expect(validateProfileInput({ ...validProfile, bone_mass_kg: 12 }, today)).toEqual([
+      'La masse osseuse doit être comprise entre 0,5 et 10 kg.',
+    ]);
+    // 68 + 3 kg pour un poids de 70 kg
+    expect(validateProfileInput({ ...validProfile, muscle_mass_kg: 68, bone_mass_kg: 3 }, today)).toEqual([
+      'La masse musculaire et la masse osseuse dépassent votre poids (70 kg) : vérifiez les valeurs.',
+    ]);
+    expect(validateProfileInput({ ...validProfile, muscle_mass_kg: 72 }, today)).toEqual([
+      'La masse musculaire dépasse votre poids (70 kg) : vérifiez les valeurs.',
+    ]);
+  });
+
   it('exige une date de naissance valide, passée et réaliste', () => {
     expect(validateProfileInput({ ...validProfile, date_naissance: '' }, today)).toEqual([
       'La date de naissance est requise.',

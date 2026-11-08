@@ -1,6 +1,6 @@
 // Logique métier "pure" des objectifs (aucun appel réseau) : facilement testable.
 // Les accès Supabase correspondants sont dans src/services/goals.ts.
-import { calculateCompleteTargets, MacroTargets, UserProfile } from './calculations';
+import { calculateCompleteTargets, estimateLeanMass, MacroTargets, UserProfile } from './calculations';
 import { addDaysToDateString, timestampToLocalDateString } from './date';
 
 export const DEFAULT_PROTEIN_G_PER_KG = 2.0;
@@ -63,9 +63,13 @@ export interface DailyTargetPayload {
   goal_id: string;
 }
 
-/** Katch-McArdle si le taux de masse grasse est connu, sinon Mifflin-St Jeor. */
-export function chooseBmrMethod(profile: Pick<UserProfile, 'body_fat_pct'>): BmrMethod {
-  return profile.body_fat_pct != null && profile.body_fat_pct > 0 ? 'katch' : 'mifflin';
+/**
+ * Katch-McArdle si la masse maigre peut être estimée (masse grasse, masse
+ * musculaire, taux d'eau : voir estimateLeanMass), sinon Mifflin-St Jeor.
+ */
+export function chooseBmrMethod(profile: Partial<UserProfile>): BmrMethod {
+  if (profile.body_fat_pct != null && profile.body_fat_pct > 0) return 'katch';
+  return estimateLeanMass(profile) ? 'katch' : 'mifflin';
 }
 
 /** Date de fin = début + N semaines (en jours calendaires locaux). */
@@ -204,12 +208,17 @@ export function findGoalForDate<T extends Pick<GoalLike, 'start_date' | 'end_dat
   return best ? best.goal : null;
 }
 
-/** Calcule calories et macros d'un objectif à partir du profil courant. */
+/**
+ * Calcule calories et macros d'un objectif à partir du profil courant.
+ * La formule du métabolisme de base suit les mesures actuelles du profil
+ * (goal.method n'est que celle du jour de création) : une masse grasse ou des
+ * mesures détaillées ajoutées ensuite affinent donc les cibles.
+ */
 export function computeTargetsForGoal(profile: UserProfile, goal: GoalLike): MacroTargets {
   return calculateCompleteTargets(profile, {
     type: goal.type,
     activity_level: goal.activity_level,
-    method: goal.method,
+    method: chooseBmrMethod(profile),
     deficit_or_surplus_pct: goal.deficit_or_surplus_pct,
     protein_g_per_kg: goal.protein_g_per_kg,
     fat_g_per_kg_min: goal.fat_g_per_kg_min,

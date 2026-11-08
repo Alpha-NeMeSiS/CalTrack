@@ -12,6 +12,7 @@ import {
 } from '../../utils/calculations';
 import { getTodayDate } from '../../utils/date';
 import { activateNewGoal } from '../../services/goals';
+import { chooseBmrMethod } from '../../utils/goals';
 import { upsertWeightLog } from '../../services/weights';
 import { PROFILE_LIMITS, validateGoalInput, validateProfileInput } from '../../utils/validation';
 import { GoalTargetsPreview } from '../Goals/GoalTargetsPreview';
@@ -389,7 +390,7 @@ export function OnboardingForm() {
                           poids_kg: formData.poids_kg,
                           body_fat_pct: formData.body_fat_pct,
                         };
-                        const bmr = calculateBMR(profile, formData.body_fat_pct ? 'katch' : 'mifflin');
+                        const bmr = calculateBMR(profile, chooseBmrMethod(profile));
                         const tdee = calculateTDEE(bmr, formData.activity_level);
                         const optimal = calculateOptimalDeficitOrSurplus(
                           formData.poids_kg,
@@ -429,7 +430,7 @@ export function OnboardingForm() {
                           poids_kg: formData.poids_kg,
                           body_fat_pct: formData.body_fat_pct,
                         };
-                        const bmr = calculateBMR(profile, formData.body_fat_pct ? 'katch' : 'mifflin');
+                        const bmr = calculateBMR(profile, chooseBmrMethod(profile));
                         const tdee = calculateTDEE(bmr, formData.activity_level);
                         const optimal = calculateOptimalDeficitOrSurplus(
                           formData.poids_kg,
@@ -508,7 +509,7 @@ export function OnboardingForm() {
                 poids_kg: formData.poids_kg,
                 body_fat_pct: formData.body_fat_pct,
               };
-              const tdee = calculateTDEE(calculateBMR(profile, formData.body_fat_pct ? 'katch' : 'mifflin'), formData.activity_level);
+              const tdee = calculateTDEE(calculateBMR(profile, chooseBmrMethod(profile)), formData.activity_level);
               updateFormData(
                 'deficit_or_surplus_pct',
                 calculateOptimalDeficitOrSurplus(formData.poids_kg, formData.target_weight_kg, weeks, tdee, formData.goal_type)

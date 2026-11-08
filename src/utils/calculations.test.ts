@@ -13,6 +13,7 @@ import {
   calculateOptimalDeficitOrSurplus,
   calculateTargetCalories,
   calculateTDEE,
+  estimateLeanMass,
   getActivityLevelLabel,
   getGoalTypeLabel,
   UserProfile,
@@ -64,6 +65,55 @@ describe('calculateBMR', () => {
   it('revient à Mifflin si Katch est demandé sans masse grasse', () => {
     expect(calculateBMR({ ...profile30, body_fat_pct: null }, 'katch')).toBeCloseTo(1648.75);
     expect(calculateBMR(profile30, 'katch')).toBeCloseTo(1648.75);
+  });
+});
+
+describe('estimateLeanMass', () => {
+  const p = (extra: Partial<UserProfile>): UserProfile => ({ ...baseProfile, poids_kg: 80, ...extra });
+
+  it('aucune mesure : pas d’estimation (Mifflin)', () => {
+    expect(estimateLeanMass(p({}))).toBeNull();
+  });
+
+  it('priorité au taux de masse grasse', () => {
+    expect(estimateLeanMass(p({ body_fat_pct: 20, muscle_mass_kg: 50, bone_mass_kg: 3 }))).toEqual({
+      kg: 64,
+      source: 'body_fat',
+    });
+  });
+
+  it('sinon masse musculaire + masse osseuse (balance impédancemètre)', () => {
+    expect(estimateLeanMass(p({ muscle_mass_kg: 58.5, bone_mass_kg: 3.1 }))).toEqual({ kg: 61.6, source: 'muscle_bone' });
+  });
+
+  it('masse musculaire seule : os estimés à 5 % de la masse maigre', () => {
+    const estimate = estimateLeanMass(p({ muscle_mass_kg: 57 }));
+    expect(estimate?.source).toBe('muscle');
+    expect(estimate?.kg).toBeCloseTo(60);
+  });
+
+  it('sinon taux d’eau (la masse maigre contient environ 73 % d’eau)', () => {
+    const estimate = estimateLeanMass(p({ body_water_pct: 55 }));
+    expect(estimate?.source).toBe('water');
+    // 44 kg d'eau ÷ 0,732 ≈ 60,1 kg (arrondi au dixième)
+    expect(estimate?.kg).toBe(60.1);
+  });
+
+  it('écarte une valeur invraisemblable et passe à la mesure suivante', () => {
+    // 20 kg de masse maigre pour 80 kg : erreur de saisie probable
+    expect(estimateLeanMass(p({ muscle_mass_kg: 18, bone_mass_kg: 2, body_water_pct: 55 }))?.source).toBe('water');
+    // Plus lourd que le poids lui-même
+    expect(estimateLeanMass(p({ muscle_mass_kg: 79, bone_mass_kg: 4 }))).toBeNull();
+  });
+
+  it('la graisse viscérale n’entre pas dans le calcul', () => {
+    expect(estimateLeanMass(p({ visceral_fat_rating: 9 }))).toBeNull();
+  });
+
+  it('Katch-McArdle utilise la masse maigre, quelle que soit la mesure', () => {
+    const age30 = `${new Date().getFullYear() - 30}-01-01`;
+    // 370 + 21.6 × 61.6
+    expect(calculateBMR(p({ date_naissance: age30, muscle_mass_kg: 58.5, bone_mass_kg: 3.1 }), 'katch')).toBeCloseTo(1700.56);
   });
 });
 

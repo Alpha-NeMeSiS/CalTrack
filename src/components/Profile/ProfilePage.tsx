@@ -1,6 +1,7 @@
 // Page « Mon profil » (menu du compte) : identité (photo, prénom, nom),
 // connexion (email, mot de passe), repères calculés (âge, IMC, métabolisme de
-// base, dépense estimée), pesée et données corporelles.
+// base, dépense estimée, masse maigre), pesée et données corporelles (dont
+// des mesures détaillées facultatives : eau, graisse viscérale, muscles, os).
 // Le poids n'est plus un champ du profil : il vient du journal de pesées
 // (une seule source de vérité, comme sur le tableau de bord).
 import { FormEvent, useCallback, useEffect, useState } from 'react';
@@ -9,7 +10,8 @@ import { supabase, Goal } from '../../lib/supabase';
 import { useAuth } from '../../contexts/useAuth';
 import { fetchActiveGoal, upsertDailyTargetForGoal } from '../../services/goals';
 import { recordWeight } from '../../services/weights';
-import { calculateAge, calculateBMR, calculateTDEE } from '../../utils/calculations';
+import { calculateAge, calculateBMR, calculateTDEE, estimateLeanMass, LeanMassSource } from '../../utils/calculations';
+import { chooseBmrMethod } from '../../utils/goals';
 import { getTodayDate } from '../../utils/date';
 import { PROFILE_LIMITS, validateProfileInput } from '../../utils/validation';
 import { EmailChangeForm } from '../Account/EmailChangeForm';
@@ -20,6 +22,35 @@ import { WeightQuickLog } from '../Weight/WeightQuickLog';
 const formatNumber = (value: number, digits = 0) =>
   value.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
+/** Mesures détaillées facultatives (balance impédancemètre, bilan) */
+type DetailedField = 'body_water_pct' | 'muscle_mass_kg' | 'bone_mass_kg' | 'visceral_fat_rating';
+
+const DETAILED_FIELDS: { key: DetailedField; label: string; step: string; hint: string }[] = [
+  { key: 'muscle_mass_kg', label: 'Masse musculaire (kg)', step: '0.1', hint: 'Avec la masse osseuse, donne votre masse maigre.' },
+  { key: 'bone_mass_kg', label: 'Masse osseuse (kg)', step: '0.1', hint: 'Souvent entre 2 et 4 kg.' },
+  {
+    key: 'body_water_pct',
+    label: 'Eau corporelle (%)',
+    step: '0.1',
+    hint: 'Sert à estimer la masse maigre si la masse grasse et les muscles ne sont pas connus.',
+  },
+  {
+    key: 'visceral_fat_rating',
+    label: 'Graisse viscérale (indice)',
+    step: '1',
+    hint: 'Indicateur de santé : il ne change pas le calcul.',
+  },
+];
+
+const LEAN_MASS_SOURCE_LABELS: Record<LeanMassSource, string> = {
+  body_fat: 'D’après votre masse grasse',
+  muscle_bone: 'Masse musculaire + masse osseuse',
+  muscle: 'D’après votre masse musculaire (os estimés)',
+  water: 'D’après votre eau corporelle',
+};
+
+const optionalNumber = (value: string) => (value ? Number(value) : undefined);
+
 export function ProfilePage() {
   const { user, profile, refreshProfile } = useAuth();
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
@@ -28,7 +59,13 @@ export function ProfilePage() {
     date_naissance: profile?.date_naissance ?? '',
     taille_cm: profile?.taille_cm ?? 170,
     body_fat_pct: profile?.body_fat_pct ?? undefined,
+    body_water_pct: profile?.body_water_pct ?? undefined,
+    visceral_fat_rating: profile?.visceral_fat_rating ?? undefined,
+    muscle_mass_kg: profile?.muscle_mass_kg ?? undefined,
+    bone_mass_kg: profile?.bone_mass_kg ?? undefined,
   }));
+  // Section ouverte d'emblée si des mesures détaillées sont déjà saisies
+  const [detailsOpen, setDetailsOpen] = useState(() => DETAILED_FIELDS.some(({ key }) => profile?.[key] != null));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -65,6 +102,10 @@ export function ProfilePage() {
         date_naissance: form.date_naissance,
         taille_cm: form.taille_cm,
         body_fat_pct: form.body_fat_pct || null,
+        body_water_pct: form.body_water_pct || null,
+        visceral_fat_rating: form.visceral_fat_rating || null,
+        muscle_mass_kg: form.muscle_mass_kg || null,
+        bone_mass_kg: form.bone_mass_kg || null,
       };
       const { error } = await supabase
         .from('profiles')
@@ -103,17 +144,40 @@ export function ProfilePage() {
   // Repères calculés à partir du profil enregistré
   const age = profile.date_naissance ? calculateAge(profile.date_naissance) : null;
   const bmi = profile.poids_kg / (profile.taille_cm / 100) ** 2;
-  const bmr = calculateBMR(profile, profile.body_fat_pct ? 'katch' : 'mifflin');
+  const leanMass = estimateLeanMass(profile);
+  const bmr = calculateBMR(profile, chooseBmrMethod(profile));
   const expenditure = activeGoal ? calculateTDEE(bmr, Number(activeGoal.activity_level)) : null;
   const indicators = [
     { label: 'Âge', value: age !== null ? `${age} ans` : '—' },
     { label: 'IMC', value: formatNumber(bmi, 1), hint: 'Indicatif : ne tient pas compte de la masse musculaire' },
-    { label: 'Métabolisme de base', value: `${formatNumber(bmr)} kcal/j`, hint: 'Énergie dépensée au repos' },
+    {
+      label: 'Métabolisme de base',
+      value: `${formatNumber(bmr)} kcal/j`,
+      hint: leanMass
+        ? 'Énergie dépensée au repos · formule Katch-McArdle (masse maigre)'
+        : 'Énergie dépensée au repos · formule Mifflin-St Jeor (poids, taille, âge)',
+    },
     {
       label: 'Dépense estimée',
       value: expenditure ? `${formatNumber(expenditure)} kcal/j` : '—',
       hint: expenditure ? 'Métabolisme de base × niveau d’activité de votre objectif' : 'Définissez un objectif pour la calculer',
     },
+    {
+      label: 'Masse maigre',
+      value: leanMass ? `${formatNumber(leanMass.kg, 1)} kg` : '—',
+      hint: leanMass
+        ? LEAN_MASS_SOURCE_LABELS[leanMass.source]
+        : 'Ajoutez une mesure détaillée (masse grasse, muscles, eau) pour l’estimer',
+    },
+    ...(profile.visceral_fat_rating
+      ? [
+          {
+            label: 'Graisse viscérale',
+            value: String(profile.visceral_fat_rating),
+            hint: 'Indicateur de santé : 1 à 12 est la zone saine sur la plupart des balances',
+          },
+        ]
+      : []),
   ];
 
   const inputClass =
@@ -144,7 +208,7 @@ export function ProfilePage() {
         <h2 id="indicators-title" className="mb-4 text-lg text-gray-900">
           Vos repères
         </h2>
-        <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {indicators.map((item) => (
             <div key={item.label} className="rounded-lg border border-gray-200 p-3">
               <dt className="text-xs font-medium text-gray-600">{item.label}</dt>
@@ -221,6 +285,50 @@ export function ProfilePage() {
               />
             </div>
           </div>
+
+          <details
+            open={detailsOpen}
+            onToggle={(event) => setDetailsOpen(event.currentTarget.open)}
+            className="rounded-md border border-gray-200"
+          >
+            <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-gray-800">
+              Mesures détaillées <span className="font-normal text-gray-500">(facultatif)</span>
+            </summary>
+            <div className="space-y-4 border-t border-gray-200 p-4">
+              <p className="text-xs text-gray-600">
+                Valeurs d’une balance impédancemètre ou d’un bilan (salle de sport, diététicien). Elles servent à estimer
+                votre masse maigre, pour un métabolisme de base plus précis. Renseignez seulement celles que vous avez et
+                mettez-les à jour de temps en temps.
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {DETAILED_FIELDS.map((field) => {
+                  const limits = PROFILE_LIMITS[field.key];
+                  return (
+                    <div key={field.key}>
+                      <label htmlFor={field.key} className="mb-1 block text-sm font-medium text-gray-700">
+                        {field.label}
+                      </label>
+                      <input
+                        type="number"
+                        id={field.key}
+                        inputMode="decimal"
+                        value={form[field.key] ?? ''}
+                        min={limits.min}
+                        max={limits.max}
+                        step={field.step}
+                        aria-describedby={`${field.key}-hint`}
+                        onChange={(e) => setForm({ ...form, [field.key]: optionalNumber(e.target.value) })}
+                        className={inputClass}
+                      />
+                      <p id={`${field.key}-hint`} className="mt-1 text-xs text-gray-500">
+                        {field.hint}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </details>
 
           <p className="text-xs text-gray-500">
             Poids actuel : {formatNumber(profile.poids_kg, 1)} kg. Il se met à jour avec vos pesées (carte « Ma pesée »).

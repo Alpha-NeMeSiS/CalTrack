@@ -47,6 +47,11 @@ export interface Profile {
   taille_cm: number;
   poids_kg: number;
   body_fat_pct?: number | null;
+  /** Mesures détaillées facultatives (migration 20261108162648) */
+  body_water_pct?: number | null;
+  visceral_fat_rating?: number | null;
+  muscle_mass_kg?: number | null;
+  bone_mass_kg?: number | null;
   /** Identité (migration 20261108125514) : facultatifs */
   first_name?: string | null;
   last_name?: string | null;
