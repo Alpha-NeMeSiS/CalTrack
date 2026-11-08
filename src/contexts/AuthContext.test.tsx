@@ -14,12 +14,17 @@ const auth = vi.hoisted(() => ({
   signOut: (() => Promise.resolve({ error: null })) as (...args: unknown[]) => Promise<unknown>,
   resetPasswordForEmail: (() => Promise.resolve({ error: null })) as (...args: unknown[]) => Promise<unknown>,
   updateUser: (() => Promise.resolve({ error: null })) as (...args: unknown[]) => Promise<unknown>,
+  notice: null as null | { type: 'success' | 'info' | 'error'; text: string },
 }));
 
 vi.mock('../lib/supabase', async () => {
   const { fakeSupabase } = await import('../test/supabaseMock');
   return {
     openedFromPasswordRecoveryLink: false,
+    get initialAuthNotice() {
+      return auth.notice;
+    },
+    clearAuthMessageFromUrl: vi.fn(),
     supabase: {
       ...fakeSupabase,
       auth: {
@@ -44,8 +49,21 @@ function sessionFor(userId: string): Session {
 
 /** Affiche l'état du contexte pour les assertions */
 function Probe() {
-  const { user, profile, loading, profileError, signOut, passwordRecovery, updatePassword, requestPasswordReset, deleteAccount } =
-    useAuth();
+  const {
+    user,
+    profile,
+    loading,
+    profileError,
+    signOut,
+    signOutEverywhere,
+    passwordRecovery,
+    updatePassword,
+    requestPasswordReset,
+    deleteAccount,
+    updateEmail,
+    authNotice,
+    dismissAuthNotice,
+  } = useAuth();
   return (
     <div>
       <span data-testid="state">
@@ -53,6 +71,18 @@ function Probe() {
       </span>
       <span data-testid="error">{profileError ?? ''}</span>
       <span data-testid="recovery">{passwordRecovery ? 'recovery' : 'normal'}</span>
+      <span data-testid="user-email">{user?.email ?? ''}</span>
+      <span data-testid="profile-email">{profile?.email ?? ''}</span>
+      <span data-testid="notice">{authNotice?.text ?? ''}</span>
+      <button type="button" onClick={() => signOutEverywhere()}>
+        Partout
+      </button>
+      <button type="button" onClick={() => updateEmail('nouvelle@example.com')}>
+        Email
+      </button>
+      <button type="button" onClick={dismissAuthNotice}>
+        Fermer
+      </button>
       <button type="button" onClick={() => signOut()}>
         Déconnexion
       </button>
@@ -92,6 +122,7 @@ beforeEach(() => {
   auth.resetPasswordForEmail = vi.fn(() => Promise.resolve({ error: null }));
   auth.updateUser = vi.fn(() => Promise.resolve({ error: null }));
   delete document.body.dataset.deleteResult;
+  auth.notice = null;
 });
 
 describe('AuthProvider', () => {
@@ -236,4 +267,71 @@ describe('AuthProvider', () => {
     expect(auth.signOut).not.toHaveBeenCalled();
     expect(state()).toBe('ready');
   });
+
+  it("se déconnecte de cet appareil seulement, ou de tous les appareils sur demande", async () => {
+    auth.session = sessionFor('user-1');
+    supabaseMock.setHandler(() => ({ data: makeProfile(), error: null }));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(state()).toBe('ready'));
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Déconnexion' }).click();
+    });
+    expect(auth.signOut).toHaveBeenLastCalledWith({ scope: 'local' });
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Partout' }).click();
+    });
+    expect(auth.signOut).toHaveBeenLastCalledWith({ scope: 'global' });
+  });
+
+  it("demande le changement d'email avec retour vers l'application", async () => {
+    auth.session = sessionFor('user-1');
+    supabaseMock.setHandler(() => ({ data: makeProfile(), error: null }));
+    auth.updateUser = vi.fn(() =>
+      Promise.resolve({ data: { user: { id: 'user-1', email: 'user-1@example.com', new_email: 'nouvelle@example.com' } }, error: null })
+    );
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(state()).toBe('ready'));
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Email' }).click();
+    });
+
+    expect(auth.updateUser).toHaveBeenCalledWith(
+      { email: 'nouvelle@example.com' },
+      { emailRedirectTo: window.location.origin }
+    );
+  });
+
+  it("met à jour l'utilisateur et le profil sur USER_UPDATED, sans écran de chargement", async () => {
+    auth.session = sessionFor('user-1');
+    let profileEmail = 'ancienne@example.com';
+    supabaseMock.setHandler(() => ({ data: makeProfile({ email: profileEmail }), error: null }));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(state()).toBe('ready'));
+
+    profileEmail = 'nouvelle@example.com';
+    emitAuthEvent('USER_UPDATED', {
+      user: { id: 'user-1', email: 'nouvelle@example.com' },
+    } as unknown as Session);
+
+    await waitFor(() => expect(screen.getByTestId('profile-email')).toHaveTextContent('nouvelle@example.com'));
+    expect(screen.getByTestId('user-email')).toHaveTextContent('nouvelle@example.com');
+    expect(state()).toBe('ready');
+    expect(supabaseMock.callsFor('profiles')).toHaveLength(2);
+  });
+
+  it('affiche puis ferme le message de retour d’un lien', async () => {
+    auth.notice = { type: 'error', text: 'Ce lien a expiré.' };
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await waitFor(() => expect(state()).toBe('anonymous'));
+
+    expect(screen.getByTestId('notice')).toHaveTextContent('Ce lien a expiré.');
+    act(() => {
+      screen.getByRole('button', { name: 'Fermer' }).click();
+    });
+    expect(screen.getByTestId('notice')).toBeEmptyDOMElement();
+  });
 });
+

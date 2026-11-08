@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { AuthNotice, parseAuthRedirect } from '../utils/authRedirect';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -8,15 +9,33 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 /**
- * true si l'application a été ouverte depuis le lien « mot de passe oublié ».
- * Supabase (flux implicite) redirige vers l'app avec `#access_token=…&type=recovery` ;
- * le client efface ce fragment pendant son initialisation (asynchrone) et
- * l'événement PASSWORD_RECOVERY peut partir avant l'abonnement de React :
- * on lit donc l'URL ici, AVANT de créer le client.
+ * Retour d'un lien envoyé par Supabase Auth (mot de passe oublié, confirmation,
+ * changement d'email, lien expiré…).
+ * Supabase (flux implicite) redirige vers l'app avec un fragment `#…` que le
+ * client efface pendant son initialisation (asynchrone), et ses événements
+ * (PASSWORD_RECOVERY…) peuvent partir avant l'abonnement de React : on lit
+ * donc l'URL ici, AVANT de créer le client.
  */
-export const openedFromPasswordRecoveryLink =
-  typeof window !== 'undefined' &&
-  new URLSearchParams(window.location.hash.replace(/^#/, '')).get('type') === 'recovery';
+const initialAuthRedirect =
+  typeof window !== 'undefined'
+    ? parseAuthRedirect(window.location.hash)
+    : { isRecovery: false, notice: null, isMessageOnly: false };
+
+/** true si l'application a été ouverte depuis le lien « mot de passe oublié » */
+export const openedFromPasswordRecoveryLink = initialAuthRedirect.isRecovery;
+
+/** Message à afficher après un lien d'authentification (ou null) */
+export const initialAuthNotice: AuthNotice | null = initialAuthRedirect.notice;
+
+/**
+ * Efface de l'URL un fragment qui ne contient qu'un message de Supabase
+ * (le client ne le fait pas) : sinon il resterait affiché et serait relu.
+ */
+export function clearAuthMessageFromUrl() {
+  if (typeof window === 'undefined' || !initialAuthRedirect.isMessageOnly) return;
+  if (!window.location.hash) return;
+  window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

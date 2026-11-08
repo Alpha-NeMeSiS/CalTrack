@@ -9,6 +9,7 @@ import { SignupForm } from './components/Auth/SignupForm';
 import { PasswordRecoveryScreen } from './components/Auth/PasswordRecoveryScreen';
 import { OnboardingForm } from './components/Onboarding/OnboardingForm';
 import { Header } from './components/Layout/Header';
+import { AuthNoticeBanner } from './components/Layout/AuthNoticeBanner';
 import { Navigation } from './components/Layout/Navigation';
 import { Dashboard } from './components/Dashboard/Dashboard';
 import { WeeklyTrends } from './components/Stats/WeeklyTrends';
@@ -18,7 +19,7 @@ import { AccountPage } from './components/Account/AccountPage';
 import { getTodayDate } from './utils/date';
 import { AppView, isAppView, NAVIGATE_EVENT, NavigateEventDetail } from './utils/navigation';
 
-function AppContent() {
+function AppScreens() {
   // Récupère l'état d'authentification et le profil utilisateur
   const { user, profile, loading, profileError, refreshProfile, signOut, passwordRecovery } = useAuth();
   const [retryingProfile, setRetryingProfile] = useState(false);
@@ -139,6 +140,16 @@ function AppContent() {
         {currentView === 'account' && <AccountPage />}
       </main>
     </div>
+  );
+}
+
+// Message des liens d'authentification (au-dessus de tous les écrans) + écran courant
+function AppContent() {
+  return (
+    <>
+      <AuthNoticeBanner />
+      <AppScreens />
+    </>
   );
 }
 
