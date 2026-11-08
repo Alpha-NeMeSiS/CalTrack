@@ -113,7 +113,7 @@ export function WeightChart({ points, targetWeight }: WeightChartProps) {
           </g>
         )}
 
-        <path d={averagePath} fill="none" className="stroke-brand-500" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={averagePath} fill="none" className="stroke-brand-600" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
         {sorted.map((p) => (
           <circle key={p.date} cx={x(p.date)} cy={y(p.weight_kg)} r="3.5" className="fill-surface stroke-brand-700" strokeWidth="1.5">
             <title>{`${formatDate(p.date)} : ${formatKg(p.weight_kg)} kg`}</title>
@@ -125,7 +125,7 @@ export function WeightChart({ points, targetWeight }: WeightChartProps) {
       </svg>
 
       <figcaption className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-        <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-5 bg-brand-500" /> Moyenne 7 jours</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-5 bg-brand-600" /> Moyenne 7 jours</span>
         <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full border border-brand-700 bg-surface" /> Pesées</span>
         {showTarget && <span className="flex items-center gap-1.5"><span className="inline-block w-5 border-t-2 border-dashed border-info-400" /> Poids cible</span>}
         <span className="ml-auto font-medium text-ink" data-testid="weight-change">

@@ -8,13 +8,13 @@ export function Header() {
   const { profile, signOut } = useAuth();
 
   return (
-    <header className="sticky top-0 z-10 card-glass border-b border-surface/20">
+    <header className="sticky top-0 z-10 border-b border-line bg-surface">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <img src={logo} alt="" aria-hidden="true" className="mr-3 h-10 w-10 object-contain" />
             <div>
-              <h1 className="text-xl text-accent-700 ">CalTrack</h1>
+              <h1 className="font-display text-xl tracking-wide text-accent-700">CalTrack</h1>
               <p className="text-xs text-muted">Suivi calorique personnalisé</p>
             </div>
           </div>

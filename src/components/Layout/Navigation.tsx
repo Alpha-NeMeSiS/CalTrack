@@ -24,7 +24,7 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
   return (
     <>
       {/* Ordinateur / tablette : onglets en haut */}
-      <nav aria-label="Navigation principale" className="hidden sm:block card-glass border-b border-surface/20">
+      <nav aria-label="Navigation principale" className="hidden sm:block border-b border-line bg-surface">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8">
             {tabs.map((tab) => {

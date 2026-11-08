@@ -111,7 +111,7 @@ export function AccountMenu({ identity, onNavigate, onSignOut }: AccountMenuProp
             setOpen(true);
           }
         }}
-        className="flex min-h-[44px] items-center gap-2 rounded-full p-1 text-sm text-body hover:bg-surface/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 sm:pr-3"
+        className="flex min-h-[44px] items-center gap-2 rounded-full p-1 text-sm text-body hover:bg-surface/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 sm:pr-3"
       >
         <Avatar identity={identity} className="h-9 w-9 text-sm" />
         <span className="hidden max-w-[16rem] truncate sm:inline">{displayName}</span>

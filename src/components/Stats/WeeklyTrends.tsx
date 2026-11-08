@@ -359,7 +359,7 @@ export function WeeklyTrends() {
             role="region"
             aria-labelledby="daily-history-title"
             tabIndex={0}
-            className="space-y-2 h-[400px] overflow-y-auto pr-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            className="space-y-2 h-[400px] overflow-y-auto pr-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
           >
             {monthData.map((day) => {
               const date = parseLocalDate(day.date);

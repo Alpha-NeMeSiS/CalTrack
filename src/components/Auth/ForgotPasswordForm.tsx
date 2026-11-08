@@ -81,7 +81,7 @@ export function ForgotPasswordForm({ initialEmail = '', onBack }: ForgotPassword
       )}
 
       <p className="mt-4 text-center text-sm">
-        <button type="button" onClick={onBack} className="text-primary-600 hover:text-primary-700 font-medium">
+        <button type="button" onClick={onBack} className="text-primary-700 hover:text-primary-800 font-medium">
           Retour à la connexion
         </button>
       </p>

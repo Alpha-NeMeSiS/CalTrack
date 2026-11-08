@@ -355,9 +355,9 @@ export function OnboardingForm() {
                 min="1"
                 max="260"
                 placeholder="Ex: 12"
-                className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-600"
               />
-              <p className="mt-1 text-xs text-primary-600">
+              <p className="mt-1 text-xs text-primary-700">
                 Laissez vide pour un objectif de maintien sans limite de temps
               </p>
             </div>
@@ -407,7 +407,7 @@ export function OnboardingForm() {
                     max="300"
                     step="0.1"
                     placeholder="Ex: 70"
-                    className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-600"
                   />
                 </div>
 
@@ -446,7 +446,7 @@ export function OnboardingForm() {
                     min="1"
                     max="260"
                     placeholder="Ex: 20"
-                    className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-600"
                   />
                 </div>
               </div>

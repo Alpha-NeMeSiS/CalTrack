@@ -62,7 +62,7 @@ export function BodyCompositionChart({ logs }: BodyCompositionChartProps) {
   const change = compositionChange(points);
   const series = [
     { label: 'Masse grasse', values: points.map((p) => p.fatKg), current: last.fatKg, delta: change?.fatKg, strokeClass: 'stroke-warning-500' },
-    { label: 'Masse maigre', values: points.map((p) => p.leanKg), current: last.leanKg, delta: change?.leanKg, strokeClass: 'stroke-brand-500' },
+    { label: 'Masse maigre', values: points.map((p) => p.leanKg), current: last.leanKg, delta: change?.leanKg, strokeClass: 'stroke-brand-600' },
   ];
 
   return (

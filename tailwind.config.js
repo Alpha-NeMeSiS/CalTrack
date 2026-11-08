@@ -12,7 +12,12 @@ export default {
       colors: tailwindColors(),
       fontFamily: {
         sans: ['Inter', 'Noto Sans JP', 'ui-sans-serif', 'system-ui'],
+        // Police du logo uniquement
         display: ['Bangers', 'Noto Sans JP', 'system-ui'],
+      },
+      boxShadow: {
+        // Ombre douce des cartes (panel)
+        card: '0 1px 2px rgb(16 24 40 / 0.04), 0 2px 8px rgb(16 24 40 / 0.05)',
       },
     },
   },

@@ -124,7 +124,7 @@ export function SignupForm({ onToggle }: { onToggle: () => void }) {
 
       <p className="mt-4 text-center text-sm text-muted">
         Déjà un compte ?{' '}
-        <button onClick={onToggle} className="text-primary-600 hover:text-primary-700 font-medium">
+        <button onClick={onToggle} className="text-primary-700 hover:text-primary-800 font-medium">
           Se connecter
         </button>
       </p>

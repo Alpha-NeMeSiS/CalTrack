@@ -50,7 +50,7 @@ function AppScreens() {
   // Affiche un écran de chargement tant que l'authentification/profile n'est pas prête
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-muted flex items-center justify-center">
+      <div className="min-h-screen bg-canvas flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <div className="text-muted">Chargement...</div>
@@ -87,7 +87,7 @@ function AppScreens() {
   // ne PAS afficher l'onboarding, qui risquerait d'écraser un profil existant.
   if (profileError) {
     return (
-      <div className="min-h-screen bg-surface-muted flex items-center justify-center p-4">
+      <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
         <div role="alert" className="w-full max-w-md panel p-8 text-center">
           <p className="text-danger-700 mb-6">{profileError}</p>
           <div className="flex gap-3">
@@ -130,7 +130,7 @@ function AppScreens() {
 
   // Vue principale de l'application lorsque l'utilisateur est connecté et profil rempli
   return (
-    <div className="min-h-screen bg-surface-muted">
+    <div className="min-h-screen bg-canvas">
       <Header />
       <Navigation currentView={currentView} onViewChange={setCurrentView} />
 

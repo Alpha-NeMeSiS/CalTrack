@@ -39,7 +39,7 @@ function QuickFoodRow({
         disabled={disabled}
         aria-pressed={isFavorite}
         aria-label={isFavorite ? `Retirer « ${item.label} » des favoris` : `Ajouter « ${item.label} » aux favoris`}
-        className="flex-shrink-0 rounded-md p-1.5 text-subtle hover:bg-surface-sunken hover:text-warning-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50"
+        className="flex-shrink-0 rounded-md p-1.5 text-subtle hover:bg-surface-sunken hover:text-warning-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 disabled:opacity-50"
       >
         <Star className={`h-5 w-5 ${isFavorite ? 'fill-warning-400 text-warning-500' : ''}`} aria-hidden="true" />
       </button>
@@ -47,7 +47,7 @@ function QuickFoodRow({
         type="button"
         onClick={() => onPick(item)}
         disabled={disabled}
-        className="min-w-0 flex-1 rounded-md px-1 py-0.5 text-left hover:bg-surface-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50"
+        className="min-w-0 flex-1 rounded-md px-1 py-0.5 text-left hover:bg-surface-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 disabled:opacity-50"
       >
         <span className="block truncate text-sm font-medium text-ink">{item.label}</span>
         <span className="block text-xs text-subtle">{details}</span>
@@ -58,7 +58,7 @@ function QuickFoodRow({
         disabled={disabled}
         aria-label={`Ajouter « ${item.label} » (${item.usualQty} g) au journal`}
         title="Ajouter au journal"
-        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full btn-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full btn-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2"
       >
         <Plus className="h-5 w-5" aria-hidden="true" />
       </button>

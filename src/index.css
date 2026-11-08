@@ -7,16 +7,11 @@
    et des composants : docs/design-system.md */
 
 :root {
-	/* Carte « verre » (en-tête, navigation, tableau de bord) */
-	--glass-bg: rgba(255, 255, 255, 0.62);
-	--glass-border: rgba(255, 255, 255, 0.28);
 	color-scheme: light;
 }
 
 /* Thème sombre : classe posée sur <html> (src/utils/theme.ts et index.html) */
 .dark {
-	--glass-bg: rgba(17, 24, 39, 0.72);
-	--glass-border: rgba(255, 255, 255, 0.06);
 	/* Contrôles natifs (dates, listes, barres de défilement) en sombre */
 	color-scheme: dark;
 }
@@ -24,7 +19,8 @@
 @layer base {
 	html, body, #root {
 		height: 100%;
-		background: linear-gradient(180deg, rgb(var(--c-brand-50)) 0%, rgb(var(--c-surface)) 100%);
+		/* Fond des pages : gris-vert très léger en clair */
+		background: rgb(var(--c-canvas));
 		color: rgb(var(--c-ink));
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
@@ -42,14 +38,14 @@
 		background-color: rgb(var(--c-surface));
 	}
 
+	/* Titres en Inter (police du corps) ; Bangers est réservé au logo
+	   (font-display). Styles : page-title, card-title, section-label. */
 	h1, h2, h3, h4 {
-		font-family: 'Bangers', 'Noto Sans JP', system-ui;
-		letter-spacing: 0.5px;
-		color: rgb(var(--c-accent-700));
+		color: rgb(var(--c-ink));
 	}
 
 	a {
-		color: rgb(var(--c-brand-700));
+		color: rgb(var(--c-primary-700));
 		text-decoration: none;
 	}
 }
@@ -58,9 +54,10 @@
    arrondi spécifique) restent sur chaque élément. Équivalents React dans
    src/components/ui/. */
 @layer components {
-	/* Boutons */
+	/* Boutons. Vert foncé (700) : le texte blanc sur le vert du logo (500) ne
+	   dépasse pas 2,5:1 */
 	.btn-primary {
-		@apply bg-primary-600 text-on-color transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-primary-300;
+		@apply bg-primary-700 text-on-color transition-colors hover:bg-primary-800 disabled:cursor-not-allowed disabled:bg-primary-300;
 	}
 	.btn-secondary {
 		@apply border border-line-strong text-body transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60;
@@ -68,21 +65,25 @@
 	.btn-danger {
 		@apply bg-danger-600 text-on-color transition-colors hover:bg-danger-700 disabled:cursor-not-allowed disabled:bg-danger-300;
 	}
-	/* Bouton de la marque (pilule verte). Vert foncé : le texte blanc sur le vert
-	   du logo (brand-500) ne dépasse pas 2,5:1 */
+	/* Bouton de la marque : mêmes couleurs que le bouton principal, en pilule */
 	.btn-brand {
-		@apply inline-flex items-center justify-center rounded-full bg-brand-700 px-4 py-2 font-semibold text-on-color shadow-md transition-colors hover:bg-brand-800;
+		@apply inline-flex items-center justify-center rounded-full bg-primary-700 px-4 py-2 font-semibold text-on-color shadow-sm transition-colors hover:bg-primary-800 disabled:cursor-not-allowed disabled:opacity-60;
 	}
 
-	/* Cartes */
+	/* Cartes : arrondi, liseré discret et ombre douce */
 	.panel {
-		@apply rounded-lg bg-surface shadow-md;
+		@apply rounded-2xl border border-line-subtle bg-surface shadow-card;
 	}
-	.card-glass {
-		@apply rounded-xl border p-4 shadow-lg;
-		background: var(--glass-bg);
-		border-color: var(--glass-border);
-		backdrop-filter: blur(6px);
+
+	/* Titres */
+	.page-title {
+		@apply text-2xl font-bold text-ink;
+	}
+	.card-title {
+		@apply text-xl font-bold text-brand-800;
+	}
+	.section-label {
+		@apply text-sm font-bold uppercase tracking-wide text-accent-700;
 	}
 
 	/* Champs de formulaire */
@@ -90,7 +91,7 @@
 		@apply block text-sm font-medium text-body;
 	}
 	.field-input {
-		@apply rounded-md border border-line-strong focus:outline-none focus:ring-2 focus:ring-primary-500;
+		@apply rounded-md border border-line-strong focus:outline-none focus:ring-2 focus:ring-primary-600;
 	}
 
 	/* Pastilles de statut : badge + ton */
