@@ -60,4 +60,22 @@ describe('InsightsPanel', () => {
     expect(text(box)).toContain('formule : 2 650 kcal/j');
     expect(within(box).queryByText(/Disponible après/)).not.toBeInTheDocument();
   });
+
+  it('résume l’eau des 7 derniers jours', () => {
+    render(<InsightsPanel days={[]} weights={[]} today={TODAY} water={{ averageMl: 2100, daysAtGoal: 4 }} />);
+    const tile = screen.getByText('Eau moyenne').closest('div')?.parentElement as HTMLElement;
+    expect(within(tile).getByText('2,1 L/j')).toBeInTheDocument();
+    expect(within(tile).getByText('4/7 jours à l’objectif')).toBeInTheDocument();
+  });
+
+  it('indique qu’aucune prise d’eau n’a été notée', () => {
+    render(<InsightsPanel days={[]} weights={[]} today={TODAY} water={{ averageMl: null, daysAtGoal: 0 }} />);
+    expect(screen.getByText('Aucune prise notée')).toBeInTheDocument();
+  });
+
+  it('n’affiche pas la tuile eau sans données d’eau', () => {
+    render(<InsightsPanel days={[]} weights={[]} today={TODAY} />);
+    expect(screen.queryByText('Eau moyenne')).not.toBeInTheDocument();
+  });
 });
+
