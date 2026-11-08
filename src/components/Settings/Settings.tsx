@@ -8,6 +8,15 @@ import { calculateBMR, calculateTDEE, calculateOptimalDeficitOrSurplus } from '.
 import { getTodayDate } from '../../utils/date';
 import { activateNewGoal, fetchActiveGoal, upsertDailyTargetForGoal } from '../../services/goals';
 import { PROFILE_LIMITS, validateGoalInput, validateProfileInput } from '../../utils/validation';
+import { DEFAULT_PROTEIN_G_PER_KG } from '../../utils/goals';
+import { GoalTargetsPreview } from '../Goals/GoalTargetsPreview';
+
+const PROTEIN_OPTIONS = [
+  { value: 1.6, label: '1,6 g/kg — modéré' },
+  { value: 1.8, label: '1,8 g/kg' },
+  { value: 2.0, label: '2,0 g/kg — recommandé (défaut)' },
+  { value: 2.2, label: '2,2 g/kg — sportif / sèche' },
+];
 
 export function Settings() {
   // Récupère l'utilisateur, le profil et la fonction pour rafraîchir le profil
@@ -38,6 +47,7 @@ export function Settings() {
     deficit_or_surplus_pct: 15,
     target_weight_kg: undefined as number | undefined,
     duration_weeks: undefined as number | undefined,
+    protein_g_per_kg: DEFAULT_PROTEIN_G_PER_KG,
   });
 
   // Quand le profil change (chargé), on initialise les champs du formulaire
@@ -71,6 +81,7 @@ export function Settings() {
           deficit_or_surplus_pct: data.deficit_or_surplus_pct || 15,
           target_weight_kg: data.target_weight_kg || undefined,
           duration_weeks: data.duration_weeks || undefined,
+          protein_g_per_kg: Number(data.protein_g_per_kg) || DEFAULT_PROTEIN_G_PER_KG,
         });
       }
     } catch (err) {
@@ -146,6 +157,7 @@ export function Settings() {
         deficit_or_surplus_pct: goalData.deficit_or_surplus_pct,
         target_weight_kg: goalData.target_weight_kg,
         duration_weeks: goalData.duration_weeks,
+        protein_g_per_kg: goalData.protein_g_per_kg,
       },
       profile.poids_kg
     );
@@ -169,6 +181,7 @@ export function Settings() {
           deficit_or_surplus_pct: goalData.deficit_or_surplus_pct,
           target_weight_kg: goalData.target_weight_kg,
           duration_weeks: goalData.duration_weeks,
+          protein_g_per_kg: goalData.protein_g_per_kg,
         },
         getTodayDate()
       );
@@ -519,6 +532,55 @@ export function Settings() {
                     </p>
                   </div>
                 </>
+              )}
+
+              <div>
+                <label htmlFor="protein_g_per_kg" className="block text-sm font-medium text-gray-700 mb-1">
+                  Protéines
+                </label>
+                <select
+                  id="protein_g_per_kg"
+                  value={goalData.protein_g_per_kg}
+                  onChange={(e) => setGoalData({ ...goalData, protein_g_per_kg: Number(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {PROTEIN_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Par kg de poids de référence (votre poids, plafonné à un IMC de 25).
+                </p>
+              </div>
+
+              {profile && (
+                <GoalTargetsPreview
+                  profile={profile}
+                  goal={{
+                    type: goalData.goal_type,
+                    activity_level: goalData.activity_level,
+                    deficit_or_surplus_pct: goalData.deficit_or_surplus_pct,
+                    target_weight_kg: goalData.target_weight_kg,
+                    duration_weeks: goalData.duration_weeks,
+                    protein_g_per_kg: goalData.protein_g_per_kg,
+                  }}
+                  onApplyDuration={(weeks) => {
+                    const next = { ...goalData, duration_weeks: weeks };
+                    if (goalData.target_weight_kg && goalData.goal_type !== 'maintain') {
+                      const tdee = calculateTDEE(calculateBMR(profile, profile.body_fat_pct ? 'katch' : 'mifflin'), goalData.activity_level);
+                      next.deficit_or_surplus_pct = calculateOptimalDeficitOrSurplus(
+                        profile.poids_kg, goalData.target_weight_kg, weeks, tdee, goalData.goal_type
+                      );
+                    }
+                    setGoalData(next);
+                  }}
+                />
+              )}
+
+              {activeGoal && (
+                <p className="text-xs text-gray-500">
+                  Enregistrer crée un nouvel objectif qui démarre aujourd'hui : la progression repart de votre poids actuel.
+                </p>
               )}
 
               <button

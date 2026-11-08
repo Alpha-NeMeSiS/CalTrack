@@ -31,6 +31,8 @@ export interface GoalInput {
   deficit_or_surplus_pct: number;
   target_weight_kg?: number | null;
   duration_weeks?: number | null;
+  /** Protéines en g par kg de poids de référence (2 g/kg par défaut) */
+  protein_g_per_kg?: number | null;
 }
 
 export interface GoalInsertPayload {
@@ -98,7 +100,8 @@ export function buildGoalInsertPayload(
     activity_level: input.activity_level,
     method: chooseBmrMethod(profile),
     deficit_or_surplus_pct: isMaintain ? 0 : input.deficit_or_surplus_pct,
-    protein_g_per_kg: DEFAULT_PROTEIN_G_PER_KG,
+    protein_g_per_kg:
+      input.protein_g_per_kg && input.protein_g_per_kg > 0 ? input.protein_g_per_kg : DEFAULT_PROTEIN_G_PER_KG,
     fat_g_per_kg_min: DEFAULT_FAT_G_PER_KG_MIN,
     is_active: true,
     target_weight_kg: targetWeight,

@@ -114,6 +114,12 @@ describe('buildGoalInsertPayload', () => {
     expect(payload.duration_weeks).toBe(8); // la durée reste possible pour un maintien
   });
 
+  it('enregistre le taux de protéines choisi (2 g/kg par défaut)', () => {
+    const input = { type: 'loss' as const, activity_level: 1.2, deficit_or_surplus_pct: 15 };
+    expect(buildGoalInsertPayload('u', profile, input, '2025-02-10').protein_g_per_kg).toBe(2);
+    expect(buildGoalInsertPayload('u', profile, { ...input, protein_g_per_kg: 1.8 }, '2025-02-10').protein_g_per_kg).toBe(1.8);
+  });
+
   it('ignore un poids cible ou une durée à 0', () => {
     const payload = buildGoalInsertPayload(
       'user-1',
