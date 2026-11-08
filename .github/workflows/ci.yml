@@ -1,5 +1,6 @@
 # Intégration continue : vérifie chaque push et chaque pull request
-# (lint, types, tests, build de production).
+# (lint, types, tests, build de production) et rejoue les migrations de la
+# base sur un Postgres vierge avant de lancer les tests SQL.
 name: CI
 
 on:
@@ -46,3 +47,34 @@ jobs:
           # Valeurs factices : le build n'appelle pas Supabase
           VITE_SUPABASE_URL: https://example.supabase.co
           VITE_SUPABASE_ANON_KEY: ci-placeholder-key
+
+  database:
+    name: Base de données (migrations et tests SQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # Même version majeure de Postgres que la production Supabase
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rejouer les migrations et lancer les tests SQL
+        run: bash scripts/test-db.sh

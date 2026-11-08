@@ -72,6 +72,7 @@ Par défaut, Vite démarre sur `http://localhost:5173`.
 - `npm test` : lance tous les tests une fois.
 - `npm run test:watch` : relance les tests à chaque modification.
 - `npm run test:coverage` : génère un rapport de couverture dans `coverage/`.
+- `npm run test:db` : rejoue les migrations sur un Postgres vierge et lance les tests SQL (voir « Tests de la base de données »).
 
 ## Tests
 
@@ -132,6 +133,33 @@ Les migrations SQL se trouvent dans `supabase/migrations/`. Elles sont **aligné
 Rejouer toutes les migrations sur une base vierge donne un schéma identique à la production (vérifié par empreinte des colonnes, contraintes, index, politiques RLS et buckets).
 
 > Pour toute évolution du schéma, créer une nouvelle migration (`supabase migration new <nom>`) plutôt que de modifier la base depuis l'éditeur SQL, afin de garder l'historique aligné.
+
+### Tests de la base de données
+
+`scripts/test-db.sh` (`npm run test:db`) crée une base vierge, y installe un environnement Supabase minimal (`supabase/tests/setup.sql` : rôles `anon` / `authenticated` / `service_role`, `auth.users`, `auth.uid()` lisant l'utilisateur « connecté », droits par défaut), rejoue **toutes les migrations dans l'ordre**, puis exécute les tests SQL de `supabase/tests/` (chacun dans une transaction annulée) :
+
+| Fichier | Ce qui est vérifié |
+| --- | --- |
+| `01_signup.sql` | Création du profil comme l'onboarding (sans prénom ni nom), identité, synchronisation de l'email |
+| `02_rls_isolation.sql` | Un utilisateur ne voit, ne modifie, ne supprime aucune donnée d'un autre, et ne peut pas en créer en son nom (toutes les tables personnelles) ; aliments publics en lecture seule ; rien de visible sans session |
+| `03_constraints.sql` | Bornes et unicités (profil, pesées, journal, objectifs, aliments, favoris, préférences) |
+| `04_weigh_in.sql` | Une pesée remise à jour garde la composition du jour |
+| `05_delete_account.sql` | `delete_my_account()` efface tout le compte connecté et rien d'autre |
+| `06_reminders.sql` | Rappels push dus à l'heure locale, une fois par jour, pas si l'action est faite ; réservés à la tâche planifiée |
+
+Outils (`supabase/tests/helpers.sql`) : `test.create_user('nom')`, `test.login(test.uid('nom'))` puis `SET ROLE authenticated` pour agir comme l'API, `test.ok(condition, 'message')`, `test.raises($$ SQL $$, 'SQLSTATE', 'message')`.
+
+En local, il faut un Postgres accessible (variables `PGHOST`, `PGUSER`, `PGPASSWORD`…) et un rôle qui peut créer des bases et des rôles. Par exemple avec Docker :
+
+```bash
+docker run -d --name caltrack-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:17
+```
+
+```bash
+PGHOST=localhost PGUSER=postgres PGPASSWORD=postgres npm run test:db
+```
+
+La CI (job « Base de données ») fait la même chose à chaque push et pull request, avec Postgres 17 comme la production.
 
 ## Structure simplifiée
 
