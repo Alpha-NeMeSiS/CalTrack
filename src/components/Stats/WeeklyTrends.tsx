@@ -1,11 +1,14 @@
-// Tendances : graphique des calories sur 7 jours et historique détaillé sur 30 jours
-import { useState, useEffect, useCallback } from 'react';
-import { supabase, WeightLog } from '../../lib/supabase';
+// Tendances : indicateurs (moyennes, régularité, dépense estimée), graphique des
+// calories sur 7 jours, courbe de poids et historique détaillé sur 30 jours
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase, Goal, WeightLog } from '../../lib/supabase';
 import { fetchActiveGoal } from '../../services/goals';
 import { fetchWeightLogs } from '../../services/weights';
 import { WeightChart } from './WeightChart';
+import { InsightsPanel } from './InsightsPanel';
 import { useAuth } from '../../contexts/useAuth';
-import { calculateDailySummary } from '../../utils/calculations';
+import { calculateBMR, calculateDailySummary, calculateTDEE } from '../../utils/calculations';
+import type { DayIntake } from '../../utils/insights';
 import { addDaysToDateString, getTodayDate, parseLocalDate } from '../../utils/date';
 import {
   DayStatus,
@@ -37,6 +40,7 @@ type DayItem = {
   date: string;
   summary: DailySummary | null; // null si aucun objectif ce jour-là
   dayStatus: DayStatus | null; // statut d'affichage (null si aucun objectif)
+  intake: DayIntake; // apports du jour (même sans objectif) pour les indicateurs
 };
 
 // Hauteur utilisable du graphique (barres, graduations et grille partagent cette échelle)
@@ -62,13 +66,24 @@ const LEGEND: Array<{ label: string; swatch: string }> = [
 
 // Composant principal pour afficher les tendances hebdomadaires
 export function WeeklyTrends() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [weekData, setWeekData] = useState<DayItem[]>([]); // 7 derniers jours
   const [monthData, setMonthData] = useState<DayItem[]>([]); // 30 derniers jours
   const [weights, setWeights] = useState<WeightLog[]>([]); // 90 derniers jours
-  const [targetWeight, setTargetWeight] = useState<number | null>(null);
+  const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
+
+  // Dépense « théorique » (formule) pour la comparer à la dépense estimée
+  const formulaExpenditure = useMemo(
+    () =>
+      activeGoal && profile
+        ? Math.round(calculateTDEE(calculateBMR(profile, activeGoal.method), Number(activeGoal.activity_level)))
+        : null,
+    [activeGoal, profile]
+  );
+  const targetWeight =
+    activeGoal && activeGoal.type !== 'maintain' ? Number(activeGoal.target_weight_kg) || null : null;
 
   // Charge les cibles et les entrées des 30 derniers jours
   const loadWeekData = useCallback(async () => {
@@ -106,20 +121,26 @@ export function WeeklyTrends() {
 
       const buildDay = (dateStr: string): DayItem => {
         const dayTarget = targets.find((t) => t.date === dateStr);
-        if (!dayTarget) {
-          return { date: dateStr, summary: null, dayStatus: null };
-        }
         const dayEntries = entries.filter((e) => e.date === dateStr);
-        const summary = calculateDailySummary(dayEntries, dayTarget, dateStr);
-        return {
+        const intake: DayIntake = {
           date: dateStr,
-          summary,
-          dayStatus: getDayStatus({
-            status: summary.status,
-            entryCount: dayEntries.length,
-            isToday: dateStr === endDate,
-          }),
+          entryCount: dayEntries.length,
+          consumedKcal: dayEntries.reduce((sum, e) => sum + (Number(e.kcal) || 0), 0),
+          consumedProteinG: dayEntries.reduce((sum, e) => sum + (Number(e.protein_g) || 0), 0),
+          targetKcal: dayTarget ? Number(dayTarget.calories_kcal) : null,
+          targetProteinG: dayTarget ? Number(dayTarget.protein_g) : null,
+          status: null,
         };
+        if (!dayTarget) {
+          return { date: dateStr, summary: null, dayStatus: null, intake };
+        }
+        const summary = calculateDailySummary(dayEntries, dayTarget, dateStr);
+        const dayStatus = getDayStatus({
+          status: summary.status,
+          entryCount: dayEntries.length,
+          isToday: dateStr === endDate,
+        });
+        return { date: dateStr, summary, dayStatus, intake: { ...intake, status: dayStatus } };
       };
 
       // 7 derniers jours (du plus ancien au plus récent) et 30 derniers (du plus récent)
@@ -128,12 +149,12 @@ export function WeeklyTrends() {
 
       // Courbe de poids : non bloquante (les calories restent affichées si elle échoue)
       try {
-        const [weightLogs, activeGoal] = await Promise.all([
+        const [weightLogs, goal] = await Promise.all([
           fetchWeightLogs(user.id, addDaysToDateString(endDate, -90)),
           fetchActiveGoal(user.id),
         ]);
         setWeights(weightLogs);
-        setTargetWeight(activeGoal?.type !== 'maintain' ? Number(activeGoal?.target_weight_kg) || null : null);
+        setActiveGoal(goal);
       } catch (weightError) {
         console.error('Error loading weight logs:', weightError);
         setWeights([]);
@@ -193,6 +214,13 @@ export function WeeklyTrends() {
       </div>
 
       <div className="p-4 sm:p-6 space-y-6">
+        <InsightsPanel
+          days={monthData.map((day) => day.intake)}
+          weights={weights}
+          today={getTodayDate()}
+          formulaExpenditureKcal={formulaExpenditure}
+        />
+
         <div>
           <h3 className="text-sm text-gray-900 mb-4">Graphique des calories</h3>
           <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">

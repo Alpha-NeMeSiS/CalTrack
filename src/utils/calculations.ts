@@ -47,6 +47,9 @@ export const FIBER_MAX_G = 40;
 export const MAX_WEEKLY_LOSS_PCT = 1;
 export const MAX_WEEKLY_GAIN_PCT = 0.5;
 
+/** Énergie approximative d'un kilo de masse corporelle (kcal). */
+export const KCAL_PER_KG_BODY_WEIGHT = 7700;
+
 /**
  * Calories minimales d'un objectif : jamais sous le métabolisme de base, ni
  * sous 1 200 kcal (femme) / 1 500 kcal (homme).
@@ -417,8 +420,7 @@ export function calculateOptimalDeficitOrSurplus(
   const totalWeightChange = Math.abs(targetWeight - currentWeight);
   const weeklyWeightChange = totalWeightChange / durationWeeks;
 
-  const caloriesPerKg = 7700;
-  const weeklyCalorieChange = weeklyWeightChange * caloriesPerKg;
+  const weeklyCalorieChange = weeklyWeightChange * KCAL_PER_KG_BODY_WEIGHT;
   const dailyCalorieChange = weeklyCalorieChange / 7;
 
   const deficitOrSurplusPct = (dailyCalorieChange / tdee) * 100;

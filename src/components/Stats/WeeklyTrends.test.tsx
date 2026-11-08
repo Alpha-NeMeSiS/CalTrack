@@ -106,4 +106,15 @@ describe('WeeklyTrends', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Réessayer' }));
     expect(await screen.findByText('Graphique des calories')).toBeInTheDocument();
   });
+
+  it('affiche les indicateurs des 7 derniers jours', async () => {
+    render(<WeeklyTrends />);
+    await screen.findByText('Historique détaillé (30 jours)');
+
+    // Avant-hier seul est un jour complet renseigné (1200 kcal)
+    expect(screen.getByRole('heading', { name: 'Vos 7 derniers jours' })).toBeInTheDocument();
+    const tile = screen.getByText('Calories moyennes').parentElement as HTMLElement;
+    expect(tile.textContent?.replace(/[\u202f\u00a0]/g, ' ')).toContain('1 200 kcal/j');
+    expect(screen.getByText('Série en cours').parentElement).toHaveTextContent('1 jour');
+  });
 });
