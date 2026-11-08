@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Dashboard } from './Dashboard';
@@ -221,6 +221,61 @@ describe('Dashboard', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Réessayer' }));
 
     expect(await screen.findByText('Journal du jour')).toBeInTheDocument();
+  });
+
+  describe('journal', () => {
+    beforeEach(() => {
+      mockedFetchUserGoals.mockResolvedValue([makeGoal()]);
+      mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget());
+    });
+
+    it('regroupe les aliments par repas avec le total de calories', async () => {
+      setEntries([
+        makeEntry({ id: 'a', label: 'Café', meal_type: 'breakfast', kcal: 5 }),
+        makeEntry({ id: 'b', label: 'Poulet rôti', meal_type: 'lunch', kcal: 247.5 }),
+      ]);
+      render(<Dashboard activeDate="2025-01-10" />);
+
+      const lunch = await screen.findByRole('region', { name: 'Déjeuner' });
+      expect(lunch).toHaveTextContent('Poulet rôti');
+      expect(lunch).toHaveTextContent('248 kcal');
+      expect(screen.getByRole('region', { name: 'Petit-déjeuner' })).toHaveTextContent('Café');
+    });
+
+    it('modifie la quantité d’une entrée (nutriments recalculés)', async () => {
+      setEntries([makeEntry({ id: 'e1', qty_grammes: 150, kcal: 247.5, protein_g: 46.5, fat_g: 5.4, carbs_g: 0, fiber_g: 0 })]);
+      render(<Dashboard activeDate="2025-01-10" />);
+      const user = userEvent.setup();
+
+      await user.click(await screen.findByRole('button', { name: 'Modifier Poulet rôti' }));
+      const form = within(screen.getByRole('form', { name: 'Modifier Poulet rôti' }));
+      const qty = form.getByLabelText('Quantité (g)');
+      await user.clear(qty);
+      await user.type(qty, '200');
+      await user.selectOptions(form.getByLabelText('Repas'), 'dinner');
+      await user.click(form.getByRole('button', { name: 'Enregistrer' }));
+
+      await waitFor(() => expect(supabaseMock.callsFor('entries', 'update')).toHaveLength(1));
+      const [updateCall] = supabaseMock.callsFor('entries', 'update');
+      expect(getOperationArgs(updateCall, 'update')?.[0]).toMatchObject({ qty_grammes: 200, kcal: 330, protein_g: 62, meal_type: 'dinner' });
+    });
+
+    it('copie les repas de la veille', async () => {
+      supabaseMock.setHandler((call) => {
+        if (call.table !== 'entries') return { data: null, error: null };
+        const dateFilter = call.operations.find((op) => op.method === 'eq' && op.args[0] === 'date')?.args[1];
+        if (hasOperation(call, 'select') && dateFilter === '2025-01-09') {
+          return { data: [makeEntry({ id: 'y1', date: '2025-01-09' }), makeEntry({ id: 'y2', date: '2025-01-09' })], error: null };
+        }
+        return { data: [], error: null };
+      });
+      render(<Dashboard activeDate="2025-01-10" />);
+
+      await userEvent.setup().click(await screen.findByRole('button', { name: 'Copier les repas de la veille' }));
+
+      expect(await screen.findByText('2 aliments copiés depuis la veille.')).toBeInTheDocument();
+      expect(supabaseMock.callsFor('entries', 'insert')).toHaveLength(1);
+    });
   });
 
   describe('suppression', () => {

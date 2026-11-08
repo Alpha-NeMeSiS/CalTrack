@@ -110,6 +110,13 @@ describe('searchOFF', () => {
     expect(food.kcal_per_100g).toBe(120);
   });
 
+  it('lit la portion du fabricant (serving_size)', async () => {
+    mockFetchJson({ products: [{ product_name: 'Yaourt', serving_size: '1 pot (125 g)', nutriments: { 'energy-kcal_100g': 60 } }] });
+    const [food] = await searchOFF('yaourt');
+    expect(food.servingGrams).toBe(125);
+    expect(food.servingLabel).toBe('1 pot (125 g)');
+  });
+
   it('renvoie une liste vide pour une réponse inattendue', async () => {
     mockFetchJson({ products: 'oops' });
     expect(await searchOFF('nutella')).toEqual([]);

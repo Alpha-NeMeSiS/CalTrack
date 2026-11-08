@@ -15,6 +15,25 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: fakeSupabase };
 });
 
+// La recherche réelle est testée dans FoodSearch.test.tsx : ici, un bouton
+// simule le choix d'un produit OFF ayant une portion de 125 g.
+vi.mock('../Foods/FoodSearch', () => ({
+  FoodSearch: ({ onSelect }: { onSelect: (food: unknown) => void }) => (
+    <button
+      type="button"
+      onClick={() =>
+        onSelect({
+          source: 'off', name: 'Yaourt nature', brand: 'Danone', offCode: '123',
+          kcal_per_100g: 60, protein_g: 4, fat_g: 3, carbs_g: 5, fiber_g: 0,
+          servingGrams: 125, servingLabel: '1 pot (125 g)',
+        })
+      }
+    >
+      Choisir un yaourt
+    </button>
+  ),
+}));
+
 beforeEach(() => {
   supabaseMock.reset();
 });
@@ -79,6 +98,22 @@ describe('AddEntryModal', () => {
     // Nom vide : le bouton est désactivé
     expect(screen.getByRole('button', { name: 'Ajouter' })).toBeDisabled();
     expect(onAdd).not.toHaveBeenCalled();
+  });
+
+  it('propose la portion du fabricant par défaut et des portions rapides', async () => {
+    const onAdd = vi.fn().mockResolvedValue(true);
+    render(<AddEntryModal date="2025-01-10" onAdd={onAdd} onClose={vi.fn()} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Choisir un yaourt' }));
+    expect(screen.getByLabelText('Quantité (grammes)')).toHaveValue(125);
+    expect(screen.getByRole('button', { name: '1 portion (125 g)' })).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(screen.getByRole('button', { name: '2 portions' }));
+    expect(screen.getByLabelText('Quantité (grammes)')).toHaveValue(250);
+
+    await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ qty_grammes: 250, kcal: 150, label: 'Danone Yaourt nature' }));
   });
 
   it('se ferme avec la touche Échap', async () => {

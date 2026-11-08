@@ -19,6 +19,7 @@ const OFF_FIELDS = [
   'brands',
   'image_small_url',
   'nutriments',
+  'serving_size',
 ].join(',');
 
 type NetlifyEvent = {
@@ -40,6 +41,7 @@ type SearchHit = {
   brands?: string | string[];
   image_small_url?: string;
   nutriments?: Record<string, unknown>;
+  serving_size?: string;
 };
 
 // Les réponses réussies peuvent être mises en cache 5 min par le CDN
@@ -108,6 +110,7 @@ export async function handler(event: NetlifyEvent): Promise<NetlifyResponse> {
       brands: normalizeBrands(hit.brands),
       image_small_url: hit.image_small_url,
       nutriments: hit.nutriments ?? {},
+      serving_size: hit.serving_size,
     }));
 
     return json(200, successHeaders, { products });

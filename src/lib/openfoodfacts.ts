@@ -1,4 +1,5 @@
 import type { NormalizedFood } from '../types/food';
+import { parseServingGrams } from '../utils/entries';
 
 const OFF_PROXY_SEARCH = '/api/off/search';
 const MIN_QUERY_LENGTH = 3;
@@ -34,6 +35,7 @@ interface OFFProduct {
   brands?: string | string[];
   image_small_url?: string;
   nutriments?: OFFNutriments;
+  serving_size?: string;
 }
 
 function kcalFromNutriments(nutriments: OFFNutriments | undefined): number {
@@ -76,6 +78,11 @@ export async function searchOFF(term: string, signal?: AbortSignal): Promise<Nor
         carbs_g: toNumber(product?.nutriments?.carbohydrates_100g),
         fiber_g: toNumber(product?.nutriments?.fiber_100g),
       };
+      const servingGrams = parseServingGrams(product?.serving_size);
+      if (servingGrams) {
+        normalized.servingGrams = servingGrams;
+        normalized.servingLabel = product?.serving_size?.trim();
+      }
       return normalized;
     })
     .filter((food: NormalizedFood) =>
