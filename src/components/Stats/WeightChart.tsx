@@ -1,5 +1,9 @@
 // Courbe de poids (SVG, sans dépendance) : pesées, moyenne glissante sur 7 jours
 // et ligne du poids cible.
+// Le repère SVG prend la largeur réelle du conteneur : les textes gardent leur
+// taille (11 px) sur mobile comme sur grand écran, au lieu d'être agrandis ou
+// réduits avec le dessin.
+import { useEffect, useState } from 'react';
 import { parseLocalDate } from '../../utils/date';
 import { movingAverage, sortWeights, WeightPoint } from '../../utils/weights';
 
@@ -8,7 +12,8 @@ interface WeightChartProps {
   targetWeight?: number | null;
 }
 
-const WIDTH = 600;
+/** Largeur utilisée tant que le conteneur n'est pas mesuré (et dans les tests) */
+const DEFAULT_WIDTH = 600;
 const HEIGHT = 220;
 const PAD = { top: 12, right: 12, bottom: 24, left: 44 };
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -18,7 +23,25 @@ const formatKg = (value: number) =>
 const formatDate = (date: string) =>
   parseLocalDate(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 
+/** Largeur (px) d'un élément, mise à jour quand il est redimensionné. */
+function useElementWidth(element: HTMLElement | null, fallback: number) {
+  const [width, setWidth] = useState(fallback);
+  useEffect(() => {
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const update = () => {
+      if (element.clientWidth > 0) setWidth(element.clientWidth);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [element]);
+  return width;
+}
+
 export function WeightChart({ points, targetWeight }: WeightChartProps) {
+  const [container, setContainer] = useState<HTMLElement | null>(null);
+  const WIDTH = useElementWidth(container, DEFAULT_WIDTH);
   const sorted = sortWeights(points);
 
   if (sorted.length < 2) {
@@ -57,10 +80,10 @@ export function WeightChart({ points, targetWeight }: WeightChartProps) {
   const change = Math.round((last.weight_kg - first.weight_kg) * 10) / 10;
 
   return (
-    <figure className="space-y-2">
+    <figure ref={setContainer} className="space-y-2">
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="h-auto w-full"
+        className="block h-auto w-full"
         role="img"
         aria-label={`Poids passé de ${formatKg(first.weight_kg)} kg le ${formatDate(first.date)} à ${formatKg(last.weight_kg)} kg le ${formatDate(last.date)}`}
       >
