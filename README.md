@@ -200,7 +200,7 @@ docs/
 - **Changement d'email** : menu du compte (avatar) → Mon profil. Supabase envoie un lien de confirmation (à l'ancienne et à la nouvelle adresse si *Secure email change* est activé dans Authentication → Providers → Email). L'adresse ne change qu'après confirmation ; `profiles.email` est alors mis à jour par un déclencheur SQL.
 - **Déconnexion** : « Se déconnecter » (menu de l'avatar) ferme la session de cet appareil uniquement ; « Se déconnecter de tous les appareils » (Compte et sécurité) révoque toutes les sessions. La suppression du compte efface aussi les photos de profil.
 - **Retour des liens** : un lien expiré ou déjà utilisé, ou la première étape d'un changement d'email, affiche un message en haut de l'écran.
-- **Export** : menu du compte (avatar) → Compte et sécurité → « Télécharger mes données » produit un fichier JSON (profil, objectifs, cibles quotidiennes, journal, pesées, aliments personnels, favoris, préférences, recettes avec leurs ingrédients).
+- **Export** : menu du compte (avatar) → Compte et sécurité → « Télécharger mes données » produit un fichier JSON (profil, objectifs, cibles quotidiennes, journal, pesées, aliments personnels, favoris, préférences, recettes avec leurs ingrédients, prises d'eau).
 - **Suppression** : menu du compte (avatar) → Compte et sécurité → « Supprimer définitivement mon compte » appelle la fonction SQL `delete_my_account()`, qui supprime l'utilisateur connecté ; toutes ses données sont effacées en cascade.
 
 ### Emails (SMTP et modèles en français)
@@ -228,6 +228,13 @@ Onglet « Recettes » de « Ajouter un aliment » :
 - **Créer ou modifier** une recette : nom, nombre de parts (1 à 50), poids cuit total facultatif (pesez la casserole après cuisson) et ingrédients, cherchés comme d'habitude (aliments génériques, produits supermarché, scanner, mes aliments). Les totaux et les valeurs par part se mettent à jour en direct.
 - **Ajouter au journal** : le bouton **+** ajoute 1 part au repas habituel de la recette ; un tap sur la recette permet de choisir la quantité en parts (par demi-part) ou en grammes si le poids cuit est connu, avec un aperçu de la ligne notée (« Chili maison — 1 part », « Chili maison — 380 g »).
 - **Stockage** : tables `recipes` et `recipe_ingredients` (copie des valeurs pour 100 g de chaque ingrédient), enregistrées en une seule opération par la fonction SQL `save_recipe` (1 à 50 ingrédients, rien n'est enregistré en cas d'erreur). Une recette ajoutée devient une entrée ordinaire du journal : la modifier ou la supprimer ne change pas les repas déjà notés.
+
+## Suivi de l'eau
+
+- **Carte « Eau »** du journal (sous les calories et les macros) : total du jour et objectif, barre de progression, boutons « + 250 ml » et « + 500 ml », « Autre… » (de 1 à 3 000 ml) et « Annuler le dernier ». La carte suit la date choisie dans le journal.
+- **Objectif** : automatique d'après le poids du profil (30 ml/kg, arrondi aux 100 ml, entre 1,5 et 4 L : 79 kg → 2,4 L), ou personnalisé dans Paramètres (de 0,5 à 6 L).
+- **Tendances** : tuile « Eau moyenne » dans les 7 derniers jours (moyenne des jours notés, jours à l'objectif).
+- **Stockage** : une ligne par prise d'eau dans `water_logs` ; l'objectif manuel dans `user_preferences.water_goal_ml` (vide = automatique).
 
 ## Scanner de code-barres
 

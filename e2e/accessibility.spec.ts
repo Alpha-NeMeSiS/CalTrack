@@ -62,6 +62,12 @@ for (const colorScheme of ['light', 'dark'] as const) {
       });
 
       test('journal', async ({ page }) => {
+        await expect(page.getByRole('heading', { name: 'Eau' })).toBeVisible();
+        await expectNoViolations(page);
+
+        // Carte Eau : quantité libre
+        await page.getByRole('button', { name: 'Autre…' }).click();
+        await expect(page.getByLabel('Quantité (ml)')).toBeVisible();
         await expectNoViolations(page);
       });
 

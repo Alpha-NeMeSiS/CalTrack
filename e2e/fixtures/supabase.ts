@@ -13,7 +13,11 @@ const addDays = (d: Date, n: number) => {
   x.setDate(x.getDate() + n);
   return x;
 };
-const today = new Date();
+// « Aujourd'hui » à Paris, le fuseau du navigateur de test (playwright.config.ts) :
+// sinon, autour de minuit, les données du jour tomberaient la veille. Midi évite
+// les changements d'heure.
+const parisDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const today = new Date(`${parisDate}T12:00:00`);
 const TODAY = ymd(today);
 
 const profile = {
@@ -169,6 +173,28 @@ const recipes = [
   },
 ];
 
+// Eau : 0,5 + 0,75 L aujourd'hui, et un historique sur 7 jours
+const water = (daysAgo: number, amount_ml: number, hour: string) => {
+  const date = ymd(addDays(today, -daysAgo));
+  return { id: `eau-${daysAgo}-${hour}`, user_id: USER_ID, date, amount_ml, created_at: `${date}T${hour}:00:00Z` };
+};
+const waterLogs = [
+  water(0, 500, '08'),
+  water(0, 750, '12'),
+  ...[1, 2, 3, 4, 5, 6, 7].flatMap((d) => [water(d, 1000 + (d % 3) * 400, '09'), water(d, 900, '15')]),
+];
+
+/** Filtre PostgREST sur les dates (eq., gte., lte.) */
+function inDateRange(date: string, filters: string[]) {
+  return filters.every((filter) => {
+    const [op, value] = [filter.slice(0, filter.indexOf('.')), filter.slice(filter.indexOf('.') + 1)];
+    if (op === 'eq') return date === value;
+    if (op === 'gte') return date >= value;
+    if (op === 'lte') return date <= value;
+    return true;
+  });
+}
+
 const jwt = () => {
   const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
   return `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: USER_ID, exp: 4102444800, role: 'authenticated' })}.sig`;
@@ -199,6 +225,8 @@ function rowsFor(table: string, params: URLSearchParams): unknown[] {
       return weightLogs;
     case 'recipes':
       return recipes;
+    case 'water_logs':
+      return waterLogs.filter((log) => inDateRange(log.date, params.getAll('date')));
     default:
       return [];
   }
