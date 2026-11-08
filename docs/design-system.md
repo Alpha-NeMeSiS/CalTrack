@@ -10,6 +10,7 @@ Toutes les couleurs sont définies dans [`theme.palette.js`](../theme.palette.js
 
 | Rôle | Classe | Usage |
 | --- | --- | --- |
+| Fond de page | `bg-canvas` | Fond des écrans (gris-vert très léger en clair) |
 | Surface | `bg-surface` | Cartes, fenêtres, champs |
 | Surface atténuée | `bg-surface-muted` | Survol, lignes de liste, zones secondaires |
 | Surface creusée | `bg-surface-sunken` | Pastille neutre, fond de barre de progression |
@@ -25,16 +26,18 @@ Toutes les couleurs sont définies dans [`theme.palette.js`](../theme.palette.js
 
 | Famille | Teinte | Usage |
 | --- | --- | --- |
-| `brand` | vert du logo | Identité : bouton de marque, bouton flottant « Ajouter », courbes |
-| `accent` | orange | Titres (`h1`–`h4`), onglet actif |
-| `primary` | bleu | Action principale d'un formulaire (`btn-primary`), focus |
-| `info` | bleu | Information, journée en cours, progression temporelle |
+| `brand` | vert du logo | Identité et progression : titres de carte, journée « en cours », bouton flottant « Ajouter », courbes |
+| `accent` | orange | Onglet actif des barres de navigation, intitulés de section, logo |
+| `primary` | vert (= `brand`) | Actions : boutons, liens, onglets actifs des fenêtres, focus |
+| `info` | bleu | Messages et états d'information, progression temporelle de l'objectif |
 | `success` | vert | Objectif atteint, confirmation |
 | `warning` | ambre | Avertissement, retard sur le rythme |
 | `danger` | rouge | Erreur, suppression, dépassement |
 | `orange` | orange | Donnée « en dessous de l'objectif » (graphiques, tendances) |
 
-`primary` et `info` sont aujourd'hui tous deux bleus mais ne sont pas interchangeables : `primary` désigne une **action**, `info` un **état**. On pourra changer la couleur des boutons sans toucher aux messages d'information.
+`primary` pointe sur l'échelle `brand` (`ROLE_SCALES` dans `theme.palette.js`) : il désigne une **action**, `brand` l'**identité**. Les garder distincts permet de changer la couleur des boutons sans toucher au reste.
+
+La journée **en cours** est en vert de la marque : anneau `stroke-brand-600`, pastille `bg-brand-50 text-brand-700`, barre du graphique `bg-brand-300 ring-1 ring-inset ring-brand-600` (vert pâle à contour foncé, distinct du vert plein « à l'objectif »).
 
 ### Anciens noms
 
@@ -42,7 +45,7 @@ Toutes les couleurs sont définies dans [`theme.palette.js`](../theme.palette.js
 | --- | --- |
 | `kaizen-*` | `brand-*` |
 | `shonen-*` | `accent-*` |
-| `btn-kaizen`, `card-kaizen` | `btn-brand`, `card-glass` |
+| `btn-kaizen`, `card-kaizen`, `card-glass` | `btn-brand`, `panel` |
 | `text-gray-900` / `800` | `text-ink` |
 | `text-gray-700` | `text-body` |
 | `text-gray-600` | `text-muted` |
@@ -58,11 +61,29 @@ Toutes les couleurs sont définies dans [`theme.palette.js`](../theme.palette.js
 Les paires ci-dessous atteignent 4,5:1 (texte) ou 3:1 (icônes) dans les deux thèmes ; elles sont vérifiées par `src/test/paletteContrast.test.ts`.
 
 - **Texte d'état sur fond teinté** : nuance `-700` sur `-50` ou `-100` (`text-danger-700` sur `bg-danger-50`). Pour `warning` : `-800`.
-- **Texte blanc** (`text-on-color`) : seulement sur `primary-600` et plus, `danger-600` et plus, `brand-700` et plus.
-- **Vert du logo** (`brand-500`, `brand-400`) : décoration et graphiques uniquement, jamais sous du texte. Une icône blanche demande au moins `brand-600`.
+- **Texte blanc** (`text-on-color`) : seulement sur `primary-700` / `brand-700` et plus, `danger-600` et plus.
+- **Texte vert** (liens, titres) : `primary-700` / `brand-700` et plus.
+- **Graphiques et focus verts** (anneau de focus, anneau des calories, courbes, icône blanche du bouton flottant) : `600` au minimum.
+- **Vert du logo** (`brand-500`, `brand-400`) : décoration uniquement, jamais sous du texte ni pour un trait seul.
 - **Orange vif** (`accent-500`) : jamais pour du texte ; utiliser `accent-700`.
 - **Indications** : `text-subtle`, lisible même sur les lignes teintées des tendances.
 - **Bouton désactivé** : nuance `-300` (`disabled:bg-primary-300`), pour qu'il ne ressemble pas à un bouton actif.
+
+## Typographie et surfaces
+
+- **Police** : Inter partout. Bangers (`font-display`) est réservée au logo « CalTrack » (en-tête, écrans de connexion).
+- **Titres** (classes de `src/index.css`) :
+
+| Classe | Style | Usage |
+| --- | --- | --- |
+| `page-title` | `text-2xl font-bold text-ink` | Titre d'une page (`h1`), titre des formulaires de connexion et d'accueil |
+| `card-title` | `text-xl font-bold text-brand-800` | Titre d'une carte (`h2`) |
+| `section-label` | `text-sm font-bold uppercase tracking-wide text-accent-700` | Intitulé de section dans une carte (`h3` : repas, sections des tendances) |
+
+  Les titres des encadrés colorés (avertissement, information, suppression du compte) gardent la couleur de leur état.
+
+- **Cartes** : `panel` = `rounded-2xl border border-line-subtle bg-surface shadow-card` (ombre douce définie dans `tailwind.config.js`). Une tuile dans une carte (macros, chiffres de l'objectif) : `rounded-xl bg-surface-muted`.
+- **En-tête et onglets du haut** : plats, `bg-surface border-b border-line`.
 
 ## Composants
 
@@ -126,7 +147,7 @@ Toujours passer par [`src/utils/format.ts`](../src/utils/format.ts), jamais par 
 
 | Vérification | Commande | Ce qu'elle bloque |
 | --- | --- | --- |
-| `src/test/designTokens.test.ts` | `npm test` | Une teinte brute (`text-gray-500`, `bg-white`, `bg-red-50`…) ou un ancien nom (`kaizen`, `shonen`) dans `src/` |
+| `src/test/designTokens.test.ts` | `npm test` | Une teinte brute (`text-gray-500`, `bg-white`, `bg-red-50`…), un ancien nom (`kaizen`, `shonen`), une classe retirée (`card-glass`, `ring-primary-500`, `text-primary-600`…) ou la police du logo hors du logo, dans `src/` |
 | `src/test/paletteContrast.test.ts` | `npm test` | Une modification de palette qui ferait passer une paire de couleurs sous le seuil AA |
 | `e2e/accessibility.spec.ts` | `npm run test:a11y` | Tout défaut WCAG 2.2 A/AA détecté par axe (contraste, libellés, rôles, clavier) sur les écrans principaux, mobile et ordinateur, clair et sombre |
 
