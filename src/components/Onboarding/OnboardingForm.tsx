@@ -12,6 +12,7 @@ import {
 } from '../../utils/calculations';
 import { getTodayDate } from '../../utils/date';
 import { activateNewGoal } from '../../services/goals';
+import { upsertWeightLog } from '../../services/weights';
 import { PROFILE_LIMITS, validateGoalInput, validateProfileInput } from '../../utils/validation';
 import { GoalTargetsPreview } from '../Goals/GoalTargetsPreview';
 
@@ -106,6 +107,14 @@ export function OnboardingForm() {
         .upsert({ id: user.id, email: user.email!, ...userProfile }, { onConflict: 'id' });
 
       if (profileError) throw profileError;
+
+      // Première pesée du journal (non bloquant : l'inscription doit aboutir même
+      // si le journal de pesées est momentanément indisponible)
+      try {
+        await upsertWeightLog(user.id, getTodayDate(), formData.poids_kg);
+      } catch (weightError) {
+        console.warn('Première pesée non enregistrée', weightError);
+      }
 
       // Création de l'objectif (désactive un éventuel objectif d'une tentative
       // précédente) et de la cible du jour

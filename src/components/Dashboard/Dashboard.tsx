@@ -10,6 +10,8 @@ import { findGoalForDate, isGoalEndedOn } from '../../utils/goals';
 import { formatDateFR } from '../../lib/timeProgress';
 import { parseLocalDate } from '../../utils/date';
 import { ensureDailyTargetForDate, fetchUserGoals } from '../../services/goals';
+import { recordWeight } from '../../services/weights';
+import { WeightQuickLog } from '../Weight/WeightQuickLog';
 import { CalorieRing } from './CalorieRing';
 import { MacroCard } from './MacroCard';
 import { GoalProgressCard } from './GoalProgressCard';
@@ -28,7 +30,7 @@ export function Dashboard({
   activeDate,
   onActiveDateChange,
 }: DashboardProps) {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [selectedDate, setSelectedDate] = useState(activeDate ?? getTodayDate());
   const [target, setTarget] = useState<DailyTarget | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -99,9 +101,32 @@ export function Dashboard({
     [selectedDate, user, profile]
   );
 
+  // Changement de date ou d'utilisateur : écran de chargement. Simple mise à
+  // jour du profil (ex : nouvelle pesée) : actualisation en arrière-plan.
+  const lastLoadKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    loadDayData();
-  }, [loadDayData]);
+    const key = `${user?.id ?? ''}|${selectedDate}`;
+    const silent = lastLoadKeyRef.current === key;
+    lastLoadKeyRef.current = key;
+    loadDayData({ silent });
+  }, [loadDayData, user?.id, selectedDate]);
+
+  // Enregistre une pesée ; si c'est la plus récente, le poids du profil et la
+  // cible du jour sont mis à jour.
+  const handleSaveWeight = async (weightKg: number, date: string) => {
+    if (!user || !profile) return;
+    const profileUpdated = await recordWeight({
+      userId: user.id,
+      date,
+      weightKg,
+      profile,
+      goalForToday: activeGoal,
+      today: getTodayDate(),
+    });
+    if (profileUpdated) {
+      await refreshProfile();
+    }
+  };
 
   // Ajoute une entrée dans la table 'entries' puis recharge les données
   const handleAddEntry = async (entryData: AddEntryData): Promise<boolean> => {
@@ -377,7 +402,12 @@ export function Dashboard({
         )}
       </div>
 
-      {/* 3. Progression de l'objectif : information de fond, après le suivi du jour */}
+      {/* 3. Pesée du jour */}
+      {user && profile && (
+        <WeightQuickLog userId={user.id} date={selectedDate} currentWeight={profile.poids_kg} onSave={handleSaveWeight} />
+      )}
+
+      {/* 4. Progression de l'objectif : information de fond, après le suivi du jour */}
       {activeGoal && activeGoal.target_weight_kg && profile && (
         <GoalProgressCard goal={activeGoal} currentWeight={profile.poids_kg} />
       )}

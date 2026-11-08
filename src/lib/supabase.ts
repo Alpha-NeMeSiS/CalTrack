@@ -85,3 +85,11 @@ export interface Entry {
   meal_type?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   created_at: string;
 }
+
+export interface WeightLog {
+  id: string;
+  user_id: string;
+  date: string;
+  weight_kg: number;
+  created_at: string;
+}

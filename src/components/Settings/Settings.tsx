@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/useAuth';
 import { calculateBMR, calculateTDEE, calculateOptimalDeficitOrSurplus } from '../../utils/calculations';
 import { getTodayDate } from '../../utils/date';
 import { activateNewGoal, fetchActiveGoal, upsertDailyTargetForGoal } from '../../services/goals';
+import { upsertWeightLog } from '../../services/weights';
 import { PROFILE_LIMITS, validateGoalInput, validateProfileInput } from '../../utils/validation';
 import { DEFAULT_PROTEIN_G_PER_KG } from '../../utils/goals';
 import { GoalTargetsPreview } from '../Goals/GoalTargetsPreview';
@@ -127,6 +128,11 @@ export function Settings({ initialTab = 'profile' }: { initialTab?: 'profile' | 
         .eq('id', user.id);
 
       if (updateError) throw updateError;
+
+      // Un nouveau poids saisi ici compte comme la pesée du jour (journal de pesées)
+      if (profile && Number(profile.poids_kg) !== Number(updatedProfile.poids_kg)) {
+        await upsertWeightLog(user.id, getTodayDate(), updatedProfile.poids_kg);
+      }
 
       // Le poids / l'âge / la taille changent les besoins : recalculer la cible du jour
       if (activeGoal) {

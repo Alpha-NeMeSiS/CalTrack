@@ -1,6 +1,9 @@
 // Tendances : graphique des calories sur 7 jours et historique détaillé sur 30 jours
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase, WeightLog } from '../../lib/supabase';
+import { fetchActiveGoal } from '../../services/goals';
+import { fetchWeightLogs } from '../../services/weights';
+import { WeightChart } from './WeightChart';
 import { useAuth } from '../../contexts/useAuth';
 import { calculateDailySummary } from '../../utils/calculations';
 import { addDaysToDateString, getTodayDate, parseLocalDate } from '../../utils/date';
@@ -64,6 +67,8 @@ export function WeeklyTrends() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [weekData, setWeekData] = useState<DayItem[]>([]); // 7 derniers jours
   const [monthData, setMonthData] = useState<DayItem[]>([]); // 30 derniers jours
+  const [weights, setWeights] = useState<WeightLog[]>([]); // 90 derniers jours
+  const [targetWeight, setTargetWeight] = useState<number | null>(null);
 
   // Charge les cibles et les entrées des 30 derniers jours
   const loadWeekData = useCallback(async () => {
@@ -120,6 +125,19 @@ export function WeeklyTrends() {
       // 7 derniers jours (du plus ancien au plus récent) et 30 derniers (du plus récent)
       setWeekData([6, 5, 4, 3, 2, 1, 0].map((i) => buildDay(addDaysToDateString(endDate, -i))));
       setMonthData(Array.from({ length: 30 }, (_, i) => buildDay(addDaysToDateString(endDate, -i))));
+
+      // Courbe de poids : non bloquante (les calories restent affichées si elle échoue)
+      try {
+        const [weightLogs, activeGoal] = await Promise.all([
+          fetchWeightLogs(user.id, addDaysToDateString(endDate, -90)),
+          fetchActiveGoal(user.id),
+        ]);
+        setWeights(weightLogs);
+        setTargetWeight(activeGoal?.type !== 'maintain' ? Number(activeGoal?.target_weight_kg) || null : null);
+      } catch (weightError) {
+        console.error('Error loading weight logs:', weightError);
+        setWeights([]);
+      }
     } catch (error) {
       console.error('Error loading week data:', error);
       setLoadError("Impossible de charger l'historique.");
@@ -261,6 +279,11 @@ export function WeeklyTrends() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div>
+          <h3 className="text-sm text-gray-900 mb-3">Évolution du poids (90 jours)</h3>
+          <WeightChart points={weights} targetWeight={targetWeight} />
         </div>
 
         <div>

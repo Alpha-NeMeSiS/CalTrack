@@ -10,7 +10,7 @@ import type { Entry, Goal } from '../../lib/supabase';
 const profile = makeProfile();
 // Objets stables entre les rendus, comme le state du vrai AuthProvider
 // (un nouvel objet à chaque rendu relancerait le chargement en boucle)
-const authValue = { user: { id: 'user-1' }, profile };
+const authValue = { user: { id: 'user-1' }, profile, refreshProfile: vi.fn() };
 
 vi.mock('../../contexts/useAuth', () => ({
   useAuth: () => authValue,
