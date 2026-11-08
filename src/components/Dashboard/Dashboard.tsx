@@ -6,7 +6,9 @@ import { supabase, DailyTarget, Entry, Goal } from '../../lib/supabase';
 import { useAuth } from '../../contexts/useAuth';
 import { calculateDailySummary } from '../../utils/calculations';
 import { getTodayDate, isDateOnlyString } from '../../utils/date';
-import { findGoalForDate } from '../../utils/goals';
+import { findGoalForDate, isGoalEndedOn } from '../../utils/goals';
+import { formatDateFR } from '../../lib/timeProgress';
+import { parseLocalDate } from '../../utils/date';
 import { ensureDailyTargetForDate, fetchUserGoals } from '../../services/goals';
 import { CalorieRing } from './CalorieRing';
 import { MacroCard } from './MacroCard';
@@ -158,6 +160,10 @@ export function Dashboard({
     onActiveDateChange?.(nextDate);
   };
 
+  // Ouvre Paramètres directement sur l'onglet Objectif
+  const openGoalSettings = () =>
+    window.dispatchEvent(new CustomEvent('navigate-to-settings', { detail: { tab: 'goal' } }));
+
   // En-tête toujours affiché : il permet de changer de date même quand la
   // journée n'a pas d'objectif ou n'a pas pu être chargée.
   const header = (
@@ -231,7 +237,7 @@ export function Dashboard({
             <div className="flex items-center justify-center gap-4">
               <button
                 type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('navigate-to-settings'))}
+                onClick={() => openGoalSettings()}
                 className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors"
               >
                 Aller aux paramètres
@@ -254,6 +260,19 @@ export function Dashboard({
       {actionError && (
         <div role="alert" className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
           {actionError}
+        </div>
+      )}
+
+      {/* Objectif de perte/prise terminé : suivi automatique en maintien */}
+      {goalForDate && goalForDate.type !== 'maintain' && goalForDate.end_date && isGoalEndedOn(goalForDate, selectedDate) && (
+        <div role="status" className="flex flex-col gap-3 rounded-lg border border-kaizen-200 bg-kaizen-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-kaizen-800">
+            <span className="font-semibold">Objectif terminé le {formatDateFR(parseLocalDate(goalForDate.end_date))}.</span>{' '}
+            Vos journées sont maintenant suivies en maintien ({Math.round(target.calories_kcal)} kcal).
+          </p>
+          <button type="button" onClick={openGoalSettings} className="btn-kaizen whitespace-nowrap text-sm">
+            Définir un nouvel objectif
+          </button>
         </div>
       )}
 

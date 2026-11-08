@@ -135,6 +135,40 @@ describe('Dashboard', () => {
     );
   });
 
+  it("signale un objectif terminé et permet d'en définir un nouveau (onglet Objectif)", async () => {
+    const endedGoal = makeGoal({ type: 'loss', start_date: '2025-01-01', end_date: '2025-03-26', deficit_or_surplus_pct: 20 });
+    mockedFetchUserGoals.mockResolvedValue([endedGoal]);
+    mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget({ date: '2025-04-10', calories_kcal: 2400 }));
+    setEntries([]);
+    const listener = vi.fn();
+    window.addEventListener('navigate-to-settings', listener);
+
+    render(<Dashboard activeDate="2025-04-10" />);
+
+    const banner = await screen.findByText(/Objectif terminé le 26 mars 2025/);
+    expect(banner.closest('[role="status"]')).toHaveTextContent('suivies en maintien (2400 kcal)');
+    // Le suivi reste possible (plus de blocage « Aucun objectif »)
+    expect(screen.getByText('Journal du jour')).toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Définir un nouvel objectif' }));
+    expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual({ tab: 'goal' });
+    window.removeEventListener('navigate-to-settings', listener);
+  });
+
+  it("« Aller aux paramètres » ouvre l'onglet Objectif", async () => {
+    mockedFetchUserGoals.mockResolvedValue([]);
+    mockedEnsureDailyTarget.mockResolvedValue(null);
+    setEntries([]);
+    const listener = vi.fn();
+    window.addEventListener('navigate-to-settings', listener);
+
+    render(<Dashboard activeDate="2025-03-15" />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Aller aux paramètres' }));
+
+    expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual({ tab: 'goal' });
+    window.removeEventListener('navigate-to-settings', listener);
+  });
+
   it('ignore un champ date vidé', async () => {
     mockedFetchUserGoals.mockResolvedValue([makeGoal()]);
     mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget());

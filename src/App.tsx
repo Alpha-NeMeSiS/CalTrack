@@ -22,10 +22,14 @@ function AppContent() {
   // Vue courante affichée dans l'application: dashboard, tendances ou paramètres
   const [currentView, setCurrentView] = useState<AppView>('dashboard');
   const [dashboardDate, setDashboardDate] = useState<string>(() => getTodayDate());
+  // Onglet à ouvrir dans Paramètres (ex : « Objectif » depuis le tableau de bord)
+  const [settingsTab, setSettingsTab] = useState<'profile' | 'goal'>('profile');
 
   // Écouteur global pour naviguer vers les paramètres depuis d'autres composants
   useEffect(() => {
-    const handleNavigateToSettings = () => {
+    const handleNavigateToSettings = (event: Event) => {
+      const tab = (event as CustomEvent<{ tab?: 'profile' | 'goal' }>).detail?.tab;
+      setSettingsTab(tab === 'goal' ? 'goal' : 'profile');
       setCurrentView('settings');
     };
 
@@ -116,7 +120,13 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <Navigation currentView={currentView} onViewChange={setCurrentView} />
+      <Navigation
+        currentView={currentView}
+        onViewChange={(view) => {
+          if (view === 'settings') setSettingsTab('profile');
+          setCurrentView(view);
+        }}
+      />
 
       {/* pb-28 sur mobile : place pour la barre d'onglets fixée en bas et le bouton « Ajouter » */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-28 sm:py-8">
@@ -124,7 +134,7 @@ function AppContent() {
           <Dashboard activeDate={dashboardDate} onActiveDateChange={setDashboardDate} />
         )}
         {currentView === 'trends' && <WeeklyTrends />}
-        {currentView === 'settings' && <Settings />}
+        {currentView === 'settings' && <Settings key={settingsTab} initialTab={settingsTab} />}
       </main>
     </div>
   );

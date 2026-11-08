@@ -148,13 +148,41 @@ export function isDateWithinGoal(
   return !goal.end_date || date <= goal.end_date;
 }
 
+/** L'objectif a démarré à cette date (ou avant). */
+export function hasGoalStarted(
+  goal: Pick<GoalLike, 'start_date' | 'created_at'> | null | undefined,
+  date: string
+): boolean {
+  const start = goal ? getGoalStartDate(goal) : null;
+  return Boolean(start && start <= date);
+}
+
+/** L'objectif est terminé à cette date (sa date de fin est passée). */
+export function isGoalEndedOn(goal: Pick<GoalLike, 'end_date'> | null | undefined, date: string): boolean {
+  return Boolean(goal?.end_date && date > goal.end_date);
+}
+
+/**
+ * Paramètres réellement appliqués à une date : après la date de fin d'un
+ * objectif de perte ou de prise, on passe en MAINTIEN (même niveau d'activité,
+ * déficit nul) au lieu de bloquer le suivi.
+ */
+export function getEffectiveGoal<T extends GoalLike>(goal: T, date: string): T {
+  if (goal.type !== 'maintain' && isGoalEndedOn(goal, date)) {
+    return { ...goal, type: 'maintain', deficit_or_surplus_pct: 0 };
+  }
+  return goal;
+}
+
 /**
  * Retourne l'objectif EN VIGUEUR à une date : le plus récent ayant démarré ce
- * jour-là ou avant, et dont la période couvre la date.
+ * jour-là ou avant.
  *
- * Contrairement à « l'objectif actif », cela fonctionne aussi pour les jours
- * passés : après un changement d'objectif, la veille reste couverte par
- * l'ancien objectif (au lieu d'afficher « Aucun objectif défini »).
+ * - Fonctionne aussi pour les jours passés : après un changement d'objectif,
+ *   la veille reste couverte par l'ancien objectif.
+ * - Un objectif terminé reste « en vigueur » : ses journées sont suivies en
+ *   maintien (voir getEffectiveGoal). Auparavant, après la date de fin, plus
+ *   aucune saisie n'était possible avant d'avoir créé un nouvel objectif.
  */
 export function findGoalForDate<T extends Pick<GoalLike, 'start_date' | 'end_date' | 'created_at'>>(
   goals: readonly T[],
@@ -173,8 +201,7 @@ export function findGoalForDate<T extends Pick<GoalLike, 'start_date' | 'end_dat
     }
   }
 
-  if (!best) return null;
-  return isDateWithinGoal(best.goal, date) ? best.goal : null;
+  return best ? best.goal : null;
 }
 
 /** Calcule calories et macros d'un objectif à partir du profil courant. */
@@ -189,14 +216,17 @@ export function computeTargetsForGoal(profile: UserProfile, goal: GoalLike): Mac
   });
 }
 
-/** Construit la ligne `daily_targets` d'une date pour un objectif donné. */
+/**
+ * Construit la ligne `daily_targets` d'une date pour un objectif donné
+ * (en maintien si la date est postérieure à la fin de l'objectif).
+ */
 export function buildDailyTargetPayload(
   userId: string,
   date: string,
   profile: UserProfile,
   goal: GoalLike
 ): DailyTargetPayload {
-  const targets = computeTargetsForGoal(profile, goal);
+  const targets = computeTargetsForGoal(profile, getEffectiveGoal(goal, date));
   return {
     user_id: userId,
     date,

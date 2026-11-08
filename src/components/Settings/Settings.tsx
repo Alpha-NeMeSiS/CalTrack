@@ -18,14 +18,14 @@ const PROTEIN_OPTIONS = [
   { value: 2.2, label: '2,2 g/kg — sportif / sèche' },
 ];
 
-export function Settings() {
+export function Settings({ initialTab = 'profile' }: { initialTab?: 'profile' | 'goal' } = {}) {
   // Récupère l'utilisateur, le profil et la fonction pour rafraîchir le profil
   const { user, profile, refreshProfile } = useAuth();
   const getErrorMessage = (err: unknown, fallback: string): string =>
     err instanceof Error ? err.message : fallback;
 
   // États d'interface
-  const [activeTab, setActiveTab] = useState<'profile' | 'goal'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'goal'>(initialTab);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');

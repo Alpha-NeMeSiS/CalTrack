@@ -103,6 +103,20 @@ describe('ensureDailyTargetForDate', () => {
     );
   });
 
+  it("après la fin de l'objectif, crée une cible de maintien au lieu de renvoyer null (régression)", async () => {
+    const goal = makeGoal({ type: 'loss', deficit_or_surplus_pct: 20, start_date: '2025-01-01', end_date: '2025-03-26' });
+    supabaseMock.setHandler((call) =>
+      hasOperation(call, 'upsert') ? { data: makeDailyTarget({ date: '2025-04-10' }), error: null } : { data: null, error: null }
+    );
+
+    await expect(ensureDailyTargetForDate('user-1', '2025-04-10', profile, goal)).resolves.not.toBeNull();
+
+    const [upsertCall] = supabaseMock.callsFor('daily_targets', 'upsert');
+    const payload = getOperationArgs(upsertCall, 'upsert')?.[0] as { calories_kcal: number };
+    const maintenance = buildDailyTargetPayload('user-1', '2025-04-10', profile, { ...goal, type: 'maintain', deficit_or_surplus_pct: 0 });
+    expect(payload.calories_kcal).toBe(maintenance.calories_kcal);
+  });
+
   it("renvoie null pour une date antérieure à l'objectif", async () => {
     supabaseMock.setHandler(() => ({ data: null, error: null }));
     const goal = makeGoal({ start_date: '2025-02-01' });

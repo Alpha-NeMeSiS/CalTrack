@@ -9,7 +9,10 @@ import {
   DEFAULT_FAT_G_PER_KG_MIN,
   DEFAULT_PROTEIN_G_PER_KG,
   findGoalForDate,
+  getEffectiveGoal,
   getGoalStartDate,
+  hasGoalStarted,
+  isGoalEndedOn,
   GoalLike,
   isDateWithinGoal,
 } from './goals';
@@ -227,9 +230,9 @@ describe('findGoalForDate', () => {
     expect(findGoalForDate([], '2025-02-10')).toBeNull();
   });
 
-  it("retourne null si l'objectif le plus récent est terminé", () => {
+  it("garde un objectif terminé en vigueur (suivi en maintien) au lieu de bloquer (régression)", () => {
     const ended = { ...goalB, end_date: '2025-03-31' };
-    expect(findGoalForDate([ended, goalA], '2025-04-15')).toBeNull();
+    expect(findGoalForDate([ended, goalA], '2025-04-15')?.id).toBe('B');
     expect(findGoalForDate([ended, goalA], '2025-03-15')?.id).toBe('B');
   });
 
@@ -243,5 +246,48 @@ describe('findGoalForDate', () => {
     const legacy = { ...goalA, start_date: null, created_at: new Date(2025, 0, 5, 12).toISOString() };
     expect(findGoalForDate([legacy], '2025-01-04')).toBeNull();
     expect(findGoalForDate([legacy], '2025-01-05')?.id).toBe('A');
+  });
+});
+
+describe('fin d’objectif : bascule en maintien', () => {
+  const lossGoal: GoalLike = {
+    ...maintainGoal,
+    id: 'loss',
+    type: 'loss',
+    deficit_or_surplus_pct: 20,
+    start_date: '2025-01-01',
+    end_date: '2025-03-26',
+  };
+
+  it('détecte un objectif terminé (après sa date de fin, pas le jour même)', () => {
+    expect(isGoalEndedOn(lossGoal, '2025-03-26')).toBe(false);
+    expect(isGoalEndedOn(lossGoal, '2025-03-27')).toBe(true);
+    expect(isGoalEndedOn(maintainGoal, '2030-01-01')).toBe(false);
+  });
+
+  it('applique le maintien après la date de fin', () => {
+    expect(getEffectiveGoal(lossGoal, '2025-03-26')).toBe(lossGoal);
+    expect(getEffectiveGoal(lossGoal, '2025-04-02')).toMatchObject({
+      id: 'loss',
+      type: 'maintain',
+      deficit_or_surplus_pct: 0,
+      activity_level: lossGoal.activity_level,
+    });
+  });
+
+  it('calcule la cible des jours suivants en maintien, rattachée au même objectif', () => {
+    const during = buildDailyTargetPayload('u', '2025-03-20', profile, lossGoal);
+    const after = buildDailyTargetPayload('u', '2025-04-02', profile, lossGoal);
+    const maintenance = buildDailyTargetPayload('u', '2025-04-02', profile, { ...lossGoal, type: 'maintain', deficit_or_surplus_pct: 0 });
+
+    expect(after.calories_kcal).toBe(maintenance.calories_kcal);
+    expect(after.calories_kcal).toBeGreaterThan(during.calories_kcal);
+    expect(after.goal_id).toBe('loss');
+  });
+
+  it('hasGoalStarted ne regarde que la date de début', () => {
+    expect(hasGoalStarted(lossGoal, '2024-12-31')).toBe(false);
+    expect(hasGoalStarted(lossGoal, '2025-06-01')).toBe(true);
+    expect(hasGoalStarted(null, '2025-06-01')).toBe(false);
   });
 });

@@ -6,7 +6,7 @@ import {
   buildDailyTargetPayload,
   buildGoalInsertPayload,
   GoalInput,
-  isDateWithinGoal,
+  hasGoalStarted,
 } from '../utils/goals';
 
 /** Récupère l'objectif actif le plus récent de l'utilisateur. */
@@ -84,7 +84,9 @@ export async function ensureDailyTargetForDate(
   if (error) throw error;
   if (existing) return existing as DailyTarget;
 
-  if (!goal || !isDateWithinGoal(goal, date)) {
+  // Avant le début de l'objectif : rien à calculer. Après sa fin : maintien
+  // (géré par buildDailyTargetPayload).
+  if (!goal || !hasGoalStarted(goal, date)) {
     return null;
   }
 
