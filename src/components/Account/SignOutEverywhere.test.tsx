@@ -10,6 +10,8 @@ describe('SignOutEverywhere', () => {
   it('demande une confirmation avant de déconnecter tous les appareils', async () => {
     render(<SignOutEverywhere />);
     const user = userEvent.setup();
+    // Le délai des autres appareils est annoncé (jetons d'accès valables jusqu'à expiration)
+    expect(screen.getByText(/au plus 1 heure/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Se déconnecter de tous les appareils' }));
     expect(signOutEverywhere).not.toHaveBeenCalled();

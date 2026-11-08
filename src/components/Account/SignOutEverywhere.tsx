@@ -1,5 +1,7 @@
 // Déconnexion de tous les appareils : révoque toutes les sessions du compte
 // (téléphone, ordinateur…), y compris celle-ci. Confirmation en deux temps.
+// Supabase révoque les jetons de rafraîchissement ; un jeton d'accès déjà émis
+// reste valable jusqu'à son expiration (1 h par défaut) : le texte le précise.
 import { useState } from 'react';
 import { MonitorSmartphone } from 'lucide-react';
 import { useAuth } from '../../contexts/useAuth';
@@ -24,6 +26,10 @@ export function SignOutEverywhere() {
       <p className="text-sm text-gray-600">
         Déconnectez CalTrack de tous vos appareils, celui-ci compris : utile si vous avez perdu un téléphone ou si
         vous pensez que quelqu’un d’autre utilise votre compte. Pensez aussi à changer votre mot de passe.
+      </p>
+      <p className="text-xs text-gray-500">
+        Cet appareil est déconnecté tout de suite. Une application déjà ouverte sur un autre appareil peut rester
+        utilisable jusqu’à l’expiration de sa session en cours (au plus 1 heure), puis elle est déconnectée.
       </p>
 
       {confirming ? (
