@@ -2,6 +2,7 @@
 // macros, noms et visibilité des repas, rappels.
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Palette, Save, UtensilsCrossed } from 'lucide-react';
+import { useAuth } from '../../contexts/useAuth';
 import { usePreferences } from '../../contexts/usePreferences';
 import { MEAL_LABELS } from '../../utils/entries';
 import {
@@ -17,6 +18,7 @@ import {
 } from '../../utils/preferences';
 import { applyTheme, readStoredTheme, ThemePreference } from '../../utils/theme';
 import { RemindersSection } from './RemindersSection';
+import { WaterGoalSection } from './WaterGoalSection';
 
 const THEME_OPTIONS: { value: ThemePreference; label: string; example: string }[] = [
   { value: 'system', label: 'Automatique', example: 'Suit le réglage de l’appareil' },
@@ -81,6 +83,7 @@ function OptionGroup<T extends string>({
 
 export function SettingsPage() {
   const { preferences, savePreferences } = usePreferences();
+  const { profile } = useAuth();
   const [form, setForm] = useState<UserPreferences>(preferences);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -241,6 +244,12 @@ export function SettingsPage() {
             })}
           </ul>
         </section>
+
+        <WaterGoalSection
+          goalMl={form.waterGoalMl}
+          weightKg={profile?.poids_kg}
+          onChange={(waterGoalMl) => setForm({ ...form, waterGoalMl })}
+        />
 
         <RemindersSection
           weighInTime={form.reminderWeighInTime}

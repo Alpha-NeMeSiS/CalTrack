@@ -117,4 +117,25 @@ describe('WeeklyTrends', () => {
     expect(tile.textContent?.replace(/[\u202f\u00a0]/g, ' ')).toContain('1 200 kcal/j');
     expect(screen.getByText('Série en cours').parentElement).toHaveTextContent('1 jour');
   });
+
+  it('résume l’eau des 7 derniers jours', async () => {
+    supabaseMock.setHandler((call) => {
+      if (call.table === 'water_logs') {
+        return {
+          data: [
+            { id: 'e1', user_id: 'user-1', date: daysAgo(1), amount_ml: 2500, created_at: `${daysAgo(1)}T10:00:00Z` },
+            { id: 'e2', user_id: 'user-1', date: daysAgo(2), amount_ml: 1700, created_at: `${daysAgo(2)}T10:00:00Z` },
+          ],
+          error: null,
+        };
+      }
+      return { data: call.table === 'goals' ? null : [], error: null };
+    });
+    render(<WeeklyTrends />);
+    expect(await screen.findByText('Eau moyenne')).toBeInTheDocument();
+    // (2 500 + 1 700) / 2 = 2 100 ml ; objectif de 2 L (poids inconnu dans ce test) atteint 1 jour
+    expect(screen.getByText('2,1 L/j')).toBeInTheDocument();
+    expect(screen.getByText('1/7 jours à l’objectif')).toBeInTheDocument();
+  });
 });
+

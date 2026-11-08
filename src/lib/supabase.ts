@@ -115,6 +115,42 @@ export interface Food {
   created_at: string;
 }
 
+/** Prise d'eau (une ligne par verre ou bouteille) */
+export interface WaterLog {
+  id: string;
+  user_id: string;
+  date: string;
+  amount_ml: number;
+  created_at: string;
+}
+
+/** Ingrédient d'une recette : quantité et copie des valeurs pour 100 g */
+export interface RecipeIngredient {
+  id: string;
+  recipe_id: string;
+  position: number;
+  label: string;
+  qty_g: number;
+  kcal_per_100g: number;
+  protein_g: number;
+  fat_g: number;
+  carbs_g: number;
+  fiber_g: number;
+}
+
+/** Recette (plat maison) partagée en parts, avec ses ingrédients */
+export interface Recipe {
+  id: string;
+  user_id: string;
+  name: string;
+  servings: number;
+  /** Poids cuit total (g), facultatif : permet d'ajouter des grammes */
+  cooked_weight_g: number | null;
+  created_at: string;
+  updated_at: string;
+  recipe_ingredients: RecipeIngredient[];
+}
+
 /** Aliment favori : valeurs pour 100 g et quantité habituelle */
 export interface FavoriteFood {
   id: string;

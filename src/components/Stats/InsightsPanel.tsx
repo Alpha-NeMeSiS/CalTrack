@@ -1,6 +1,6 @@
 // Indicateurs de la page Tendances : moyennes et régularité sur 7 jours,
 // série en cours et dépense énergétique estimée.
-import { Activity, CalendarCheck, Drumstick, Flame, Repeat } from 'lucide-react';
+import { Activity, CalendarCheck, Droplet, Drumstick, Flame, Repeat } from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
   computeLoggingStreak,
@@ -12,6 +12,7 @@ import {
   EXPENDITURE_WINDOW_DAYS,
 } from '../../utils/insights';
 import type { WeightPoint } from '../../utils/weights';
+import { formatLiters } from '../../utils/water';
 import { formatNumber, formatSigned } from '../../utils/format';
 
 interface InsightsPanelProps {
@@ -20,6 +21,8 @@ interface InsightsPanelProps {
   today: string;
   /** Dépense estimée par la formule (métabolisme de base × activité), si connue */
   formulaExpenditureKcal?: number | null;
+  /** Eau des 7 derniers jours (weeklyWaterSummary), si chargée */
+  water?: { averageMl: number | null; daysAtGoal: number };
 }
 
 
@@ -36,7 +39,7 @@ function StatTile({ icon, label, value, detail }: { icon: ReactNode; label: stri
   );
 }
 
-export function InsightsPanel({ days, weights, today, formulaExpenditureKcal = null }: InsightsPanelProps) {
+export function InsightsPanel({ days, weights, today, formulaExpenditureKcal = null, water }: InsightsPanelProps) {
   const week = computeWeekInsights(days, today);
   const streak = computeLoggingStreak(days, today);
   const expenditure = estimateExpenditure(days, weights, today);
@@ -58,7 +61,7 @@ export function InsightsPanel({ days, weights, today, formulaExpenditureKcal = n
         <p className="text-xs text-subtle">Jours complets renseignés, aujourd’hui exclu.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className={`grid grid-cols-2 gap-3 ${water ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
         <StatTile
           icon={<Flame className={iconClass} aria-hidden="true" />}
           label="Calories moyennes"
@@ -87,6 +90,14 @@ export function InsightsPanel({ days, weights, today, formulaExpenditureKcal = n
           value={`${streak} jour${streak > 1 ? 's' : ''}`}
           detail={streak > 0 ? 'renseignés d’affilée' : 'Saisissez un repas pour la lancer'}
         />
+        {water && (
+          <StatTile
+            icon={<Droplet className="h-4 w-4 text-info-600" aria-hidden="true" />}
+            label="Eau moyenne"
+            value={water.averageMl === null ? '—' : `${formatLiters(water.averageMl).replace(' L', ' L/j')}`}
+            detail={water.averageMl === null ? 'Aucune prise notée' : `${water.daysAtGoal}/${week.periodDays} jours à l’objectif`}
+          />
+        )}
       </div>
 
       <div className="rounded-lg border border-line bg-surface-muted p-3 sm:p-4" data-testid="expenditure">

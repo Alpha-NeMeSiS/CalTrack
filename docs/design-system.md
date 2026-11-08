@@ -35,6 +35,8 @@ Toutes les couleurs sont définies dans [`theme.palette.js`](../theme.palette.js
 | `danger` | rouge | Erreur, suppression, dépassement |
 | `orange` | orange | Donnée « en dessous de l'objectif » (graphiques, tendances) |
 
+L'**eau** utilise `info` comme une couleur de donnée : barre `info-500` et goutte `info-600` (3:1 au moins), barre `success-500` quand l'objectif est atteint.
+
 `primary` pointe sur l'échelle `brand` (`ROLE_SCALES` dans `theme.palette.js`) : il désigne une **action**, `brand` l'**identité**. Les garder distincts permet de changer la couleur des boutons sans toucher au reste.
 
 La journée **en cours** est en vert de la marque : anneau `stroke-brand-600`, pastille `bg-brand-50 text-brand-700`, barre du graphique `bg-brand-300 ring-1 ring-inset ring-brand-600` (vert pâle à contour foncé, distinct du vert plein « à l'objectif »).

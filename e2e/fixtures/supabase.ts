@@ -13,7 +13,11 @@ const addDays = (d: Date, n: number) => {
   x.setDate(x.getDate() + n);
   return x;
 };
-const today = new Date();
+// « Aujourd'hui » à Paris, le fuseau du navigateur de test (playwright.config.ts) :
+// sinon, autour de minuit, les données du jour tomberaient la veille. Midi évite
+// les changements d'heure.
+const parisDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const today = new Date(`${parisDate}T12:00:00`);
 const TODAY = ymd(today);
 
 const profile = {
@@ -138,6 +142,59 @@ const searchResults = {
   ],
 };
 
+// Recette de démonstration (spec des recettes) : chili maison, 4 parts, 1 800 g cuit
+const chiliIngredients = [
+  ['Haricots rouges, cuits', 400, 115, 8.7, 0.5, 15, 6.5],
+  ['Bœuf haché 5 %, cru', 500, 125, 21, 5, 0, 0],
+  ['Tomates concassées', 400, 25, 1.2, 0.2, 4, 1.2],
+  ['Riz blanc, cuit', 600, 130, 2.7, 0.3, 28, 0.4],
+] as const;
+const recipes = [
+  {
+    id: '44444444-4444-4444-8444-444444444444',
+    user_id: USER_ID,
+    name: 'Chili maison',
+    servings: 4,
+    cooked_weight_g: 1800,
+    created_at: addDays(today, -5).toISOString(),
+    updated_at: addDays(today, -5).toISOString(),
+    recipe_ingredients: chiliIngredients.map(([label, qty_g, kcal_per_100g, protein_g, fat_g, carbs_g, fiber_g], position) => ({
+      id: `ing-${position}`,
+      recipe_id: '44444444-4444-4444-8444-444444444444',
+      position,
+      label,
+      qty_g,
+      kcal_per_100g,
+      protein_g,
+      fat_g,
+      carbs_g,
+      fiber_g,
+    })),
+  },
+];
+
+// Eau : 0,5 + 0,75 L aujourd'hui, et un historique sur 7 jours
+const water = (daysAgo: number, amount_ml: number, hour: string) => {
+  const date = ymd(addDays(today, -daysAgo));
+  return { id: `eau-${daysAgo}-${hour}`, user_id: USER_ID, date, amount_ml, created_at: `${date}T${hour}:00:00Z` };
+};
+const waterLogs = [
+  water(0, 500, '08'),
+  water(0, 750, '12'),
+  ...[1, 2, 3, 4, 5, 6, 7].flatMap((d) => [water(d, 1000 + (d % 3) * 400, '09'), water(d, 900, '15')]),
+];
+
+/** Filtre PostgREST sur les dates (eq., gte., lte.) */
+function inDateRange(date: string, filters: string[]) {
+  return filters.every((filter) => {
+    const [op, value] = [filter.slice(0, filter.indexOf('.')), filter.slice(filter.indexOf('.') + 1)];
+    if (op === 'eq') return date === value;
+    if (op === 'gte') return date >= value;
+    if (op === 'lte') return date <= value;
+    return true;
+  });
+}
+
 const jwt = () => {
   const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
   return `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: USER_ID, exp: 4102444800, role: 'authenticated' })}.sig`;
@@ -166,6 +223,10 @@ function rowsFor(table: string, params: URLSearchParams): unknown[] {
       return exactDate ? (exactDate === TODAY ? todayEntries : []) : [...todayEntries, ...history];
     case 'weight_logs':
       return weightLogs;
+    case 'recipes':
+      return recipes;
+    case 'water_logs':
+      return waterLogs.filter((log) => inDateRange(log.date, params.getAll('date')));
     default:
       return [];
   }

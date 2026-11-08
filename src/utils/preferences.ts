@@ -1,6 +1,7 @@
 // Préférences d'affichage (fonctions pures, testables).
 // Stockées dans la table user_preferences ; sans ligne, valeurs par défaut.
 import { MEAL_LABELS, MealType } from './entries';
+import { validateWaterGoal } from './water';
 import { isThemePreference, ThemePreference } from './theme';
 
 export type CalorieDisplay = 'consumed' | 'remaining';
@@ -23,6 +24,8 @@ export interface UserPreferences {
   reminderLogTime: string | null;
   /** Fuseau horaire des rappels (IANA, ex. Europe/Paris) */
   timezone: string;
+  /** Objectif d'eau manuel (ml), null = automatique d'après le poids */
+  waterGoalMl: number | null;
 }
 
 /** Heures proposées quand un rappel est activé */
@@ -57,6 +60,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   reminderWeighInTime: null,
   reminderLogTime: null,
   timezone: 'Europe/Paris',
+  waterGoalMl: null,
 };
 
 /** Ligne de la table user_preferences */
@@ -73,6 +77,7 @@ export interface UserPreferencesRow {
   reminder_weigh_in_time?: string | null;
   reminder_log_time?: string | null;
   timezone?: string;
+  water_goal_ml?: number | null;
   updated_at?: string;
 }
 
@@ -94,6 +99,7 @@ export function preferencesFromRow(row: Partial<UserPreferencesRow> | null | und
     reminderWeighInTime: normalizeTime(row.reminder_weigh_in_time),
     reminderLogTime: normalizeTime(row.reminder_log_time),
     timezone: row.timezone || DEFAULT_PREFERENCES.timezone,
+    waterGoalMl: row.water_goal_ml ?? null,
   };
 }
 
@@ -116,6 +122,7 @@ export function preferencesToRow(userId: string, preferences: UserPreferences, n
     reminder_weigh_in_time: normalizeTime(preferences.reminderWeighInTime),
     reminder_log_time: normalizeTime(preferences.reminderLogTime),
     timezone: preferences.timezone || DEFAULT_PREFERENCES.timezone,
+    water_goal_ml: preferences.waterGoalMl,
     updated_at: now.toISOString(),
   };
 }
@@ -149,5 +156,7 @@ export function validatePreferences(preferences: UserPreferences): string[] {
       break;
     }
   }
+  const waterError = validateWaterGoal(preferences.waterGoalMl);
+  if (waterError) errors.push(waterError);
   return errors;
 }

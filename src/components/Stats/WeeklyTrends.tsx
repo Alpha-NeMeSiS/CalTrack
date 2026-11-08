@@ -1,9 +1,12 @@
 // Tendances : indicateurs (moyennes, régularité, dépense estimée), graphique des
 // calories sur 7 jours, courbe de poids et historique détaillé sur 30 jours
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { supabase, Goal, WeightLog } from '../../lib/supabase';
+import { supabase, Goal, WaterLog, WeightLog } from '../../lib/supabase';
 import { fetchActiveGoal } from '../../services/goals';
 import { fetchWeightLogs } from '../../services/weights';
+import { fetchWaterLogs } from '../../services/water';
+import { usePreferences } from '../../contexts/usePreferences';
+import { waterGoal, weeklyWaterSummary } from '../../utils/water';
 import { WeightChart } from './WeightChart';
 import { BodyCompositionChart } from './BodyCompositionChart';
 import { InsightsPanel } from './InsightsPanel';
@@ -77,6 +80,8 @@ export function WeeklyTrends() {
   const [monthData, setMonthData] = useState<DayItem[]>([]); // 30 derniers jours
   const [weights, setWeights] = useState<WeightLog[]>([]); // 90 derniers jours
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
+  const [waterLogs, setWaterLogs] = useState<WaterLog[] | null>(null); // 7 jours avant aujourd'hui
+  const { preferences } = usePreferences();
 
   // Dépense « théorique » (formule) pour la comparer à la dépense estimée
   // Suggestion appliquée : gardée affichée (message de confirmation) après la
@@ -167,6 +172,14 @@ export function WeeklyTrends() {
         console.error('Error loading weight logs:', weightError);
         setWeights([]);
       }
+
+      // Eau des 7 derniers jours : non bloquante, tuile masquée si elle échoue
+      try {
+        setWaterLogs(await fetchWaterLogs(user.id, addDaysToDateString(endDate, -7), addDaysToDateString(endDate, -1)));
+      } catch (waterError) {
+        console.error('Error loading water logs:', waterError);
+        setWaterLogs(null);
+      }
     } catch (error) {
       console.error('Error loading week data:', error);
       setLoadError("Impossible de charger l'historique.");
@@ -238,6 +251,11 @@ export function WeeklyTrends() {
           weights={weights}
           today={getTodayDate()}
           formulaExpenditureKcal={formulaExpenditure}
+          water={
+            waterLogs
+              ? weeklyWaterSummary(waterLogs, waterGoal(preferences.waterGoalMl, profile?.poids_kg), getTodayDate())
+              : undefined
+          }
         />
 
         {shownSuggestion && activeGoal && profile && user && (

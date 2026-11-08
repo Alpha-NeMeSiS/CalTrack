@@ -3,6 +3,12 @@ import type { Entry } from '../lib/supabase';
 
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
+/** Entrée prête à ajouter au journal (onglets de la fenêtre d'ajout) */
+export type AddEntryPayload = Pick<
+  Entry,
+  'food_id' | 'label' | 'qty_grammes' | 'kcal' | 'protein_g' | 'fat_g' | 'carbs_g' | 'fiber_g' | 'meal_type'
+>;
+
 export const MEAL_ORDER: Array<MealType | 'other'> = ['breakfast', 'lunch', 'dinner', 'snack', 'other'];
 
 export const MEAL_LABELS: Record<MealType | 'other', string> = {

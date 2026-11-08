@@ -19,6 +19,8 @@ BEGIN
     INSERT INTO public.foods (user_id, name, kcal_per_100g, protein_g, fat_g, carbs_g) VALUES (test.uid(who), 'Perso', 100, 1, 1, 1);
     INSERT INTO public.favorite_foods (user_id, label, kcal_per_100g, protein_g, fat_g, carbs_g) VALUES (test.uid(who), 'Favori', 100, 1, 1, 1);
     INSERT INTO public.user_preferences (user_id) VALUES (test.uid(who));
+    INSERT INTO public.recipes (user_id, name, servings) VALUES (test.uid(who), 'Recette', 2);
+    INSERT INTO public.water_logs (user_id, date, amount_ml) VALUES (test.uid(who), '2026-11-08', 250);
     INSERT INTO public.push_subscriptions (user_id, endpoint, p256dh, auth)
     VALUES (test.uid(who), 'https://push.example.com/' || who, repeat('k', 60), repeat('a', 16));
   END LOOP;
@@ -34,7 +36,7 @@ RESET ROLE;
 
 DO $$
 DECLARE
-  tables text[] := ARRAY['goals', 'daily_targets', 'entries', 'weight_logs', 'foods', 'favorite_foods', 'user_preferences', 'push_subscriptions'];
+  tables text[] := ARRAY['goals', 'daily_targets', 'entries', 'weight_logs', 'foods', 'favorite_foods', 'user_preferences', 'push_subscriptions', 'recipes', 'water_logs'];
   t text;
   remaining integer;
   kept integer;

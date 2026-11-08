@@ -18,6 +18,8 @@ import { getMealLabel, getVisibleMeals } from '../../utils/preferences';
 import { WeightQuickLog } from '../Weight/WeightQuickLog';
 import { CalorieRing } from './CalorieRing';
 import { MacroCard } from './MacroCard';
+import { WaterCard } from '../Water/WaterCard';
+import { waterGoal } from '../../utils/water';
 import { GoalProgressCard } from './GoalProgressCard';
 import { AddEntryModal } from '../Journal/AddEntryModal';
 
@@ -413,6 +415,9 @@ export function Dashboard({
           </div>
         </div>
       </div>
+
+      {/* Eau du jour : objectif manuel (Paramètres) ou automatique d'après le poids */}
+      <WaterCard userId={user?.id} date={selectedDate} goalMl={waterGoal(preferences.waterGoalMl, profile?.poids_kg)} />
 
       {/* 2. Journal du jour, regroupé par repas */}
       <div className="panel p-4">

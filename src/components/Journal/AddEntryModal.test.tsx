@@ -5,6 +5,7 @@ import { AddEntryModal } from './AddEntryModal';
 import { getOperationArgs, hasOperation, QueryCall, supabaseMock } from '../../test/supabaseMock';
 import { PreferencesContext } from '../../contexts/preferencesContextValue';
 import { DEFAULT_PREFERENCES } from '../../utils/preferences';
+import { makeRecipe } from '../../test/fixtures';
 
 const authValue = { user: { id: 'user-1' } };
 
@@ -55,7 +56,7 @@ vi.mock('../Foods/FoodSearch', () => ({
 }));
 
 /** Données renvoyées par le faux Supabase, par table */
-let tables: { entries: unknown[]; favorite_foods: unknown[]; foods: unknown[] };
+let tables: { entries: unknown[]; favorite_foods: unknown[]; foods: unknown[]; recipes: unknown[] };
 
 const entry = (label: string, qty: number, kcal: number, meal: string, createdAt: string) => ({
   id: `${label}-${createdAt}`, user_id: 'user-1', date: '2025-01-09', label, qty_grammes: qty, kcal,
@@ -84,7 +85,7 @@ function handler(call: QueryCall) {
 
 beforeEach(() => {
   supabaseMock.reset();
-  tables = { entries: [], favorite_foods: [], foods: [] };
+  tables = { entries: [], favorite_foods: [], foods: [], recipes: [] };
   supabaseMock.setHandler(handler);
 });
 
@@ -377,6 +378,35 @@ describe('AddEntryModal', () => {
       const [remove] = supabaseMock.callsFor('foods', 'delete');
       expect(remove.operations).toContainEqual({ method: 'eq', args: ['id', 'food-1'] });
       expect(await screen.findByText(/Aucun aliment personnel/)).toBeInTheDocument();
+    });
+  });
+
+  describe('onglet Recettes', () => {
+    it('est accessible au clavier après « Mes aliments »', async () => {
+      render(<AddEntryModal date="2025-01-10" onAdd={vi.fn()} onClose={vi.fn()} />);
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('tab', { name: 'Mes aliments' }));
+      await user.keyboard('{ArrowRight}');
+      const tab = screen.getByRole('tab', { name: 'Recettes' });
+      expect(tab).toHaveAttribute('aria-selected', 'true');
+      expect(tab).toHaveFocus();
+    });
+
+    it('ajoute une part de recette en un geste puis ferme la fenêtre', async () => {
+      tables.recipes = [makeRecipe()];
+      tables.entries = [entry('Chili maison — 1 part', 450, 491, 'dinner', '2025-01-08T19:00:00Z')];
+      const onAdd = vi.fn().mockResolvedValue(true);
+      const onClose = vi.fn();
+      render(<AddEntryModal date="2025-01-10" onAdd={onAdd} onClose={onClose} />);
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole('tab', { name: 'Recettes' }));
+      await user.click(await screen.findByRole('button', { name: 'Ajouter 1 part de « Chili maison » au journal' }));
+
+      expect(onAdd).toHaveBeenCalledWith(
+        expect.objectContaining({ label: 'Chili maison — 1 part', qty_grammes: 450, kcal: 491, meal_type: 'dinner' })
+      );
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
     });
   });
 });

@@ -9,6 +9,10 @@ const savePreferences = vi.fn();
 
 // Notifications : indisponibles par défaut (jsdom), activables dans certains tests
 const push = vi.hoisted(() => ({ state: 'unsupported' as string, enable: vi.fn() }));
+vi.mock('../../contexts/useAuth', () => ({
+  useAuth: () => ({ profile: { poids_kg: 79 } }),
+}));
+
 vi.mock('../../lib/push', () => ({
   getPushDeviceState: () => Promise.resolve(push.state),
   enablePushOnThisDevice: () => push.enable(),
@@ -167,5 +171,44 @@ describe('SettingsPage', () => {
     expect(screen.getByRole('checkbox', { name: /Rappel de pesée/ })).toBeChecked();
     expect(screen.getByLabelText('Heure — Rappel du journal')).toHaveValue('20:30');
   });
-});
 
+  describe('objectif d’eau', () => {
+    it('propose l’objectif automatique d’après le poids', () => {
+      renderPage();
+      expect(screen.getByRole('radio', { name: /Automatique : 2,4 L/ })).toBeChecked();
+      expect(screen.getByText('30 ml par kg × 79 kg, suit vos pesées')).toBeInTheDocument();
+    });
+
+    it('enregistre un objectif personnalisé (virgule acceptée)', async () => {
+      renderPage();
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('radio', { name: /Personnalisé/ }));
+      const field = screen.getByLabelText('Objectif (L)');
+      await user.clear(field);
+      await user.type(field, '2,5');
+      await user.click(screen.getByRole('button', { name: /Enregistrer/ }));
+      expect(savePreferences).toHaveBeenCalledWith(expect.objectContaining({ waterGoalMl: 2500 }));
+    });
+
+    it('refuse un objectif hors limites', async () => {
+      renderPage();
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('radio', { name: /Personnalisé/ }));
+      const field = screen.getByLabelText('Objectif (L)');
+      await user.clear(field);
+      await user.type(field, '0,3');
+      await user.click(screen.getByRole('button', { name: /Enregistrer/ }));
+      expect(await screen.findByText(/L’objectif d’eau doit être compris entre 0,5 et 6 L\./)).toBeInTheDocument();
+      expect(savePreferences).not.toHaveBeenCalled();
+    });
+
+    it('revient à l’objectif automatique', async () => {
+      renderPage({ ...DEFAULT_PREFERENCES, waterGoalMl: 3000 });
+      const user = userEvent.setup();
+      expect(screen.getByLabelText('Objectif (L)')).toHaveValue('3');
+      await user.click(screen.getByRole('radio', { name: /Automatique : 2,4 L/ }));
+      await user.click(screen.getByRole('button', { name: /Enregistrer/ }));
+      expect(savePreferences).toHaveBeenCalledWith(expect.objectContaining({ waterGoalMl: null }));
+    });
+  });
+});

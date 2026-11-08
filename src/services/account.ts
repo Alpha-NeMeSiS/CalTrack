@@ -6,7 +6,8 @@ import { supabase } from '../lib/supabase';
 /** Taille de page : Supabase limite le nombre de lignes renvoyées par requête. */
 export const EXPORT_PAGE_SIZE = 1000;
 
-/** Tables exportées : colonne du propriétaire et colonne de tri (pagination stable). */
+/** Tables exportées : colonne du propriétaire, colonne de tri (pagination stable)
+ *  et colonnes lues (les recettes avec leurs ingrédients). */
 const USER_TABLES = [
   { table: 'goals', ownerColumn: 'user_id', orderColumn: 'id' },
   { table: 'daily_targets', ownerColumn: 'user_id', orderColumn: 'id' },
@@ -17,6 +18,8 @@ const USER_TABLES = [
   { table: 'user_preferences', ownerColumn: 'user_id', orderColumn: 'user_id' },
   { table: 'push_subscriptions', ownerColumn: 'user_id', orderColumn: 'id' },
   { table: 'favorite_foods', ownerColumn: 'user_id', orderColumn: 'id' },
+  { table: 'recipes', ownerColumn: 'user_id', orderColumn: 'id', select: '*, recipe_ingredients(*)' },
+  { table: 'water_logs', ownerColumn: 'user_id', orderColumn: 'id' },
 ] as const;
 
 type ExportedTable = (typeof USER_TABLES)[number]['table'];
@@ -30,18 +33,18 @@ export type UserDataExport = {
 } & Record<ExportedTable, Record<string, unknown>[]>;
 
 /** Lit toutes les lignes de l'utilisateur dans une table, page par page. */
-async function fetchAllRows(table: string, ownerColumn: string, orderColumn: string, userId: string) {
+async function fetchAllRows(table: string, ownerColumn: string, orderColumn: string, userId: string, columns = '*') {
   const rows: Record<string, unknown>[] = [];
   for (let from = 0; ; from += EXPORT_PAGE_SIZE) {
     const { data, error } = await supabase
       .from(table)
-      .select('*')
+      .select(columns)
       .eq(ownerColumn, userId)
       .order(orderColumn, { ascending: true })
       .range(from, from + EXPORT_PAGE_SIZE - 1);
 
     if (error) throw error;
-    const page = (data as Record<string, unknown>[] | null) ?? [];
+    const page = (data as unknown as Record<string, unknown>[] | null) ?? [];
     rows.push(...page);
     if (page.length < EXPORT_PAGE_SIZE) return rows;
   }
@@ -60,7 +63,10 @@ export async function exportUserData(
   if (profileError) throw profileError;
 
   const tables = await Promise.all(
-    USER_TABLES.map(async ({ table, ownerColumn, orderColumn }) => [table, await fetchAllRows(table, ownerColumn, orderColumn, user.id)] as const)
+    USER_TABLES.map(
+      async (spec) =>
+        [spec.table, await fetchAllRows(spec.table, spec.ownerColumn, spec.orderColumn, user.id, 'select' in spec ? spec.select : '*')] as const
+    )
   );
 
   return {

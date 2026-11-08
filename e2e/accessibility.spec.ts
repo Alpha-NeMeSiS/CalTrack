@@ -62,6 +62,12 @@ for (const colorScheme of ['light', 'dark'] as const) {
       });
 
       test('journal', async ({ page }) => {
+        await expect(page.getByRole('heading', { name: 'Eau' })).toBeVisible();
+        await expectNoViolations(page);
+
+        // Carte Eau : quantité libre
+        await page.getByRole('button', { name: 'Autre…' }).click();
+        await expect(page.getByLabel('Quantité (ml)')).toBeVisible();
         await expectNoViolations(page);
       });
 
@@ -72,6 +78,25 @@ for (const colorScheme of ['light', 'dark'] as const) {
         await expectNoViolations(page);
 
         await page.getByRole('tab', { name: 'Saisie manuelle' }).click();
+        await expectNoViolations(page);
+      });
+
+      test('recettes', async ({ page }) => {
+        await page.getByRole('button', { name: /^Ajouter( un aliment)?$/ }).filter({ visible: true }).first().click();
+        await page.getByRole('tab', { name: 'Recettes' }).click();
+        await expect(page.getByRole('button', { name: 'Modifier « Chili maison »' })).toBeVisible();
+        await expectNoViolations(page);
+
+        // Éditeur
+        await page.getByRole('button', { name: 'Modifier « Chili maison »' }).click();
+        await expect(page.getByRole('heading', { name: 'Modifier la recette' })).toBeVisible();
+        await expectNoViolations(page);
+
+        // Ajout au journal, en grammes
+        await page.getByRole('button', { name: 'Retour aux recettes' }).click();
+        await page.getByRole('button', { name: /^Chili maison/ }).click();
+        await page.getByRole('button', { name: 'En grammes' }).click();
+        await expect(page.getByText('Chili maison — 450 g')).toBeVisible();
         await expectNoViolations(page);
       });
 

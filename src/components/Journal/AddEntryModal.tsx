@@ -1,9 +1,10 @@
-// Fenêtre d'ajout d'un aliment au journal, en trois onglets :
+// Fenêtre d'ajout d'un aliment au journal, en quatre onglets :
 // - Recherche : favoris et récents (ajout en un tap), recherche Ciqual / Open
 //   Food Facts / mes aliments, scanner de code-barres, choix de la quantité ;
 // - Saisie manuelle : valeurs saisies à la main, enregistrables dans « Mes
 //   aliments » (avec le code-barres d'un produit scanné inconnu) ;
-// - Mes aliments : aliments personnels (utiliser, supprimer).
+// - Mes aliments : aliments personnels (utiliser, supprimer) ;
+// - Recettes : plats maison en parts (créer, modifier, ajouter en parts ou en grammes).
 import { KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Star, X } from 'lucide-react';
 import { FoodSearch } from '../Foods/FoodSearch';
@@ -11,19 +12,16 @@ import { QuickFoods } from '../Foods/QuickFoods';
 import { useFoodLibrary } from '../Foods/useFoodLibrary';
 import { useAuth } from '../../contexts/useAuth';
 import { usePreferences } from '../../contexts/usePreferences';
-import { getMealLabel, getVisibleMeals } from '../../utils/preferences';
-import { Entry } from '../../lib/supabase';
+import { getMealLabel } from '../../utils/preferences';
+import type { AddEntryPayload, MealType } from '../../utils/entries';
+import { MealTypeSelector } from './MealTypeSelector';
+import { RecipesTab } from '../Recipes/RecipesTab';
 import type { NormalizedFood } from '../../types/food';
 import { parseLocalDate } from '../../utils/date';
 import { cleanBarcodeInput, isValidGtin } from '../../utils/barcode';
 import { foodLabel, nutritionForQuantity, QuickFood } from '../../utils/foodLibrary';
 
-type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
-type AddEntryPayload = Pick<
-  Entry,
-  'food_id' | 'label' | 'qty_grammes' | 'kcal' | 'protein_g' | 'fat_g' | 'carbs_g' | 'fiber_g' | 'meal_type'
->;
-type AddEntryMode = 'search' | 'manual' | 'mine';
+type AddEntryMode = 'search' | 'manual' | 'mine' | 'recipes';
 /** Les valeurs de la saisie manuelle portent sur la quantité indiquée ou sur 100 g (étiquette) */
 type ValuesBasis = 'portion' | 'per100';
 
@@ -48,6 +46,7 @@ const tabOptions: Array<{ value: AddEntryMode; label: string }> = [
   { value: 'search', label: 'Recherche' },
   { value: 'manual', label: 'Saisie manuelle' },
   { value: 'mine', label: 'Mes aliments' },
+  { value: 'recipes', label: 'Recettes' },
 ];
 
 const defaultManualForm: ManualFormState = {
@@ -69,40 +68,6 @@ function roundToOneDecimal(value: number) {
 
 function formatEntryDate(value: string) {
   return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(parseLocalDate(value));
-}
-
-function MealTypeSelector({
-  value,
-  onChange,
-}: {
-  value?: MealType;
-  onChange: (value?: MealType) => void;
-}) {
-  // Repas visibles (préférences), avec leurs noms personnalisés
-  const { preferences } = usePreferences();
-  const mealOptions = getVisibleMeals(preferences).map((meal) => ({ value: meal, label: getMealLabel(preferences, meal) }));
-  return (
-    <div>
-      <label className="field-label mb-2">Type de repas (optionnel)</label>
-      <div className="grid grid-cols-2 gap-2">
-        {mealOptions.map((meal) => (
-          <button
-            key={meal.value}
-            type="button"
-            onClick={() => onChange(value === meal.value ? undefined : meal.value)}
-            className={`py-2 px-3 text-sm border-2 rounded-md font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 ${
-              value === meal.value
-                ? 'border-primary-600 bg-primary-50 text-primary-700'
-                : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
-            }`}
-            aria-pressed={value === meal.value}
-          >
-            {meal.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
@@ -822,7 +787,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
         </div>
 
         <div className="px-6 pt-6">
-          <div role="tablist" aria-label="Mode d'ajout d'aliment" className="grid grid-cols-3 gap-2 rounded-lg bg-surface-sunken p-1">
+          <div role="tablist" aria-label="Mode d'ajout d'aliment" className="grid grid-cols-4 gap-1 rounded-lg bg-surface-sunken p-1 sm:gap-2">
             {tabOptions.map((tab, index) => (
               <button
                 key={tab.value}
@@ -837,7 +802,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                 aria-controls={`add-entry-panel-${tab.value}`}
                 onClick={() => switchTab(tab.value)}
                 onKeyDown={(event) => handleTabKeyDown(event, index)}
-                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 ${
+                className={`rounded-md px-1 py-2 text-xs font-medium transition-colors sm:px-3 sm:text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 ${
                   activeTab === tab.value
                     ? 'bg-surface text-primary-700 shadow-sm'
                     : 'text-muted hover:text-ink'
@@ -863,6 +828,15 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
             {activeTab === 'search' && renderSearchTab()}
             {activeTab === 'manual' && renderManualTab()}
             {activeTab === 'mine' && renderMineTab()}
+            {activeTab === 'recipes' && (
+              <RecipesTab
+                userId={user?.id}
+                recentEntries={library.recentEntries}
+                personalFoods={library.personalFoods}
+                disabled={submitting}
+                onAdd={submitEntry}
+              />
+            )}
           </div>
         </div>
       </div>
