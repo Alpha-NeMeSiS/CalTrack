@@ -53,7 +53,7 @@ const CHART_HEIGHT_PX = 200;
 // Styles des lignes de l'historique selon le statut
 const ROW_STYLES: Record<DayStatus, { bg: string; text: string }> = {
   not_logged: { bg: 'bg-surface-muted', text: 'text-subtle' },
-  in_progress: { bg: 'bg-info-50', text: 'text-info-700' },
+  in_progress: { bg: 'bg-brand-50', text: 'text-brand-700' },
   under: { bg: 'bg-orange-50', text: 'text-orange-700' },
   ok: { bg: 'bg-success-50', text: 'text-success-700' },
   over: { bg: 'bg-danger-50', text: 'text-danger-700' },
@@ -64,7 +64,7 @@ const LEGEND: Array<{ label: string; swatch: string }> = [
   { label: DAY_STATUS_LABELS.ok, swatch: 'bg-success-500' },
   { label: DAY_STATUS_LABELS.under, swatch: 'bg-orange-400' },
   { label: DAY_STATUS_LABELS.over, swatch: 'bg-danger-500' },
-  { label: DAY_STATUS_LABELS.in_progress, swatch: 'bg-info-400' },
+  { label: DAY_STATUS_LABELS.in_progress, swatch: 'bg-brand-300 ring-1 ring-inset ring-brand-600' },
   { label: DAY_STATUS_LABELS.not_logged, swatch: 'bg-surface-strong' },
 ];
 

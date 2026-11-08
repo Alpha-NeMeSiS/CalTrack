@@ -28,6 +28,12 @@ describe('CalorieRing', () => {
     expect(screen.getByText('Encore 1172 kcal')).toBeInTheDocument();
   });
 
+  it('affiche la journée en cours en vert de la marque', () => {
+    const { container } = render(<CalorieRing consumed={978} target={2150} status="under" inProgress />);
+    expect(screen.getByText('En cours')).toHaveClass('bg-brand-50', 'text-brand-700');
+    expect(container.querySelectorAll('circle')[1]).toHaveClass('stroke-brand-600');
+  });
+
   it('signale un dépassement même pendant la journée en cours', () => {
     render(<CalorieRing consumed={2400} target={2150} status="over" inProgress />);
     expect(screen.getByText('Au-dessus')).toBeInTheDocument();
