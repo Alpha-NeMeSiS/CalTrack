@@ -36,7 +36,7 @@ export function LoginForm({ onToggle }: { onToggle: () => void }) {
 
   return (
     <div className="w-full max-w-md mx-auto p-8 panel">
-      <h2 className="text-2xl font-bold text-ink mb-6">Connexion</h2>
+      <h2 className="page-title mb-6">Connexion</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
@@ -68,7 +68,7 @@ export function LoginForm({ onToggle }: { onToggle: () => void }) {
             <button
               type="button"
               onClick={() => setShowForgot(true)}
-              className="text-sm text-primary-600 hover:text-primary-700"
+              className="text-sm text-primary-700 hover:text-primary-800"
             >
               Mot de passe oublié ?
             </button>
@@ -95,7 +95,7 @@ export function LoginForm({ onToggle }: { onToggle: () => void }) {
 
       <p className="mt-4 text-center text-sm text-muted">
         Pas encore de compte ?{' '}
-        <button onClick={onToggle} className="text-primary-600 hover:text-primary-700 font-medium">
+        <button onClick={onToggle} className="text-primary-700 hover:text-primary-800 font-medium">
           Créer un compte
         </button>
       </p>

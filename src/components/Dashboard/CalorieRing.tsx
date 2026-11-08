@@ -24,7 +24,8 @@ export function CalorieRing({ consumed, target, status, inProgress = false, disp
     ok: { color: 'text-success-700', bg: 'bg-success-100', stroke: 'stroke-success-600', label: 'Objectif atteint' },
     over: { color: 'text-danger-700', bg: 'bg-danger-100', stroke: 'stroke-danger-600', label: 'Au-dessus' },
   };
-  const inProgressConfig = { color: 'text-info-700', bg: 'bg-info-50', stroke: 'stroke-info-600', label: 'En cours' };
+  // Journée en cours : vert de la marque (jauge principale), pas un jugement
+  const inProgressConfig = { color: 'text-brand-700', bg: 'bg-brand-50', stroke: 'stroke-brand-600', label: 'En cours' };
 
   const config = inProgress && status === 'under' ? inProgressConfig : statusConfig[status];
 

@@ -203,14 +203,14 @@ export function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <h1 className="text-2xl text-ink">Mon profil</h1>
+      <h1 className="page-title">Mon profil</h1>
 
       <IdentityCard />
 
       <section aria-label="Connexion" className="space-y-8 panel p-4 sm:p-6">
         <EmailChangeForm />
         <section aria-labelledby="profile-password-title" className="space-y-3 border-t border-line pt-6">
-          <h2 id="profile-password-title" className="flex items-center gap-2 text-lg font-semibold text-ink">
+          <h2 id="profile-password-title" className="flex items-center gap-2 card-title">
             <KeyRound className="h-5 w-5 text-subtle" aria-hidden="true" />
             Mot de passe
           </h2>
@@ -219,7 +219,7 @@ export function ProfilePage() {
       </section>
 
       <section aria-labelledby="indicators-title" className="panel p-4 sm:p-6">
-        <h2 id="indicators-title" className="mb-4 text-lg text-ink">
+        <h2 id="indicators-title" className="mb-4 card-title">
           Vos repères
         </h2>
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -236,7 +236,7 @@ export function ProfilePage() {
       <WeightQuickLog userId={user.id} date={getTodayDate()} currentWeight={profile.poids_kg} onSave={handleSaveWeight} />
 
       <section aria-labelledby="body-title" className="panel p-4 sm:p-6">
-        <h2 id="body-title" className="mb-1 text-lg text-ink">
+        <h2 id="body-title" className="mb-1 card-title">
           Données corporelles
         </h2>
         <p className="mb-6 text-sm text-muted">Elles servent à calculer vos besoins caloriques.</p>

@@ -52,7 +52,7 @@ export function InsightsPanel({ days, weights, today, formulaExpenditureKcal = n
   return (
     <section aria-labelledby="insights-title" className="space-y-3">
       <div>
-        <h3 id="insights-title" className="text-sm text-ink">
+        <h3 id="insights-title" className="section-label">
           Vos {week.periodDays} derniers jours
         </h3>
         <p className="text-xs text-subtle">Jours complets renseignés, aujourd’hui exclu.</p>

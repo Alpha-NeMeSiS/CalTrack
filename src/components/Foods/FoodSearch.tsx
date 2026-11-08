@@ -261,7 +261,7 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
           type="button"
           role="tab"
           aria-selected={category === 'ciqual'}
-          className={`px-3 py-1 rounded-md border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+          className={`px-3 py-1 rounded-md border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 ${
             category === 'ciqual'
               ? 'border-primary-500 bg-primary-50 text-primary-700'
               : 'border-line bg-surface-sunken text-body hover:bg-surface-strong'
@@ -274,7 +274,7 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
           type="button"
           role="tab"
           aria-selected={category === 'off'}
-          className={`px-3 py-1 rounded-md border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+          className={`px-3 py-1 rounded-md border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 ${
             category === 'off'
               ? 'border-primary-500 bg-primary-50 text-primary-700'
               : 'border-line bg-surface-sunken text-body hover:bg-surface-strong'
@@ -328,7 +328,7 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
           aria-expanded={scannerOpen}
           aria-label="Scanner un code-barres"
           title="Scanner un code-barres"
-          className={`flex flex-shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+          className={`flex flex-shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 ${
             scannerOpen
               ? 'border-primary-500 bg-primary-50 text-primary-700'
               : 'border-line-strong text-body hover:bg-surface-muted'

@@ -263,7 +263,7 @@ export function Dashboard({
           value={selectedDate}
           onChange={(e) => handleDateChange(e.target.value)}
           max={getTodayDate()}
-          className="px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="px-3 py-2 border border-line-strong rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-600"
         />
       </div>
 
@@ -364,7 +364,7 @@ export function Dashboard({
       )}
 
       {/* 1. Calories et macros du jour : l'information principale, en premier */}
-      <div className="card-glass">
+      <div className="panel p-4">
         <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-8 p-2 sm:p-6">
           <div className="flex-shrink-0">
             <CalorieRing
@@ -415,9 +415,9 @@ export function Dashboard({
       </div>
 
       {/* 2. Journal du jour, regroupé par repas */}
-      <div className="card-glass">
+      <div className="panel p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 p-4 sm:p-6 border-b border-surface/20">
-          <h2 className="text-lg text-accent-700">Journal du jour</h2>
+          <h2 className="card-title">Journal du jour</h2>
           <button
             type="button"
             onClick={handleCopyPreviousDay}
@@ -447,7 +447,7 @@ export function Dashboard({
             {groupEntriesByMeal(entries, (meal) => getMealLabel(preferences, meal)).map((group) => (
               <section key={group.meal} aria-label={group.label} className="py-2">
                 <div className="flex items-baseline justify-between px-4 pt-2 sm:px-6">
-                  <h3 className="text-sm font-semibold text-body">{group.label}</h3>
+                  <h3 className="section-label">{group.label}</h3>
                   <span className="text-xs text-subtle">{group.kcal} kcal</span>
                 </div>
 

@@ -18,6 +18,11 @@ function sourceFiles(dir: string): string[] {
 const RAW_COLOR = /(?<![\w-])(?:[a-z0-9-]+:)*(?:bg|text|border|ring|divide|fill|stroke|from|to|via|placeholder|outline|shadow)-(?:white|gray|slate|zinc|neutral|stone|blue|sky|indigo|red|rose|green|emerald|lime|amber|yellow|teal|cyan|purple|violet|pink)(?:-\d{2,3})?(?:\/\d+)?(?![\w-])/g;
 // Anciens noms du thème
 const OLD_NAMES = /\b(?:kaizen|shonen|btn-kaizen|card-kaizen|badge-energy)\b/g;
+// Classes retirées en phase 2 : carte « verre » remplacée par panel, nuances
+// trop claires pour le focus (3:1), les liens (4,5:1) et les courbes (3:1)
+const RETIRED = /(?<![\w-])(?:[a-z0-9-]+:)*(?:card-glass|ring-primary-500|ring-brand-500|text-primary-600|stroke-brand-500)(?![\w-])/g;
+// Police du logo (Bangers) : réservée au logo
+const LOGO_FILES = ['components/Layout/Header.tsx', 'components/Auth/AuthBrand.tsx'];
 
 describe('design system', () => {
   const files = sourceFiles(SRC);
@@ -26,6 +31,35 @@ describe('design system', () => {
     const offenders = files.flatMap((file) =>
       [...readFileSync(file, 'utf8').matchAll(RAW_COLOR)].map((m) => `${relative(SRC, file)} : ${m[0]}`)
     );
+    expect(offenders).toEqual([]);
+  });
+
+  it('aucune classe retirée (card-glass, focus et liens trop clairs)', () => {
+    const offenders = files.flatMap((file) =>
+      [...readFileSync(file, 'utf8').matchAll(RETIRED)].map((m) => `${relative(SRC, file)} : ${m[0]}`)
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it('courbes de graphique en nuance 600 au minimum', () => {
+    const offenders = files.flatMap((file) =>
+      [
+        // Courbes SVG
+        ...readFileSync(file, 'utf8').matchAll(/(?<![\w-])stroke-(?:info|success|warning|danger|orange|brand|primary)-(?:50|[1-5]00)(?![\w-])/g),
+        // Lignes pointillées (objectifs) dessinées en bordure
+        ...readFileSync(file, 'utf8').matchAll(/border-dashed[^"'`]*?border-(?:info|success|warning|danger|orange|brand|primary)-(?:50|[1-5]00)(?![\w-])/g),
+      ].map(
+        (m) => `${relative(SRC, file)} : ${m[0]}`
+      )
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it('la police du logo (font-display) ne sert qu’au logo', () => {
+    const offenders = files
+      .filter((file) => !LOGO_FILES.includes(relative(SRC, file).split('\\').join('/')))
+      .filter((file) => /(?<![\w-])font-display(?![\w-])/.test(readFileSync(file, 'utf8')))
+      .map((file) => relative(SRC, file));
     expect(offenders).toEqual([]);
   });
 

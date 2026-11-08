@@ -157,7 +157,7 @@ export function BarcodeScanner({ onDetected, onCancel, createDetector = createBa
           type="button"
           onClick={onCancel}
           aria-label="Annuler le scan"
-          className="rounded-md p-1 text-subtle hover:bg-surface-sunken hover:text-body focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+          className="rounded-md p-1 text-subtle hover:bg-surface-sunken hover:text-body focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
         >
           <X className="h-5 w-5" aria-hidden="true" />
         </button>

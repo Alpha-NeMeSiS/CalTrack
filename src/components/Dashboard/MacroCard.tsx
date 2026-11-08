@@ -18,7 +18,7 @@ export function MacroCard({ label, consumed, target, unit, color, display = 'gra
   const remaining = Math.max((target || 0) - consumed, 0);
 
   return (
-    <div className="bg-surface p-4 rounded-lg border border-line-emphasis">
+    <div className="rounded-xl bg-surface-muted p-4">
       <div className="flex justify-between items-start mb-2">
         <span className="text-sm font-medium text-body">{label}</span>
         <span className="text-xs text-subtle">{unit}</span>

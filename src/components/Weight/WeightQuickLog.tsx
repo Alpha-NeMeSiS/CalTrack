@@ -122,10 +122,10 @@ export function WeightQuickLog({ userId, date, currentWeight, onSave }: WeightQu
   };
 
   return (
-    <section aria-labelledby="weight-quick-log-title" className="card-glass">
+    <section aria-labelledby="weight-quick-log-title" className="panel p-4">
       <div className="flex flex-col gap-4 p-2 sm:flex-row sm:items-end sm:justify-between sm:p-4">
         <div>
-          <h2 id="weight-quick-log-title" className="flex items-center gap-2 text-lg text-accent-700">
+          <h2 id="weight-quick-log-title" className="flex items-center gap-2 card-title">
             <Scale className="h-5 w-5" aria-hidden="true" />
             Ma pesée
           </h2>
@@ -162,7 +162,7 @@ export function WeightQuickLog({ userId, date, currentWeight, onSave }: WeightQu
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder={String(logForDate?.weight_kg ?? currentWeight)}
-              className="w-28 rounded-md border border-line-strong px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-28 rounded-md border border-line-strong px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-600"
             />
           </div>
           <button type="submit" disabled={saving || !value} className="btn-brand disabled:opacity-50">
@@ -194,7 +194,7 @@ export function WeightQuickLog({ userId, date, currentWeight, onSave }: WeightQu
                   autoComplete="off"
                   value={composition[field.key]}
                   onChange={(e) => setComposition((current) => ({ ...current, [field.key]: e.target.value }))}
-                  className="w-full rounded-md border border-line-strong px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full rounded-md border border-line-strong px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-600"
                 />
               </div>
             ))}

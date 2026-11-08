@@ -39,7 +39,8 @@ export const DAY_STATUS_LABELS: Record<DayStatus, string> = {
 /** Couleur de barre du graphique (nuance selon l'écart à l'objectif). */
 export function getBarColorClass(dayStatus: DayStatus, consumed: number, target: number): string {
   if (dayStatus === 'not_logged') return 'bg-surface-strong';
-  if (dayStatus === 'in_progress') return 'bg-info-400';
+  // Vert pâle à contour foncé : distinct du vert plein « à l'objectif »
+  if (dayStatus === 'in_progress') return 'bg-brand-300 ring-1 ring-inset ring-brand-600';
   if (!target || target <= 0) return 'bg-line-strong';
 
   const percentage = (consumed / target) * 100;

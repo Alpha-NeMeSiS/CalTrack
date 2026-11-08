@@ -90,7 +90,7 @@ function MealTypeSelector({
             key={meal.value}
             type="button"
             onClick={() => onChange(value === meal.value ? undefined : meal.value)}
-            className={`py-2 px-3 text-sm border-2 rounded-md font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+            className={`py-2 px-3 text-sm border-2 rounded-md font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 ${
               value === meal.value
                 ? 'border-primary-600 bg-primary-50 text-primary-700'
                 : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
@@ -445,7 +445,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                 aria-pressed={isFavorite}
                 aria-label={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
                 title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-                className="flex-shrink-0 rounded-md p-2 text-primary-400 hover:bg-primary-100 hover:text-warning-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                className="flex-shrink-0 rounded-md p-2 text-primary-400 hover:bg-primary-100 hover:text-warning-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
               >
                 <Star className={`h-5 w-5 ${isFavorite ? 'fill-warning-400 text-warning-500' : ''}`} aria-hidden="true" />
               </button>
@@ -510,7 +510,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
             <MealTypeSelector value={mealType} onChange={setMealType} />
 
             <div className="bg-surface-muted p-4 rounded-md">
-              <h3 className="text-sm text-ink mb-2">Valeurs nutritionnelles</h3>
+              <h3 className="section-label mb-2">Valeurs nutritionnelles</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="text-muted">Calories :</div>
                 <div className="font-medium text-ink">{calculated.kcal} kcal</div>
@@ -576,7 +576,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
           }}
           aria-invalid={showError}
           aria-describedby={showError ? `${field}-error` : undefined}
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-600 ${
             showError ? 'border-danger-400' : 'border-line-strong'
           }`}
         />
@@ -672,7 +672,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                 onChange={(event) => setManualBarcode(event.target.value)}
                 aria-invalid={barcodeError ? true : undefined}
                 aria-describedby={barcodeError ? 'manual-barcode-error' : 'manual-barcode-hint'}
-                className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-600 ${
                   barcodeError ? 'border-danger-400' : 'border-line-strong'
                 }`}
               />
@@ -813,7 +813,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
       >
         <div className="flex items-center justify-between px-8 pt-8 pb-6 border-b border-line">
           <div>
-            <h2 id="add-entry-title" className="text-xl text-ink">Ajouter un aliment</h2>
+            <h2 id="add-entry-title" className="card-title">Ajouter un aliment</h2>
             <p className="mt-1 text-sm text-subtle first-letter:uppercase">{formatEntryDate(date)}</p>
           </div>
           <button onClick={onClose} className="text-subtle hover:text-muted transition-colors" aria-label="Fermer la fenêtre">
@@ -837,7 +837,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                 aria-controls={`add-entry-panel-${tab.value}`}
                 onClick={() => switchTab(tab.value)}
                 onKeyDown={(event) => handleTabKeyDown(event, index)}
-                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 ${
                   activeTab === tab.value
                     ? 'bg-surface text-primary-700 shadow-sm'
                     : 'text-muted hover:text-ink'

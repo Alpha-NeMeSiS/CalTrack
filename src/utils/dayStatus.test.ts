@@ -36,7 +36,8 @@ describe('getDayStatus', () => {
 describe('getBarColorClass', () => {
   it('utilise des couleurs neutres pour « non renseigné » et « en cours »', () => {
     expect(getBarColorClass('not_logged', 0, 2000)).toBe('bg-surface-strong');
-    expect(getBarColorClass('in_progress', 800, 2000)).toBe('bg-info-400');
+    // Vert pâle à contour foncé : distinct du vert plein « à l'objectif »
+    expect(getBarColorClass('in_progress', 800, 2000)).toBe('bg-brand-300 ring-1 ring-inset ring-brand-600');
   });
 
   it("nuance selon l'écart à l'objectif", () => {

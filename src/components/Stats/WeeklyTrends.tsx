@@ -53,7 +53,7 @@ const CHART_HEIGHT_PX = 200;
 // Styles des lignes de l'historique selon le statut
 const ROW_STYLES: Record<DayStatus, { bg: string; text: string }> = {
   not_logged: { bg: 'bg-surface-muted', text: 'text-subtle' },
-  in_progress: { bg: 'bg-info-50', text: 'text-info-700' },
+  in_progress: { bg: 'bg-brand-50', text: 'text-brand-700' },
   under: { bg: 'bg-orange-50', text: 'text-orange-700' },
   ok: { bg: 'bg-success-50', text: 'text-success-700' },
   over: { bg: 'bg-danger-50', text: 'text-danger-700' },
@@ -64,7 +64,7 @@ const LEGEND: Array<{ label: string; swatch: string }> = [
   { label: DAY_STATUS_LABELS.ok, swatch: 'bg-success-500' },
   { label: DAY_STATUS_LABELS.under, swatch: 'bg-orange-400' },
   { label: DAY_STATUS_LABELS.over, swatch: 'bg-danger-500' },
-  { label: DAY_STATUS_LABELS.in_progress, swatch: 'bg-info-400' },
+  { label: DAY_STATUS_LABELS.in_progress, swatch: 'bg-brand-300 ring-1 ring-inset ring-brand-600' },
   { label: DAY_STATUS_LABELS.not_logged, swatch: 'bg-surface-strong' },
 ];
 
@@ -184,7 +184,7 @@ export function WeeklyTrends() {
   if (loading) {
     return (
       <div className="panel p-6">
-        <h2 className="text-xl text-ink mb-4">Tendances 7 jours</h2>
+        <h2 className="mb-4 card-title">Tendances 7 jours</h2>
         <div className="text-center py-8 text-subtle">Chargement...</div>
       </div>
     );
@@ -193,7 +193,7 @@ export function WeeklyTrends() {
   if (loadError) {
     return (
       <div className="panel p-6">
-        <h2 className="text-xl text-ink mb-4">Tendances et historique</h2>
+        <h2 className="mb-4 card-title">Tendances et historique</h2>
         <div role="alert" className="text-center py-8">
           <p className="text-danger-700 mb-4">{loadError}</p>
           <button type="button" onClick={() => loadWeekData()} className="btn-brand">
@@ -229,7 +229,7 @@ export function WeeklyTrends() {
   return (
     <div className="panel">
       <div className="p-4 sm:p-6 border-b border-line">
-        <h2 className="text-xl text-ink">Tendances et historique</h2>
+        <h2 className="card-title">Tendances et historique</h2>
       </div>
 
       <div className="p-4 sm:p-6 space-y-6">
@@ -255,7 +255,7 @@ export function WeeklyTrends() {
         )}
 
         <div>
-          <h3 className="text-sm text-ink mb-4">Graphique des calories</h3>
+          <h3 className="section-label mb-4">Graphique des calories</h3>
           <div className="bg-surface-muted p-3 sm:p-4 rounded-lg">
             <div className="flex gap-2" role="img" aria-label="Calories consommées et objectif sur les 7 derniers jours">
               {/* Axe Y : graduations positionnées sur la même échelle que les barres */}
@@ -297,7 +297,7 @@ export function WeeklyTrends() {
                       <div key={day.date} className="relative flex h-full flex-1 items-end justify-center group" title={tooltip}>
                         {day.summary && (
                           <div
-                            className="absolute inset-x-0 border-t-2 border-dashed border-info-400"
+                            className="absolute inset-x-0 border-t-2 border-dashed border-info-600"
                             style={{ bottom: toPx(target) }}
                             aria-hidden="true"
                           />
@@ -335,7 +335,7 @@ export function WeeklyTrends() {
                 </div>
               ))}
               <div className="flex items-center gap-2">
-                <div className="w-6 border-t-2 border-dashed border-info-400" />
+                <div className="w-6 border-t-2 border-dashed border-info-600" />
                 <span className="text-muted">Objectif</span>
               </div>
             </div>
@@ -343,23 +343,23 @@ export function WeeklyTrends() {
         </div>
 
         <div>
-          <h3 className="text-sm text-ink mb-3">Évolution du poids (90 jours)</h3>
+          <h3 className="section-label mb-3">Évolution du poids (90 jours)</h3>
           <WeightChart points={weights} targetWeight={targetWeight} />
         </div>
 
         <div>
-          <h3 className="text-sm text-ink mb-3">Composition corporelle (90 jours)</h3>
+          <h3 className="section-label mb-3">Composition corporelle (90 jours)</h3>
           <BodyCompositionChart logs={weights} />
         </div>
 
         <div>
-          <h3 id="daily-history-title" className="text-sm text-ink mb-3">Historique détaillé (30 jours)</h3>
+          <h3 id="daily-history-title" className="section-label mb-3">Historique détaillé (30 jours)</h3>
           {/* Zone défilante atteignable au clavier (flèches) et nommée pour les lecteurs d'écran */}
           <div
             role="region"
             aria-labelledby="daily-history-title"
             tabIndex={0}
-            className="space-y-2 h-[400px] overflow-y-auto pr-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            className="space-y-2 h-[400px] overflow-y-auto pr-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
           >
             {monthData.map((day) => {
               const date = parseLocalDate(day.date);

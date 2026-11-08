@@ -62,7 +62,7 @@ export function AccountSettings() {
       <SignOutEverywhere />
 
       <section aria-labelledby="account-export-title" className="space-y-3 border-t border-line pt-6">
-        <h2 id="account-export-title" className="flex items-center gap-2 text-lg font-semibold text-ink">
+        <h2 id="account-export-title" className="flex items-center gap-2 card-title">
           <Download className="w-5 h-5 text-subtle" aria-hidden="true" />
           Exporter mes données
         </h2>
@@ -90,7 +90,7 @@ export function AccountSettings() {
       </section>
 
       <section aria-labelledby="account-delete-title" className="space-y-3 border-t border-line pt-6">
-        <h2 id="account-delete-title" className="flex items-center gap-2 text-lg font-semibold text-danger-700">
+        <h2 id="account-delete-title" className="flex items-center gap-2 text-danger-700 card-title">
           <Trash2 className="w-5 h-5" aria-hidden="true" />
           Supprimer mon compte
         </h2>

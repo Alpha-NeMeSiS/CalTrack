@@ -47,14 +47,26 @@ const PAIRS: Array<[string, string, number]> = [
   ...STATUS.flatMap((s) => ['50', '100'].map((shade): [string, string, number] => [`${s}-700`, `${s}-${shade}`, TEXT])),
   ['warning-800', 'warning-50', TEXT],
   ['muted', 'surface-sunken', TEXT],
-  // Texte sur couleur pleine : boutons primaire, danger et marque
-  ['on-color', 'primary-600', TEXT],
+  // Fond de page teinté (canvas)
+  ...['ink', 'body', 'muted', 'subtle', 'primary-700'].map((fg): [string, string, number] => [fg, 'canvas', TEXT]),
+  // Titres de carte, liens verts, pastille « en cours »
+  ['brand-800', 'surface', TEXT],
+  ['primary-700', 'surface', TEXT],
+  ['brand-700', 'brand-50', TEXT],
+  // Texte sur couleur pleine : boutons primaire (vert), danger et marque
   ['on-color', 'primary-700', TEXT],
+  ['on-color', 'primary-800', TEXT],
   ['on-color', 'danger-600', TEXT],
   ['on-color', 'brand-700', TEXT],
   ['on-color', 'brand-800', TEXT],
-  // Icône du bouton flottant « Ajouter »
+  // Graphiques et focus : bouton flottant, anneau de focus, anneau des calories, courbes
   ['on-color', 'brand-600', GRAPHIC],
+  ['primary-600', 'surface', GRAPHIC],
+  ['brand-600', 'surface', GRAPHIC],
+  ['primary-600', 'canvas', GRAPHIC],
+  // Courbes des tendances : masse grasse (ambre) et poids cible (bleu)
+  ['warning-600', 'surface', GRAPHIC],
+  ['info-600', 'surface', GRAPHIC],
 ];
 
 it('repère un contraste insuffisant (texte blanc sur le vert du logo)', () => {
