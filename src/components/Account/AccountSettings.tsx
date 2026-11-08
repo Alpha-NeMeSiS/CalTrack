@@ -68,7 +68,7 @@ export function AccountSettings() {
         </h2>
         <p className="text-sm text-gray-600">
           Téléchargez un fichier JSON contenant votre profil, vos objectifs, vos cibles quotidiennes, votre journal
-          alimentaire, vos pesées, vos aliments personnels et vos paramètres.
+          alimentaire, vos pesées, vos aliments personnels, vos favoris et vos paramètres.
         </p>
         <button
           type="button"

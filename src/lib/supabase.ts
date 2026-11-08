@@ -107,6 +107,22 @@ export interface Food {
   carbs_g: number;
   fiber_g: number;
   is_public: boolean;
+  /** Code-barres d'un aliment personnel (migration 20261108170840) */
+  barcode?: string | null;
+  created_at: string;
+}
+
+/** Aliment favori : valeurs pour 100 g et quantité habituelle */
+export interface FavoriteFood {
+  id: string;
+  user_id: string;
+  label: string;
+  kcal_per_100g: number;
+  protein_g: number;
+  fat_g: number;
+  carbs_g: number;
+  fiber_g: number;
+  default_qty_g: number;
   created_at: string;
 }
 

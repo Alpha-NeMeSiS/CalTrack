@@ -1,18 +1,5 @@
 import type { NormalizedFood } from '../types/food';
-
-const fold = (value: string): string =>
-  value
-    .toLowerCase()
-    .replace(/œ/g, 'oe')
-    .replace(/æ/g, 'ae')
-    .replace(/ß/g, 'ss')
-    .replace(/ø/g, 'o')
-    .replace(/\ufffd/g, '?')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9?]+/g, ' ')
-    .trim()
-    .replace(/\s+/g, ' ');
+import { foldSearchText } from '../utils/text';
 
 const wildcardIndexOf = (haystack: string, needle: string): number => {
   if (needle.length === 0 || haystack.length < needle.length) return -1;
@@ -52,7 +39,7 @@ let searchIndex: { food: NormalizedFood; normalized: string }[] | null = null;
 const buildSearchIndex = (foods: NormalizedFood[]) =>
   foods.map((food) => ({
     food,
-    normalized: fold(food.name),
+    normalized: foldSearchText(food.name),
   }));
 
 interface CiqualRow {
@@ -101,7 +88,7 @@ export async function searchCiqual(q: string): Promise<NormalizedFood[]> {
     searchIndex = buildSearchIndex(foods);
   }
 
-  const tokens = fold(q.trim()).split(' ').filter(Boolean);
+  const tokens = foldSearchText(q.trim()).split(' ').filter(Boolean);
   if (tokens.length === 0) return [];
 
   const scored = searchIndex

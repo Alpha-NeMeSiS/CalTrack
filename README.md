@@ -11,6 +11,7 @@ Application web de suivi calorique construite avec **React + TypeScript + Vite**
 - Historique et tendances hebdomadaires.
 - Recherche d'aliments : base Ciqual locale et produits du commerce Open Food Facts (via une fonction Netlify qui interroge `search.openfoodfacts.org`).
 - Scanner de code-barres : avec l'appareil photo (ou en saisissant le code), le produit est retrouvé dans Open Food Facts et ses portions proposées.
+- Favoris et aliments récents en haut de la recherche, ajoutables en un tap ; « Mes aliments » pour les produits saisis à la main (reconnus au scan).
 - Persistance des données via Supabase (tables `profiles`, `goals`, `daily_targets`, `foods`, `entries`).
 
 ## Stack technique
@@ -123,6 +124,7 @@ Les migrations SQL se trouvent dans `supabase/migrations/`. Elles sont **aligné
 | `20261108125514` | Identité du profil : prénom, nom et photo (contraintes), suppression de ses photos et limites du stockage `profile-pictures` (2 Mo, JPEG / PNG / WebP) |
 | `20261108162630` | Correctif : prénom et nom `NULL` par défaut (le `''` hérité bloquait la création du profil à l'onboarding depuis les contraintes d'identité) |
 | `20261108162648` | Mesures détaillées facultatives du profil : taux d'eau, graisse viscérale, masse musculaire, masse osseuse (avec bornes) |
+| `20261108170840` | Bibliothèque d'aliments : code-barres des aliments personnels (unique par utilisateur) et table `favorite_foods` (valeurs pour 100 g, quantité habituelle, RLS) |
 
 Rejouer toutes les migrations sur une base vierge donne un schéma identique à la production (vérifié par empreinte des colonnes, contraintes, index, politiques RLS et buckets).
 
@@ -163,6 +165,14 @@ docs/
 ### Emails (SMTP et modèles en français)
 
 Les emails d'inscription, de mot de passe oublié et de changement d'adresse sont envoyés par Supabase Auth. Le service d'envoi intégré de Supabase n'envoie qu'aux membres de l'organisation Supabase et seulement quelques emails par heure : pour les autres utilisateurs, il faut brancher un SMTP (Resend, Brevo…). Les modèles en français sont dans `supabase/templates/` ; la marche à suivre (SMTP, limites d'envoi, sujets, tests) est dans [docs/emails.md](docs/emails.md). Les erreurs de Supabase Auth sont affichées en français (`src/utils/authErrors.ts`).
+
+## Favoris, récents et mes aliments
+
+Dans « Ajouter un aliment » :
+
+- **Favoris et récents** : tant que la recherche est vide, la liste propose vos favoris puis vos aliments récents (tirés des 100 dernières entrées du journal, un par nom). Le bouton **+** ajoute l'aliment en un tap avec sa quantité et son repas habituels (les plus fréquents) ; un tap sur le nom le sélectionne pour ajuster la quantité ; l'étoile ajoute ou retire des favoris (aussi disponible sur l'aliment choisi). Un aliment choisi dans la recherche reprend sa quantité habituelle s'il est déjà connu. Les favoris sont stockés dans `favorite_foods` (valeurs pour 100 g, quantité habituelle).
+- **Mes aliments** : la saisie manuelle peut enregistrer l'aliment (case « Enregistrer dans mes aliments ») avec un code-barres facultatif ; les valeurs peuvent être saisies pour la quantité indiquée ou pour 100 g (étiquette). Les aliments personnels (`foods` avec `user_id`) apparaissent en premier dans la recherche (badge « PERSO ») et sont reconnus au scan avant Open Food Facts. L'onglet « Mes aliments » permet de les utiliser ou de les supprimer.
+- **Produit scanné inconnu** : « Créer cet aliment » ouvre la saisie manuelle pré-remplie (nom s'il est connu, code-barres, valeurs pour 100 g).
 
 ## Scanner de code-barres
 
