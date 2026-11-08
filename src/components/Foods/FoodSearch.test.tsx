@@ -3,14 +3,28 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FoodSearch } from './FoodSearch';
 import { searchCiqual } from '../../lib/ciqual';
-import { searchOFF } from '../../lib/openfoodfacts';
+import { fetchOFFProduct, searchOFF } from '../../lib/openfoodfacts';
 import type { NormalizedFood } from '../../types/food';
 
 vi.mock('../../lib/ciqual', () => ({ searchCiqual: vi.fn() }));
-vi.mock('../../lib/openfoodfacts', () => ({ searchOFF: vi.fn() }));
+vi.mock('../../lib/openfoodfacts', () => ({ searchOFF: vi.fn(), fetchOFFProduct: vi.fn() }));
+// Le scanner (caméra) est testé à part : ici, un bouton simule la lecture d'un code
+vi.mock('./BarcodeScanner', () => ({
+  BarcodeScanner: ({ onDetected, onCancel }: { onDetected: (code: string) => void; onCancel: () => void }) => (
+    <div>
+      <button type="button" onClick={() => onDetected('3017620422003')}>
+        Simuler la lecture
+      </button>
+      <button type="button" onClick={onCancel}>
+        Annuler le scan
+      </button>
+    </div>
+  ),
+}));
 
 const mockedSearchCiqual = vi.mocked(searchCiqual);
 const mockedSearchOFF = vi.mocked(searchOFF);
+const mockedFetchOFFProduct = vi.mocked(fetchOFFProduct);
 
 const pomme: NormalizedFood = {
   source: 'ciqual',
@@ -28,6 +42,7 @@ beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   mockedSearchCiqual.mockReset();
   mockedSearchOFF.mockReset();
+  mockedFetchOFFProduct.mockReset();
 });
 
 afterEach(() => {
@@ -101,5 +116,78 @@ describe('FoodSearch', () => {
     await wait(400);
 
     expect(await screen.findByText('Aucun résultat')).toBeInTheDocument();
+  });
+
+  describe('scanner de code-barres', () => {
+    const nutella: NormalizedFood = {
+      source: 'off',
+      name: 'Nutella',
+      brand: 'Ferrero',
+      offCode: '3017620422003',
+      kcal_per_100g: 539,
+      protein_g: 6.3,
+      fat_g: 30.9,
+      carbs_g: 57.5,
+      fiber_g: 0,
+    };
+
+    async function scan(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByRole('button', { name: 'Scanner un code-barres' }));
+      await user.click(screen.getByRole('button', { name: 'Simuler la lecture' }));
+    }
+
+    it('cherche le produit scanné et le sélectionne', async () => {
+      mockedFetchOFFProduct.mockResolvedValue({ status: 'found', food: nutella });
+      const { user, onSelect } = setup();
+
+      await scan(user);
+
+      expect(mockedFetchOFFProduct).toHaveBeenCalledWith('3017620422003', expect.any(AbortSignal));
+      await vi.waitFor(() => expect(onSelect).toHaveBeenCalledWith(nutella));
+      expect(screen.queryByRole('button', { name: 'Simuler la lecture' })).not.toBeInTheDocument();
+    });
+
+    it('propose la recherche par nom si le produit est inconnu', async () => {
+      mockedFetchOFFProduct.mockResolvedValue({ status: 'not_found' });
+      const { user, onSelect } = setup();
+
+      await scan(user);
+
+      expect(await screen.findByText(/Aucun produit trouvé pour le code 3017620422003/)).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Produits supermarché' })).toHaveAttribute('aria-selected', 'true');
+      expect(onSelect).not.toHaveBeenCalled();
+
+      // Un nouveau scan reste possible
+      await user.click(screen.getByRole('button', { name: 'Scanner un code-barres' }));
+      expect(screen.getByRole('button', { name: 'Simuler la lecture' })).toBeInTheDocument();
+    });
+
+    it('signale un produit sans valeurs nutritionnelles', async () => {
+      mockedFetchOFFProduct.mockResolvedValue({ status: 'no_nutrition', name: 'Mystère' });
+      const { user } = setup();
+
+      await scan(user);
+
+      expect(await screen.findByText(/« Mystère » est dans Open Food Facts, mais sans valeurs nutritionnelles/)).toBeInTheDocument();
+    });
+
+    it('signale une panne d’Open Food Facts', async () => {
+      mockedFetchOFFProduct.mockRejectedValue(new Error('503'));
+      const { user } = setup();
+
+      await scan(user);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Open Food Facts est indisponible');
+    });
+
+    it('referme le scanner', async () => {
+      const { user } = setup();
+
+      await user.click(screen.getByRole('button', { name: 'Scanner un code-barres' }));
+      await user.click(screen.getByRole('button', { name: 'Annuler le scan' }));
+
+      expect(screen.queryByRole('button', { name: 'Simuler la lecture' })).not.toBeInTheDocument();
+      expect(mockedFetchOFFProduct).not.toHaveBeenCalled();
+    });
   });
 });

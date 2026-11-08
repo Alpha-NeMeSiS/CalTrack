@@ -10,6 +10,7 @@ Application web de suivi calorique construite avec **React + TypeScript + Vite**
 - Gestion d'objectifs (perte, maintien, prise) avec calcul des cibles.
 - Historique et tendances hebdomadaires.
 - Recherche d'aliments : base Ciqual locale et produits du commerce Open Food Facts (via une fonction Netlify qui interroge `search.openfoodfacts.org`).
+- Scanner de code-barres : avec l'appareil photo (ou en saisissant le code), le produit est retrouvé dans Open Food Facts et ses portions proposées.
 - Persistance des données via Supabase (tables `profiles`, `goals`, `daily_targets`, `foods`, `entries`).
 
 ## Stack technique
@@ -56,7 +57,7 @@ Par défaut, Vite démarre sur `http://localhost:5173`.
 > npx netlify dev
 > ```
 >
-> La recherche Ciqual (« Aliments génériques ») fonctionne dans les deux cas.
+> La recherche Ciqual (« Aliments génériques ») fonctionne dans les deux cas. Le scanner de code-barres passe de même par `netlify/functions/off-product.ts` (route `/api/off/product`).
 
 ## Scripts disponibles
 
@@ -80,7 +81,7 @@ Les tests utilisent **Vitest** (environnement `jsdom`) et **Testing Library**. I
 | `src/lib/` | Recherche Ciqual, Open Food Facts (fetch mocké), progression temporelle |
 | `src/services/` | Accès Supabase des objectifs et cibles quotidiennes |
 | `src/components/` | Composants React (Dashboard, AddEntryModal, FoodSearch, LoginForm, MacroCard, CalorieRing) |
-| `netlify/tests/` | Fonction Netlify `off-search` (proxy Open Food Facts) |
+| `netlify/tests/` | Fonctions Netlify `off-search` et `off-product` (proxy Open Food Facts) |
 
 Outils partagés dans `src/test/` :
 
@@ -129,7 +130,8 @@ Rejouer toutes les migrations sur une base vierge donne un schéma identique à 
 
 ```text
 netlify/
-  functions/       # Fonctions Netlify (proxy Open Food Facts)
+  functions/       # Fonctions Netlify (proxy Open Food Facts : recherche, code-barres)
+  tests/           # Tests des fonctions Netlify
 src/
   components/      # UI par domaine (Auth, Dashboard, Journal, Goals, Profile, Account, etc.)
   contexts/        # Contexte d'authentification (AuthContext) et hook useAuth
@@ -158,6 +160,16 @@ docs/
 ### Emails (SMTP et modèles en français)
 
 Les emails d'inscription, de mot de passe oublié et de changement d'adresse sont envoyés par Supabase Auth. Le service d'envoi intégré de Supabase n'envoie qu'aux membres de l'organisation Supabase et seulement quelques emails par heure : pour les autres utilisateurs, il faut brancher un SMTP (Resend, Brevo…). Les modèles en français sont dans `supabase/templates/` ; la marche à suivre (SMTP, limites d'envoi, sujets, tests) est dans [docs/emails.md](docs/emails.md). Les erreurs de Supabase Auth sont affichées en français (`src/utils/authErrors.ts`).
+
+## Scanner de code-barres
+
+Ajouter un aliment → bouton « Scanner » (icône code-barres) à côté de la recherche :
+
+1. La caméra arrière s'ouvre (autorisation demandée par le navigateur ; HTTPS obligatoire, `localhost` accepté en local).
+2. Le code est lu par le `BarcodeDetector` natif du navigateur quand il existe (Chrome Android, macOS), sinon par le lecteur ZXing en WebAssembly (`barcode-detector/ponyfill`), chargé seulement à la première ouverture du scanner et servi par l'application (`zxing_reader.wasm`, mis en cache par le service worker). Formats lus : EAN-13, EAN-8 et UPC-A ; la clé de contrôle est vérifiée pour écarter les lectures erronées.
+3. La caméra est coupée dès la lecture, puis la fiche est demandée à Open Food Facts via `/api/off/product?code=…` ; le produit trouvé ouvre directement le choix de la quantité (portion du fabricant si elle est connue).
+
+Le code peut aussi être saisi à la main (caméra refusée, code abîmé, ordinateur sans caméra). Produit inconnu ou sans valeurs nutritionnelles : un message invite à le chercher par son nom.
 
 ## Paramètres d'affichage
 

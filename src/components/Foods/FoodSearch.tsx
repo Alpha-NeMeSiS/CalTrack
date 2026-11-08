@@ -7,10 +7,11 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Search } from 'lucide-react';
+import { ScanBarcode, Search } from 'lucide-react';
 import type { NormalizedFood, SearchCategory } from '../../types/food';
 import { searchCiqual } from '../../lib/ciqual';
-import { searchOFF } from '../../lib/openfoodfacts';
+import { fetchOFFProduct, searchOFF } from '../../lib/openfoodfacts';
+import { BarcodeScanner } from './BarcodeScanner';
 
 interface FoodSearchProps {
   onSelect: (food: NormalizedFood) => void;
@@ -46,6 +47,12 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listboxId = useId();
+  // Scanner de code-barres : le produit est recherché dans Open Food Facts
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [barcodeMessage, setBarcodeMessage] = useState<{ type: 'info' | 'error'; text: string } | null>(null);
+  const barcodeAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => barcodeAbortRef.current?.abort(), []);
 
   useEffect(() => {
     const trimmed = debouncedQuery.trim();
@@ -136,6 +143,39 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
     [onSelect],
   );
 
+  const handleBarcode = useCallback(
+    async (code: string) => {
+      setScannerOpen(false);
+      setBarcodeMessage({ type: 'info', text: `Recherche du produit ${code}…` });
+      barcodeAbortRef.current?.abort();
+      const controller = new AbortController();
+      barcodeAbortRef.current = controller;
+
+      try {
+        const result = await fetchOFFProduct(code, controller.signal);
+        if (controller.signal.aborted) return;
+        if (result.status === 'found') {
+          setBarcodeMessage(null);
+          handleSelect(result.food);
+          return;
+        }
+        // Pas exploitable : on bascule sur la recherche de produits par nom
+        setCategory('off');
+        setBarcodeMessage({
+          type: 'info',
+          text:
+            result.status === 'not_found'
+              ? `Aucun produit trouvé pour le code ${code} dans Open Food Facts. Cherchez-le par son nom.`
+              : `« ${result.name} » est dans Open Food Facts, mais sans valeurs nutritionnelles. Cherchez un produit équivalent par son nom.`,
+        });
+      } catch {
+        if (controller.signal.aborted) return;
+        setBarcodeMessage({ type: 'error', text: 'Open Food Facts est indisponible, réessayez dans un instant.' });
+      }
+    },
+    [handleSelect],
+  );
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (items.length === 0) return;
@@ -211,35 +251,76 @@ export function FoodSearch({ onSelect }: FoodSearchProps) {
         </button>
       </div>
 
-      <div className="relative">
-        <Search
-          className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"
-          aria-hidden="true"
-        />
-        <input
-          ref={inputRef}
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            category === 'ciqual'
-              ? 'Rechercher (ex: riz, poulet, pomme)'
-              : 'Rechercher un produit (ex: yaourt Danone)'
-          }
-          className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          role="combobox"
-          aria-expanded={expanded}
-          aria-controls={listboxId}
-          aria-autocomplete="list"
-          aria-activedescendant={
-            highlightedIndex >= 0 && items[highlightedIndex]
-              ? `${listboxId}-${highlightedIndex}`
-              : undefined
-          }
-          aria-label="Recherche d'aliment"
-        />
+      <div className="flex gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search
+            className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"
+            aria-hidden="true"
+          />
+          <input
+            ref={inputRef}
+            type="search"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setBarcodeMessage(null);
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              category === 'ciqual'
+                ? 'Rechercher (ex: riz, poulet, pomme)'
+                : 'Rechercher un produit (ex: yaourt Danone)'
+            }
+            className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            role="combobox"
+            aria-expanded={expanded}
+            aria-controls={listboxId}
+            aria-autocomplete="list"
+            aria-activedescendant={
+              highlightedIndex >= 0 && items[highlightedIndex]
+                ? `${listboxId}-${highlightedIndex}`
+                : undefined
+            }
+            aria-label="Recherche d'aliment"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            barcodeAbortRef.current?.abort();
+            setBarcodeMessage(null);
+            setScannerOpen((open) => !open);
+          }}
+          aria-expanded={scannerOpen}
+          aria-label="Scanner un code-barres"
+          title="Scanner un code-barres"
+          className={`flex flex-shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+            scannerOpen
+              ? 'border-blue-500 bg-blue-50 text-blue-700'
+              : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <ScanBarcode className="h-5 w-5" aria-hidden="true" />
+          <span className="hidden sm:inline">Scanner</span>
+        </button>
       </div>
+
+      {scannerOpen && (
+        <BarcodeScanner onDetected={handleBarcode} onCancel={() => setScannerOpen(false)} />
+      )}
+
+      {barcodeMessage && (
+        <p
+          role={barcodeMessage.type === 'error' ? 'alert' : 'status'}
+          className={`rounded-md border p-3 text-sm ${
+            barcodeMessage.type === 'error'
+              ? 'border-red-200 bg-red-50 text-red-700'
+              : 'border-gray-200 bg-gray-50 text-gray-700'
+          }`}
+        >
+          {barcodeMessage.text}
+        </p>
+      )}
 
       {/* Liste dans le flux (et non en position absolue) : dans la fenêtre d'ajout,
           qui défile, une liste absolue était coupée et un seul résultat restait visible. */}
