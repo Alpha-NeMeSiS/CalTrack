@@ -18,6 +18,9 @@ describe('exportUserData', () => {
       if (call.table === 'profiles') return { data: makeProfile({ id: 'user-1' }), error: null };
       if (call.table === 'entries') return { data: [{ id: 'e1', label: 'Riz' }], error: null };
       if (call.table === 'weight_logs') return { data: [{ id: 'w1', weight_kg: 80 }], error: null };
+      if (call.table === 'recipes') {
+        return { data: [{ id: 'r1', name: 'Chili maison', recipe_ingredients: [{ id: 'i1', label: 'Riz' }] }], error: null };
+      }
       return { data: [], error: null };
     });
 
@@ -36,10 +39,14 @@ describe('exportUserData', () => {
       foods: [],
       user_preferences: [],
       favorite_foods: [],
+      recipes: [{ id: 'r1', name: 'Chili maison', recipe_ingredients: [{ id: 'i1', label: 'Riz' }] }],
     });
 
+    // Les recettes sont exportées avec leurs ingrédients
+    expect(getOperationArgs(supabaseMock.callsFor('recipes')[0], 'select')).toEqual(['*, recipe_ingredients(*)']);
+
     // Chaque table est filtrée sur l'utilisateur connecté
-    for (const table of ['goals', 'daily_targets', 'entries', 'weight_logs', 'foods', 'user_preferences', 'favorite_foods']) {
+    for (const table of ['goals', 'daily_targets', 'entries', 'weight_logs', 'foods', 'user_preferences', 'favorite_foods', 'recipes']) {
       const [call] = supabaseMock.callsFor(table);
       expect(getOperationArgs(call, 'eq')).toEqual(['user_id', 'user-1']);
     }
