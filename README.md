@@ -221,6 +221,14 @@ Dans « Ajouter un aliment » :
 - **Mes aliments** : la saisie manuelle peut enregistrer l'aliment (case « Enregistrer dans mes aliments ») avec un code-barres facultatif ; les valeurs peuvent être saisies pour la quantité indiquée ou pour 100 g (étiquette). Les aliments personnels (`foods` avec `user_id`) apparaissent en premier dans la recherche (badge « PERSO ») et sont reconnus au scan avant Open Food Facts. L'onglet « Mes aliments » permet de les utiliser ou de les supprimer.
 - **Produit scanné inconnu** : « Créer cet aliment » ouvre la saisie manuelle pré-remplie (nom s'il est connu, code-barres, valeurs pour 100 g).
 
+## Recettes (plats maison en parts)
+
+Onglet « Recettes » de « Ajouter un aliment » :
+
+- **Créer ou modifier** une recette : nom, nombre de parts (1 à 50), poids cuit total facultatif (pesez la casserole après cuisson) et ingrédients, cherchés comme d'habitude (aliments génériques, produits supermarché, scanner, mes aliments). Les totaux et les valeurs par part se mettent à jour en direct.
+- **Ajouter au journal** : le bouton **+** ajoute 1 part au repas habituel de la recette ; un tap sur la recette permet de choisir la quantité en parts (par demi-part) ou en grammes si le poids cuit est connu, avec un aperçu de la ligne notée (« Chili maison — 1 part », « Chili maison — 380 g »).
+- **Stockage** : tables `recipes` et `recipe_ingredients` (copie des valeurs pour 100 g de chaque ingrédient), enregistrées en une seule opération par la fonction SQL `save_recipe` (1 à 50 ingrédients, rien n'est enregistré en cas d'erreur). Une recette ajoutée devient une entrée ordinaire du journal : la modifier ou la supprimer ne change pas les repas déjà notés.
+
 ## Scanner de code-barres
 
 Ajouter un aliment → bouton « Scanner » (icône code-barres) à côté de la recherche :

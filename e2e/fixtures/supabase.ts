@@ -138,6 +138,37 @@ const searchResults = {
   ],
 };
 
+// Recette de démonstration (spec des recettes) : chili maison, 4 parts, 1 800 g cuit
+const chiliIngredients = [
+  ['Haricots rouges, cuits', 400, 115, 8.7, 0.5, 15, 6.5],
+  ['Bœuf haché 5 %, cru', 500, 125, 21, 5, 0, 0],
+  ['Tomates concassées', 400, 25, 1.2, 0.2, 4, 1.2],
+  ['Riz blanc, cuit', 600, 130, 2.7, 0.3, 28, 0.4],
+] as const;
+const recipes = [
+  {
+    id: '44444444-4444-4444-8444-444444444444',
+    user_id: USER_ID,
+    name: 'Chili maison',
+    servings: 4,
+    cooked_weight_g: 1800,
+    created_at: addDays(today, -5).toISOString(),
+    updated_at: addDays(today, -5).toISOString(),
+    recipe_ingredients: chiliIngredients.map(([label, qty_g, kcal_per_100g, protein_g, fat_g, carbs_g, fiber_g], position) => ({
+      id: `ing-${position}`,
+      recipe_id: '44444444-4444-4444-8444-444444444444',
+      position,
+      label,
+      qty_g,
+      kcal_per_100g,
+      protein_g,
+      fat_g,
+      carbs_g,
+      fiber_g,
+    })),
+  },
+];
+
 const jwt = () => {
   const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
   return `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: USER_ID, exp: 4102444800, role: 'authenticated' })}.sig`;
@@ -166,6 +197,8 @@ function rowsFor(table: string, params: URLSearchParams): unknown[] {
       return exactDate ? (exactDate === TODAY ? todayEntries : []) : [...todayEntries, ...history];
     case 'weight_logs':
       return weightLogs;
+    case 'recipes':
+      return recipes;
     default:
       return [];
   }
