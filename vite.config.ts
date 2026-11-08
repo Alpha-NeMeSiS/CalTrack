@@ -12,7 +12,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}', 'netlify/**/*.test.ts'],
+    include: ['src/**/*.test.{ts,tsx}', 'netlify/**/*.test.ts', 'supabase/functions/**/*.test.ts'],
     // Valeurs factices : src/lib/supabase.ts lève une erreur si elles manquent.
     // Les tests ne contactent jamais Supabase (le client est mocké).
     env: {

@@ -17,6 +17,32 @@ export interface UserPreferences {
   mealLabels: Partial<Record<MealType, string>>;
   /** Repas masqués dans les choix de saisie */
   hiddenMeals: MealType[];
+  /** Heure du rappel de pesée (« HH:MM », null = désactivé) */
+  reminderWeighInTime: string | null;
+  /** Heure du rappel du journal (« HH:MM », null = désactivé) */
+  reminderLogTime: string | null;
+  /** Fuseau horaire des rappels (IANA, ex. Europe/Paris) */
+  timezone: string;
+}
+
+/** Heures proposées quand un rappel est activé */
+export const DEFAULT_REMINDER_TIMES = { weighIn: '08:00', log: '20:30' } as const;
+
+/** Fuseau horaire de l'appareil (Europe/Paris si inconnu) */
+export function deviceTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Paris';
+  } catch {
+    return 'Europe/Paris';
+  }
+}
+
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/** « 08:00:00 » (Postgres) → « 08:00 » ; null si vide ou invalide */
+function normalizeTime(value: string | null | undefined): string | null {
+  const time = value?.slice(0, 5) ?? '';
+  return TIME_PATTERN.test(time) ? time : null;
 }
 
 export const ALL_MEALS: readonly MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -28,6 +54,9 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   macroDisplay: 'grams',
   mealLabels: {},
   hiddenMeals: [],
+  reminderWeighInTime: null,
+  reminderLogTime: null,
+  timezone: 'Europe/Paris',
 };
 
 /** Ligne de la table user_preferences */
@@ -41,6 +70,9 @@ export interface UserPreferencesRow {
   meal_label_dinner: string | null;
   meal_label_snack: string | null;
   hidden_meals: string[];
+  reminder_weigh_in_time?: string | null;
+  reminder_log_time?: string | null;
+  timezone?: string;
   updated_at?: string;
 }
 
@@ -59,6 +91,9 @@ export function preferencesFromRow(row: Partial<UserPreferencesRow> | null | und
     macroDisplay: row.macro_display === 'percent' ? 'percent' : 'grams',
     mealLabels,
     hiddenMeals: (row.hidden_meals ?? []).filter(isMealType),
+    reminderWeighInTime: normalizeTime(row.reminder_weigh_in_time),
+    reminderLogTime: normalizeTime(row.reminder_log_time),
+    timezone: row.timezone || DEFAULT_PREFERENCES.timezone,
   };
 }
 
@@ -78,6 +113,9 @@ export function preferencesToRow(userId: string, preferences: UserPreferences, n
     meal_label_dinner: label('dinner'),
     meal_label_snack: label('snack'),
     hidden_meals: ALL_MEALS.filter((meal) => preferences.hiddenMeals.includes(meal)),
+    reminder_weigh_in_time: normalizeTime(preferences.reminderWeighInTime),
+    reminder_log_time: normalizeTime(preferences.reminderLogTime),
+    timezone: preferences.timezone || DEFAULT_PREFERENCES.timezone,
     updated_at: now.toISOString(),
   };
 }
@@ -103,6 +141,12 @@ export function validatePreferences(preferences: UserPreferences): string[] {
     const label = preferences.mealLabels[meal];
     if (label !== undefined && label.trim().length > MEAL_LABEL_MAX_LENGTH) {
       errors.push(`Le nom « ${label.trim().slice(0, 12)}… » dépasse ${MEAL_LABEL_MAX_LENGTH} caractères.`);
+    }
+  }
+  for (const time of [preferences.reminderWeighInTime, preferences.reminderLogTime]) {
+    if (time !== null && !TIME_PATTERN.test(time)) {
+      errors.push('Indiquez une heure de rappel valide (ex. 08:00).');
+      break;
     }
   }
   return errors;

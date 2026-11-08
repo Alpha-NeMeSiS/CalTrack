@@ -15,6 +15,7 @@ const USER_TABLES = [
   // Aliments personnels uniquement (les aliments de base ont user_id NULL)
   { table: 'foods', ownerColumn: 'user_id', orderColumn: 'id' },
   { table: 'user_preferences', ownerColumn: 'user_id', orderColumn: 'user_id' },
+  { table: 'push_subscriptions', ownerColumn: 'user_id', orderColumn: 'id' },
 ] as const;
 
 type ExportedTable = (typeof USER_TABLES)[number]['table'];

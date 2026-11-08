@@ -22,6 +22,9 @@ describe('préférences', () => {
       meal_label_snack: '  Collation du matin ',
       meal_label_lunch: '   ',
       hidden_meals: ['dinner', 'brunch'],
+      reminder_weigh_in_time: '07:45:00',
+      reminder_log_time: null,
+      timezone: 'America/Toronto',
     });
 
     expect(prefs).toEqual({
@@ -30,6 +33,9 @@ describe('préférences', () => {
       macroDisplay: 'percent',
       mealLabels: { snack: 'Collation du matin' },
       hiddenMeals: ['dinner'],
+      reminderWeighInTime: '07:45',
+      reminderLogTime: null,
+      timezone: 'America/Toronto',
     });
     expect(getMealLabel(prefs, 'snack')).toBe('Collation du matin');
     expect(getMealLabel(prefs, 'lunch')).toBe('Déjeuner');
@@ -45,6 +51,9 @@ describe('préférences', () => {
         macroDisplay: 'grams',
         mealLabels: { breakfast: 'Petit-déjeuner', lunch: ' Repas du midi ', dinner: '' },
         hiddenMeals: ['snack', 'breakfast'],
+        reminderWeighInTime: '08:00',
+        reminderLogTime: '25:00', // invalide → désactivé
+        timezone: 'Europe/Paris',
       },
       new Date('2026-11-08T10:00:00Z')
     );
@@ -59,6 +68,9 @@ describe('préférences', () => {
       meal_label_dinner: null,
       meal_label_snack: null,
       hidden_meals: ['breakfast', 'snack'],
+      reminder_weigh_in_time: '08:00',
+      reminder_log_time: null,
+      timezone: 'Europe/Paris',
       updated_at: '2026-11-08T10:00:00.000Z',
     });
   });
@@ -70,4 +82,12 @@ describe('préférences', () => {
     expect(validatePreferences({ ...DEFAULT_PREFERENCES, mealLabels: { lunch: 'x'.repeat(31) } })).toHaveLength(1);
     expect(validatePreferences(DEFAULT_PREFERENCES)).toEqual([]);
   });
+
+  it('refuse une heure de rappel invalide', () => {
+    expect(validatePreferences({ ...DEFAULT_PREFERENCES, reminderLogTime: '7h30' })).toEqual([
+      'Indiquez une heure de rappel valide (ex. 08:00).',
+    ]);
+    expect(validatePreferences({ ...DEFAULT_PREFERENCES, reminderLogTime: '20:30' })).toEqual([]);
+  });
 });
+

@@ -1,5 +1,5 @@
 // Page « Paramètres » (menu du compte) : thème, affichage des calories et des
-// macros, noms et visibilité des repas.
+// macros, noms et visibilité des repas, rappels.
 import { FormEvent, useEffect, useState } from 'react';
 import { Palette, Save, UtensilsCrossed } from 'lucide-react';
 import { usePreferences } from '../../contexts/usePreferences';
@@ -9,11 +9,13 @@ import {
   CalorieDisplay,
   DEFAULT_PREFERENCES,
   MacroDisplay,
+  deviceTimezone,
   MEAL_LABEL_MAX_LENGTH,
   UserPreferences,
   validatePreferences,
 } from '../../utils/preferences';
 import { applyTheme, readStoredTheme, ThemePreference } from '../../utils/theme';
+import { RemindersSection } from './RemindersSection';
 
 const THEME_OPTIONS: { value: ThemePreference; label: string; example: string }[] = [
   { value: 'system', label: 'Automatique', example: 'Suit le réglage de l’appareil' },
@@ -115,7 +117,8 @@ export function SettingsPage() {
 
     setSaving(true);
     try {
-      await savePreferences(form);
+      // Les rappels suivent le fuseau horaire de l'appareil utilisé pour régler
+      await savePreferences({ ...form, timezone: deviceTimezone() });
       setMessage({ type: 'success', text: 'Paramètres enregistrés.' });
     } catch (error) {
       console.error('Error saving preferences:', error);
@@ -209,6 +212,14 @@ export function SettingsPage() {
             })}
           </ul>
         </section>
+
+        <RemindersSection
+          weighInTime={form.reminderWeighInTime}
+          logTime={form.reminderLogTime}
+          onChange={({ weighInTime, logTime }) =>
+            setForm({ ...form, reminderWeighInTime: weighInTime, reminderLogTime: logTime })
+          }
+        />
 
         {message && (
           <p

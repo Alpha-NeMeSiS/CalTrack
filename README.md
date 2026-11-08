@@ -117,6 +117,8 @@ Les migrations SQL se trouvent dans `supabase/migrations/`. Elles sont **aligné
 | `20261108020455` | Synchronisation de `profiles.email` quand l'adresse du compte change (déclencheur sur `auth.users`) |
 | `20261108021351` | Préférences d'affichage (`user_preferences` : calories, macros, noms et visibilité des repas ; RLS) |
 | `20261108022855` | Thème clair / sombre / automatique (`user_preferences.theme`) |
+| `20261108023725` | Rappels push : table `push_subscriptions` (un abonnement par appareil), heures et fuseau des rappels, fonction `claim_due_reminders` |
+| `20261108024047` | Planification des rappels : clés VAPID et secret dans Supabase Vault, tâche `pg_cron` toutes les 15 min appelant l'Edge Function `send-reminders` |
 
 Rejouer toutes les migrations sur une base vierge donne un schéma identique à la production (vérifié par empreinte des colonnes, contraintes, index, politiques RLS et buckets).
 
@@ -148,6 +150,18 @@ src/
 ## Paramètres d'affichage
 
 Menu du compte (avatar) → Paramètres : thème (automatique, clair ou sombre — mémorisé sur l'appareil et dans le compte), calories du jour affichées « consommées / objectif » ou « restantes », macros en grammes ou en % de l'objectif, noms et visibilité des repas (un repas masqué n'est plus proposé à la saisie, les aliments déjà saisis restent affichés). Les choix sont enregistrés dans `user_preferences` ; sans ligne, les valeurs par défaut s'appliquent.
+
+## Rappels (notifications push)
+
+Paramètres → Rappels : rappel de pesée (si aucune pesée ce jour-là) et rappel du journal (si le dîner n'est pas noté), à l'heure choisie, sur les appareils où les notifications sont activées. Sur iPhone / iPad, l'application doit d'abord être installée sur l'écran d'accueil.
+
+Fonctionnement :
+
+1. Le navigateur s'abonne (Web Push) avec la clé publique VAPID fournie par l'Edge Function `send-reminders`, puis l'abonnement est enregistré (`save_push_subscription`).
+2. Toutes les 15 minutes, `pg_cron` appelle l'Edge Function avec un secret partagé (Vault). Elle récupère les rappels dus (`claim_due_reminders`, selon le fuseau horaire de l'utilisateur, un envoi par jour au maximum), chiffre et envoie les notifications, et supprime les abonnements expirés.
+3. Le service worker (`public/sw.js`) affiche la notification ; un clic ouvre l'application.
+
+Les clés VAPID sont générées par l'Edge Function à son premier appel et stockées dans Supabase Vault : aucune clé n'est dans le dépôt. Code de l'Edge Function : `supabase/functions/send-reminders/` (déployée avec `verify_jwt = false`, elle vérifie elle-même le secret de la tâche planifiée ou la session de l'utilisateur).
 
 ## Notes
 
