@@ -19,6 +19,7 @@ const USER_TABLES = [
   { table: 'push_subscriptions', ownerColumn: 'user_id', orderColumn: 'id' },
   { table: 'favorite_foods', ownerColumn: 'user_id', orderColumn: 'id' },
   { table: 'recipes', ownerColumn: 'user_id', orderColumn: 'id', select: '*, recipe_ingredients(*)' },
+  { table: 'water_logs', ownerColumn: 'user_id', orderColumn: 'id' },
 ] as const;
 
 type ExportedTable = (typeof USER_TABLES)[number]['table'];
