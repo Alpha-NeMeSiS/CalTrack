@@ -11,18 +11,14 @@ import { QuickFoods } from '../Foods/QuickFoods';
 import { useFoodLibrary } from '../Foods/useFoodLibrary';
 import { useAuth } from '../../contexts/useAuth';
 import { usePreferences } from '../../contexts/usePreferences';
-import { getMealLabel, getVisibleMeals } from '../../utils/preferences';
-import { Entry } from '../../lib/supabase';
+import { getMealLabel } from '../../utils/preferences';
+import type { AddEntryPayload, MealType } from '../../utils/entries';
+import { MealTypeSelector } from './MealTypeSelector';
 import type { NormalizedFood } from '../../types/food';
 import { parseLocalDate } from '../../utils/date';
 import { cleanBarcodeInput, isValidGtin } from '../../utils/barcode';
 import { foodLabel, nutritionForQuantity, QuickFood } from '../../utils/foodLibrary';
 
-type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
-type AddEntryPayload = Pick<
-  Entry,
-  'food_id' | 'label' | 'qty_grammes' | 'kcal' | 'protein_g' | 'fat_g' | 'carbs_g' | 'fiber_g' | 'meal_type'
->;
 type AddEntryMode = 'search' | 'manual' | 'mine';
 /** Les valeurs de la saisie manuelle portent sur la quantité indiquée ou sur 100 g (étiquette) */
 type ValuesBasis = 'portion' | 'per100';
@@ -69,40 +65,6 @@ function roundToOneDecimal(value: number) {
 
 function formatEntryDate(value: string) {
   return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(parseLocalDate(value));
-}
-
-function MealTypeSelector({
-  value,
-  onChange,
-}: {
-  value?: MealType;
-  onChange: (value?: MealType) => void;
-}) {
-  // Repas visibles (préférences), avec leurs noms personnalisés
-  const { preferences } = usePreferences();
-  const mealOptions = getVisibleMeals(preferences).map((meal) => ({ value: meal, label: getMealLabel(preferences, meal) }));
-  return (
-    <div>
-      <label className="field-label mb-2">Type de repas (optionnel)</label>
-      <div className="grid grid-cols-2 gap-2">
-        {mealOptions.map((meal) => (
-          <button
-            key={meal.value}
-            type="button"
-            onClick={() => onChange(value === meal.value ? undefined : meal.value)}
-            className={`py-2 px-3 text-sm border-2 rounded-md font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 ${
-              value === meal.value
-                ? 'border-primary-600 bg-primary-50 text-primary-700'
-                : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
-            }`}
-            aria-pressed={value === meal.value}
-          >
-            {meal.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
