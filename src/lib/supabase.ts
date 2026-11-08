@@ -115,6 +115,15 @@ export interface Food {
   created_at: string;
 }
 
+/** Prise d'eau (une ligne par verre ou bouteille) */
+export interface WaterLog {
+  id: string;
+  user_id: string;
+  date: string;
+  amount_ml: number;
+  created_at: string;
+}
+
 /** Ingrédient d'une recette : quantité et copie des valeurs pour 100 g */
 export interface RecipeIngredient {
   id: string;
