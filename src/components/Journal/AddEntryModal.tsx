@@ -4,6 +4,8 @@ import { KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { FoodSearch } from '../Foods/FoodSearch';
 import { useAuth } from '../../contexts/useAuth';
+import { usePreferences } from '../../contexts/usePreferences';
+import { getMealLabel, getVisibleMeals } from '../../utils/preferences';
 import { Entry, supabase } from '../../lib/supabase';
 import type { NormalizedFood } from '../../types/food';
 import { parseLocalDate } from '../../utils/date';
@@ -32,13 +34,6 @@ interface AddEntryModalProps {
   onAdd: (entry: AddEntryPayload) => Promise<boolean>;
 }
 
-const mealOptions: Array<{ value: MealType; label: string }> = [
-  { value: 'breakfast', label: 'Petit-déjeuner' },
-  { value: 'lunch', label: 'Déjeuner' },
-  { value: 'dinner', label: 'Dîner' },
-  { value: 'snack', label: 'Collation' },
-];
-
 const tabOptions: Array<{ value: AddEntryMode; label: string }> = [
   { value: 'search', label: 'Recherche' },
   { value: 'manual', label: 'Saisie manuelle' },
@@ -58,10 +53,6 @@ const defaultManualForm: ManualFormState = {
 
 function roundToOneDecimal(value: number) {
   return Math.round(value * 10) / 10;
-}
-
-function getMealTypeLabel(mealType?: MealType) {
-  return mealOptions.find((meal) => meal.value === mealType)?.label;
 }
 
 function formatRecentDate(value: string) {
@@ -91,6 +82,9 @@ function MealTypeSelector({
   value?: MealType;
   onChange: (value?: MealType) => void;
 }) {
+  // Repas visibles (préférences), avec leurs noms personnalisés
+  const { preferences } = usePreferences();
+  const mealOptions = getVisibleMeals(preferences).map((meal) => ({ value: meal, label: getMealLabel(preferences, meal) }));
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">Type de repas (optionnel)</label>
@@ -117,6 +111,7 @@ function MealTypeSelector({
 
 export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   const { user } = useAuth();
+  const { preferences } = usePreferences();
   const [activeTab, setActiveTab] = useState<AddEntryMode>('search');
   const [selectedFood, setSelectedFood] = useState<NormalizedFood | null>(null);
   const [quantity, setQuantity] = useState<number>(100);
@@ -655,7 +650,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                     <h3 className="font-medium text-gray-900">{entry.label}</h3>
                     {entry.meal_type && (
                       <span className="rounded bg-blue-50 px-2 py-1 text-xs text-blue-700">
-                        {getMealTypeLabel(entry.meal_type)}
+                        {entry.meal_type ? getMealLabel(preferences, entry.meal_type) : null}
                       </span>
                     )}
                     <span className="text-xs text-gray-500">

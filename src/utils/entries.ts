@@ -9,7 +9,7 @@ export const MEAL_LABELS: Record<MealType | 'other', string> = {
   breakfast: 'Petit-déjeuner',
   lunch: 'Déjeuner',
   dinner: 'Dîner',
-  snack: 'Collations',
+  snack: 'Collation',
   other: 'Sans repas',
 };
 
@@ -20,13 +20,19 @@ export interface MealGroup<T> {
   kcal: number;
 }
 
-/** Regroupe les entrées par repas (ordre de la journée), avec le total de calories. */
-export function groupEntriesByMeal<T extends Pick<Entry, 'meal_type' | 'kcal'>>(entries: readonly T[]): MealGroup<T>[] {
+/**
+ * Regroupe les entrées par repas (ordre de la journée), avec le total de calories.
+ * `getLabel` permet d'utiliser les noms de repas personnalisés.
+ */
+export function groupEntriesByMeal<T extends Pick<Entry, 'meal_type' | 'kcal'>>(
+  entries: readonly T[],
+  getLabel: (meal: MealType | 'other') => string = (meal) => MEAL_LABELS[meal]
+): MealGroup<T>[] {
   return MEAL_ORDER.map((meal) => {
     const items = entries.filter((entry) => (entry.meal_type ?? 'other') === meal);
     return {
       meal,
-      label: MEAL_LABELS[meal],
+      label: getLabel(meal),
       entries: items,
       kcal: Math.round(items.reduce((sum, entry) => sum + (Number(entry.kcal) || 0), 0)),
     };

@@ -25,13 +25,14 @@ describe('AccountMenu', () => {
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'Mon profil',
       'Compte et sécurité',
+      'Paramètres',
       'Se déconnecter',
     ]);
     // Le focus va sur la première option
     expect(screen.getByRole('menuitem', { name: 'Mon profil' })).toHaveFocus();
   });
 
-  it('ouvre les pages Profil et Compte, puis se ferme', async () => {
+  it('ouvre les pages Profil, Compte et Paramètres, puis se ferme', async () => {
     const { button, user, onNavigate } = setup();
 
     await user.click(button);
@@ -42,6 +43,10 @@ describe('AccountMenu', () => {
     await user.click(button);
     await user.click(screen.getByRole('menuitem', { name: 'Compte et sécurité' }));
     expect(onNavigate).toHaveBeenLastCalledWith('account');
+
+    await user.click(button);
+    await user.click(screen.getByRole('menuitem', { name: 'Paramètres' }));
+    expect(onNavigate).toHaveBeenLastCalledWith('settings');
   });
 
   it('déconnecte depuis le menu', async () => {

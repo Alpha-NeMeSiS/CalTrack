@@ -12,6 +12,8 @@ vi.mock('../../contexts/useAuth', () => ({
     user: { id: 'user-1', email: 'eva@example.com' },
     deleteAccount,
     updatePassword: vi.fn(),
+    updateEmail: vi.fn(),
+    signOutEverywhere: vi.fn(),
   }),
 }));
 

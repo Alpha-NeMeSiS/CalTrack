@@ -1,13 +1,17 @@
 // Carte affichant la consommation vs objectif pour un macronutriment
+import type { MacroDisplay } from '../../utils/preferences';
+
 interface MacroCardProps {
   label: string;
   consumed: number;
   target: number;
   unit: string;
   color: string;
+  /** « grams » : consommé / objectif ; « percent » : % de l'objectif atteint */
+  display?: MacroDisplay;
 }
 
-export function MacroCard({ label, consumed, target, unit, color }: MacroCardProps) {
+export function MacroCard({ label, consumed, target, unit, color, display = 'grams' }: MacroCardProps) {
   // Pourcentage rempli de la barre (clampé entre 0 et 100)
   const percentage = target > 0 ? Math.min((consumed / target) * 100, 100) : 0;
   // Quantité restante avant d'atteindre l'objectif
@@ -21,10 +25,21 @@ export function MacroCard({ label, consumed, target, unit, color }: MacroCardPro
       </div>
 
       <div className="mb-2">
-        <div className="flex items-baseline gap-1">
-          <span className="text-2xl font-bold text-gray-900">{Math.round(consumed)}</span>
-          <span className="text-sm text-gray-500">/ {Math.round(target)}</span>
-        </div>
+        {display === 'percent' ? (
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-gray-900">
+              {target > 0 ? Math.round((consumed / target) * 100) : 0} %
+            </span>
+            <span className="text-xs text-gray-500">
+              {Math.round(consumed)} / {Math.round(target)} {unit}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-bold text-gray-900">{Math.round(consumed)}</span>
+            <span className="text-sm text-gray-500">/ {Math.round(target)}</span>
+          </div>
+        )}
       </div>
 
       <div className="relative w-full h-2 bg-gray-200 rounded-full overflow-hidden">

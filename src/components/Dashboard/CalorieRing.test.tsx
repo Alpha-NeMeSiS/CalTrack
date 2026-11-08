@@ -38,4 +38,18 @@ describe('CalorieRing', () => {
     const progressCircle = container.querySelectorAll('circle')[1];
     expect(progressCircle.getAttribute('stroke-dashoffset')).not.toBe('NaN');
   });
+
+  it('met les calories restantes en avant si demandé', () => {
+    render(<CalorieRing consumed={1450} target={2150} status="under" display="remaining" />);
+    expect(screen.getByText('700')).toBeInTheDocument();
+    expect(screen.getByText('kcal restantes')).toBeInTheDocument();
+    expect(screen.getByText('1450 / 2150 kcal consommées')).toBeInTheDocument();
+  });
+
+  it('affiche le dépassement en mode « restantes »', () => {
+    render(<CalorieRing consumed={2400} target={2150} status="over" display="remaining" />);
+    expect(screen.getByText('250')).toBeInTheDocument();
+    expect(screen.getByText('kcal en trop')).toBeInTheDocument();
+  });
 });
+

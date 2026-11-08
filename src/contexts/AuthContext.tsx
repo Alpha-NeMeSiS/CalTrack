@@ -1,11 +1,19 @@
 // Contexte d'authentification
 // Ce fichier expose AuthProvider + AuthContext pour accéder à l'utilisateur,
 // au profil et aux méthodes d'auth (signIn, signUp, signOut, refreshProfile,
-// mot de passe oublié, changement de mot de passe, suppression du compte).
+// mot de passe oublié, changement de mot de passe et d'email, déconnexion de
+// tous les appareils, suppression du compte).
 // Le hook useAuth est dans ./useAuth.ts.
 import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
-import { openedFromPasswordRecoveryLink, supabase, Profile } from '../lib/supabase';
+import {
+  clearAuthMessageFromUrl,
+  initialAuthNotice,
+  openedFromPasswordRecoveryLink,
+  supabase,
+  Profile,
+} from '../lib/supabase';
+import type { AuthNotice } from '../utils/authRedirect';
 
 // Type du contexte d'authentification exposé aux composants
 export interface AuthContextType {
@@ -17,7 +25,10 @@ export interface AuthContextType {
   profileError: string | null;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  /** Déconnexion de cet appareil uniquement */
   signOut: () => Promise<void>;
+  /** Déconnexion de tous les appareils (révoque toutes les sessions) */
+  signOutEverywhere: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   /** true quand l'utilisateur arrive depuis le lien « mot de passe oublié » */
   passwordRecovery: boolean;
@@ -29,6 +40,11 @@ export interface AuthContextType {
   dismissPasswordRecovery: () => void;
   /** Supprime définitivement le compte et toutes ses données, puis déconnecte */
   deleteAccount: () => Promise<{ error: Error | null }>;
+  /** Demande le changement d'adresse email (effectif après confirmation par lien) */
+  updateEmail: (email: string) => Promise<{ error: Error | null }>;
+  /** Message affiché au retour d'un lien d'authentification (lien expiré…) */
+  authNotice: AuthNotice | null;
+  dismissAuthNotice: () => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [passwordRecovery, setPasswordRecovery] = useState(openedFromPasswordRecoveryLink);
+  const [authNotice, setAuthNotice] = useState<AuthNotice | null>(initialAuthNotice);
 
   // Identifiant de l'utilisateur courant (undefined = session pas encore connue).
   // Sert à ignorer les événements qui ne changent pas d'utilisateur
@@ -110,6 +127,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth
       .getSession()
       .then(({ data: { session } }) => {
+        // Le client a fini de lire l'URL : on peut effacer un fragment « message »
+        clearAuthMessageFromUrl();
         if (active) applySession(session);
       })
       .catch((error) => {
@@ -125,7 +144,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
       setTimeout(() => {
-        if (active) applySession(session);
+        if (!active) return;
+        // Même utilisateur dont le compte a changé (email en attente de
+        // confirmation, nouvelle adresse…) : mettre à jour sans tout recharger
+        if (event === 'USER_UPDATED' && session?.user && session.user.id === currentUserIdRef.current) {
+          setUser(session.user);
+          void loadProfile(session.user.id);
+          return;
+        }
+        applySession(session);
       }, 0);
     });
 
@@ -133,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       active = false;
       subscription.unsubscribe();
     };
-  }, [applySession]);
+  }, [applySession, loadProfile]);
 
   // Forcer le rechargement du profil courant
   const refreshProfile = useCallback(async () => {
@@ -172,8 +199,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Déconnexion : l'état local est vidé même si l'appel réseau échoue
-  const signOut = async (scope: 'global' | 'local' = 'global') => {
+  // Déconnexion : l'état local est vidé même si l'appel réseau échoue.
+  // « local » : cet appareil seulement ; « global » : toutes les sessions.
+  const signOut = async (scope: 'global' | 'local' = 'local') => {
     try {
       const { error } = await supabase.auth.signOut({ scope });
       if (error) console.error('Error signing out:', error);
@@ -210,6 +238,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const dismissPasswordRecovery = useCallback(() => setPasswordRecovery(false), []);
+  const dismissAuthNotice = useCallback(() => setAuthNotice(null), []);
+
+  // Changement d'email : Supabase envoie un lien de confirmation (à l'ancienne
+  // et à la nouvelle adresse si le « changement sécurisé » est activé).
+  // L'adresse ne change qu'après confirmation ; en attendant, user.new_email
+  // contient l'adresse demandée.
+  const updateEmail = async (email: string) => {
+    try {
+      const { data, error } = await supabase.auth.updateUser(
+        { email },
+        { emailRedirectTo: window.location.origin }
+      );
+      if (error) return { error };
+      if (data?.user) setUser(data.user);
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
+    }
+  };
 
   // Suppression du compte (RGPD) : la fonction SQL delete_my_account() supprime
   // l'utilisateur connecté ; ses données sont effacées en cascade.
@@ -235,13 +282,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profileError,
         signUp,
         signIn,
-        signOut: () => signOut(),
+        signOut: () => signOut('local'),
+        signOutEverywhere: () => signOut('global'),
         refreshProfile,
         passwordRecovery,
         requestPasswordReset,
         updatePassword,
         dismissPasswordRecovery,
         deleteAccount,
+        updateEmail,
+        authNotice,
+        dismissAuthNotice,
       }}
     >
       {children}

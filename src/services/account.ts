@@ -6,14 +6,15 @@ import { supabase } from '../lib/supabase';
 /** Taille de page : Supabase limite le nombre de lignes renvoyées par requête. */
 export const EXPORT_PAGE_SIZE = 1000;
 
-/** Tables exportées, avec la colonne qui désigne le propriétaire de la ligne. */
+/** Tables exportées : colonne du propriétaire et colonne de tri (pagination stable). */
 const USER_TABLES = [
-  { table: 'goals', ownerColumn: 'user_id' },
-  { table: 'daily_targets', ownerColumn: 'user_id' },
-  { table: 'entries', ownerColumn: 'user_id' },
-  { table: 'weight_logs', ownerColumn: 'user_id' },
+  { table: 'goals', ownerColumn: 'user_id', orderColumn: 'id' },
+  { table: 'daily_targets', ownerColumn: 'user_id', orderColumn: 'id' },
+  { table: 'entries', ownerColumn: 'user_id', orderColumn: 'id' },
+  { table: 'weight_logs', ownerColumn: 'user_id', orderColumn: 'id' },
   // Aliments personnels uniquement (les aliments de base ont user_id NULL)
-  { table: 'foods', ownerColumn: 'user_id' },
+  { table: 'foods', ownerColumn: 'user_id', orderColumn: 'id' },
+  { table: 'user_preferences', ownerColumn: 'user_id', orderColumn: 'user_id' },
 ] as const;
 
 type ExportedTable = (typeof USER_TABLES)[number]['table'];
@@ -27,14 +28,14 @@ export type UserDataExport = {
 } & Record<ExportedTable, Record<string, unknown>[]>;
 
 /** Lit toutes les lignes de l'utilisateur dans une table, page par page. */
-async function fetchAllRows(table: string, ownerColumn: string, userId: string) {
+async function fetchAllRows(table: string, ownerColumn: string, orderColumn: string, userId: string) {
   const rows: Record<string, unknown>[] = [];
   for (let from = 0; ; from += EXPORT_PAGE_SIZE) {
     const { data, error } = await supabase
       .from(table)
       .select('*')
       .eq(ownerColumn, userId)
-      .order('id', { ascending: true })
+      .order(orderColumn, { ascending: true })
       .range(from, from + EXPORT_PAGE_SIZE - 1);
 
     if (error) throw error;
@@ -57,7 +58,7 @@ export async function exportUserData(
   if (profileError) throw profileError;
 
   const tables = await Promise.all(
-    USER_TABLES.map(async ({ table, ownerColumn }) => [table, await fetchAllRows(table, ownerColumn, user.id)] as const)
+    USER_TABLES.map(async ({ table, ownerColumn, orderColumn }) => [table, await fetchAllRows(table, ownerColumn, orderColumn, user.id)] as const)
   );
 
   return {

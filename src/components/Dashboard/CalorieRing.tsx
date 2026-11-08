@@ -1,3 +1,5 @@
+import type { CalorieDisplay } from '../../utils/preferences';
+
 interface CalorieRingProps {
   consumed: number;
   target: number;
@@ -7,9 +9,11 @@ interface CalorieRingProps {
    * n'est pas finie). On affiche alors un statut neutre « En cours ».
    */
   inProgress?: boolean;
+  /** « consumed » : consommées / objectif ; « remaining » : calories restantes en avant */
+  display?: CalorieDisplay;
 }
 
-export function CalorieRing({ consumed, target, status, inProgress = false }: CalorieRingProps) {
+export function CalorieRing({ consumed, target, status, inProgress = false, display = 'consumed' }: CalorieRingProps) {
   // Garde-fou : un objectif à 0 donnerait NaN / Infinity
   const percentage = target > 0 ? Math.min(Math.max((consumed / target) * 100, 0), 100) : 0;
   const circumference = 2 * Math.PI * 70;
@@ -51,9 +55,18 @@ export function CalorieRing({ consumed, target, status, inProgress = false }: Ca
         </svg>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-3xl font-bold text-gray-900">{Math.round(consumed)}</div>
-          <div className="text-sm text-gray-500">/ {Math.round(target)}</div>
-          <div className="text-xs text-gray-400 mt-1">kcal</div>
+          {display === 'remaining' ? (
+            <>
+              <div className="text-3xl font-bold text-gray-900">{Math.round(Math.abs(target - consumed))}</div>
+              <div className="text-xs text-gray-500 mt-1">{consumed > target ? 'kcal en trop' : 'kcal restantes'}</div>
+            </>
+          ) : (
+            <>
+              <div className="text-3xl font-bold text-gray-900">{Math.round(consumed)}</div>
+              <div className="text-sm text-gray-500">/ {Math.round(target)}</div>
+              <div className="text-xs text-gray-400 mt-1">kcal</div>
+            </>
+          )}
         </div>
       </div>
 
@@ -62,9 +75,15 @@ export function CalorieRing({ consumed, target, status, inProgress = false }: Ca
       </div>
 
       <div className="mt-2 text-sm text-gray-600">
-        {status === 'under' && `Encore ${Math.round(target - consumed)} kcal`}
-        {status === 'ok' && 'Parfait !'}
-        {status === 'over' && `+${Math.round(consumed - target)} kcal`}
+        {display === 'remaining' ? (
+          `${Math.round(consumed)} / ${Math.round(target)} kcal consommées`
+        ) : (
+          <>
+            {status === 'under' && `Encore ${Math.round(target - consumed)} kcal`}
+            {status === 'ok' && 'Parfait !'}
+            {status === 'over' && `+${Math.round(consumed - target)} kcal`}
+          </>
+        )}
       </div>
     </div>
   );
