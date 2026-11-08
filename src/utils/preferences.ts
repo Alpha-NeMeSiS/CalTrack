@@ -1,11 +1,14 @@
 // Préférences d'affichage (fonctions pures, testables).
 // Stockées dans la table user_preferences ; sans ligne, valeurs par défaut.
 import { MEAL_LABELS, MealType } from './entries';
+import { isThemePreference, ThemePreference } from './theme';
 
 export type CalorieDisplay = 'consumed' | 'remaining';
 export type MacroDisplay = 'grams' | 'percent';
 
 export interface UserPreferences {
+  /** Thème : suit l'appareil, toujours clair ou toujours sombre */
+  theme: ThemePreference;
   /** Calories du jour : consommées / objectif, ou restantes en avant */
   calorieDisplay: CalorieDisplay;
   /** Macros : grammes consommés / objectif, ou % de l'objectif atteint */
@@ -20,6 +23,7 @@ export const ALL_MEALS: readonly MealType[] = ['breakfast', 'lunch', 'dinner', '
 export const MEAL_LABEL_MAX_LENGTH = 30;
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
+  theme: 'system',
   calorieDisplay: 'consumed',
   macroDisplay: 'grams',
   mealLabels: {},
@@ -29,6 +33,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
 /** Ligne de la table user_preferences */
 export interface UserPreferencesRow {
   user_id: string;
+  theme: ThemePreference;
   calorie_display: CalorieDisplay;
   macro_display: MacroDisplay;
   meal_label_breakfast: string | null;
@@ -49,6 +54,7 @@ export function preferencesFromRow(row: Partial<UserPreferencesRow> | null | und
     if (label) mealLabels[meal] = label;
   }
   return {
+    theme: isThemePreference(row.theme) ? row.theme : 'system',
     calorieDisplay: row.calorie_display === 'remaining' ? 'remaining' : 'consumed',
     macroDisplay: row.macro_display === 'percent' ? 'percent' : 'grams',
     mealLabels,
@@ -64,6 +70,7 @@ export function preferencesToRow(userId: string, preferences: UserPreferences, n
   };
   return {
     user_id: userId,
+    theme: preferences.theme,
     calorie_display: preferences.calorieDisplay,
     macro_display: preferences.macroDisplay,
     meal_label_breakfast: label('breakfast'),

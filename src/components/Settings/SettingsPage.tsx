@@ -1,7 +1,7 @@
-// Page « Paramètres » (menu du compte) : préférences d'affichage des calories
-// et des macros, noms et visibilité des repas.
+// Page « Paramètres » (menu du compte) : thème, affichage des calories et des
+// macros, noms et visibilité des repas.
 import { FormEvent, useEffect, useState } from 'react';
-import { Eye, Save, UtensilsCrossed } from 'lucide-react';
+import { Palette, Save, UtensilsCrossed } from 'lucide-react';
 import { usePreferences } from '../../contexts/usePreferences';
 import { MEAL_LABELS } from '../../utils/entries';
 import {
@@ -13,6 +13,13 @@ import {
   UserPreferences,
   validatePreferences,
 } from '../../utils/preferences';
+import { applyTheme, readStoredTheme, ThemePreference } from '../../utils/theme';
+
+const THEME_OPTIONS: { value: ThemePreference; label: string; example: string }[] = [
+  { value: 'system', label: 'Automatique', example: 'Suit le réglage de l’appareil' },
+  { value: 'light', label: 'Clair', example: 'Toujours clair' },
+  { value: 'dark', label: 'Sombre', example: 'Toujours sombre' },
+];
 
 const CALORIE_OPTIONS: { value: CalorieDisplay; label: string; example: string }[] = [
   { value: 'consumed', label: 'Consommées / objectif', example: 'ex. 1 450 / 2 150 kcal' },
@@ -30,17 +37,19 @@ function OptionGroup<T extends string>({
   options,
   value,
   onChange,
+  columns = 2,
 }: {
   legend: string;
   name: string;
   options: { value: T; label: string; example: string }[];
   value: T;
   onChange: (value: T) => void;
+  columns?: 2 | 3;
 }) {
   return (
     <fieldset>
       <legend className="mb-2 text-sm font-medium text-gray-700">{legend}</legend>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className={`grid grid-cols-1 gap-2 ${columns === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         {options.map((option) => (
           <label
             key={option.value}
@@ -77,6 +86,13 @@ export function SettingsPage() {
   useEffect(() => {
     setForm(preferences);
   }, [preferences]);
+
+  // Aperçu immédiat du thème choisi ; en quittant la page sans enregistrer,
+  // le thème mémorisé est rétabli
+  useEffect(() => {
+    applyTheme(form.theme, { persist: false });
+  }, [form.theme]);
+  useEffect(() => () => applyTheme(readStoredTheme(), { persist: false }), []);
 
   const setMealLabel = (meal: (typeof ALL_MEALS)[number], label: string) =>
     setForm({ ...form, mealLabels: { ...form.mealLabels, [meal]: label } });
@@ -118,9 +134,17 @@ export function SettingsPage() {
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
         <section aria-labelledby="display-title" className="space-y-5 rounded-lg bg-white p-4 shadow-md sm:p-6">
           <h2 id="display-title" className="flex items-center gap-2 text-lg text-gray-900">
-            <Eye className="h-5 w-5 text-gray-500" aria-hidden="true" />
+            <Palette className="h-5 w-5 text-gray-500" aria-hidden="true" />
             Affichage
           </h2>
+          <OptionGroup
+            legend="Thème"
+            name="theme"
+            options={THEME_OPTIONS}
+            value={form.theme}
+            onChange={(theme) => setForm({ ...form, theme })}
+            columns={3}
+          />
           <OptionGroup
             legend="Calories du jour"
             name="calorie-display"

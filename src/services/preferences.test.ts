@@ -11,9 +11,9 @@ vi.mock('../lib/supabase', async () => {
 beforeEach(() => supabaseMock.reset());
 
 describe('services/preferences', () => {
-  it('renvoie les valeurs par défaut sans ligne', async () => {
+  it("renvoie null si l'utilisateur n'a rien enregistré", async () => {
     supabaseMock.setHandler(() => ({ data: null, error: null }));
-    await expect(fetchPreferences('user-1')).resolves.toEqual(DEFAULT_PREFERENCES);
+    await expect(fetchPreferences('user-1')).resolves.toBeNull();
     const [call] = supabaseMock.callsFor('user_preferences');
     expect(getOperationArgs(call, 'eq')).toEqual(['user_id', 'user-1']);
   });

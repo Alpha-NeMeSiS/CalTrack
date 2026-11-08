@@ -20,11 +20,11 @@ export function CalorieRing({ consumed, target, status, inProgress = false, disp
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
   const statusConfig = {
-    under: { color: 'text-orange-600', bg: 'bg-orange-100', stroke: '#ea580c', label: 'Sous l\'objectif' },
-    ok: { color: 'text-green-600', bg: 'bg-green-100', stroke: '#16a34a', label: 'Objectif atteint' },
-    over: { color: 'text-red-600', bg: 'bg-red-100', stroke: '#dc2626', label: 'Au-dessus' },
+    under: { color: 'text-orange-600', bg: 'bg-orange-100', stroke: 'stroke-orange-600', label: 'Sous l\'objectif' },
+    ok: { color: 'text-green-600', bg: 'bg-green-100', stroke: 'stroke-green-600', label: 'Objectif atteint' },
+    over: { color: 'text-red-600', bg: 'bg-red-100', stroke: 'stroke-red-600', label: 'Au-dessus' },
   };
-  const inProgressConfig = { color: 'text-blue-700', bg: 'bg-blue-50', stroke: '#2563eb', label: 'En cours' };
+  const inProgressConfig = { color: 'text-blue-700', bg: 'bg-blue-50', stroke: 'stroke-blue-600', label: 'En cours' };
 
   const config = inProgress && status === 'under' ? inProgressConfig : statusConfig[status];
 
@@ -36,7 +36,7 @@ export function CalorieRing({ consumed, target, status, inProgress = false, disp
             cx="96"
             cy="96"
             r="70"
-            stroke="#e5e7eb"
+            className="stroke-gray-200"
             strokeWidth="12"
             fill="none"
           />
@@ -44,13 +44,12 @@ export function CalorieRing({ consumed, target, status, inProgress = false, disp
             cx="96"
             cy="96"
             r="70"
-            stroke={config.stroke}
+            className={`${config.stroke} transition-all duration-500`}
             strokeWidth="12"
             fill="none"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
-            className="transition-all duration-500"
           />
         </svg>
 

@@ -21,7 +21,7 @@ beforeEach(() => {
 
 describe('SettingsPage', () => {
   it('reprend les préférences actuelles', () => {
-    renderPage({ calorieDisplay: 'remaining', macroDisplay: 'percent', mealLabels: { snack: 'Goûter' }, hiddenMeals: ['dinner'] });
+    renderPage({ theme: 'dark', calorieDisplay: 'remaining', macroDisplay: 'percent', mealLabels: { snack: 'Goûter' }, hiddenMeals: ['dinner'] });
 
     expect(screen.getByRole('radio', { name: /Calories restantes/ })).toBeChecked();
     expect(screen.getByRole('radio', { name: /En % de l’objectif/ })).toBeChecked();
@@ -41,6 +41,7 @@ describe('SettingsPage', () => {
     await user.click(screen.getByRole('button', { name: 'Enregistrer les paramètres' }));
 
     expect(savePreferences).toHaveBeenCalledWith({
+      theme: 'system',
       calorieDisplay: 'remaining',
       macroDisplay: 'percent',
       mealLabels: { snack: 'Collation du matin' },
@@ -64,11 +65,34 @@ describe('SettingsPage', () => {
   });
 
   it('remet les valeurs par défaut dans le formulaire', async () => {
-    renderPage({ calorieDisplay: 'remaining', macroDisplay: 'percent', mealLabels: { snack: 'Goûter' }, hiddenMeals: [] });
+    renderPage({ theme: 'dark', calorieDisplay: 'remaining', macroDisplay: 'percent', mealLabels: { snack: 'Goûter' }, hiddenMeals: [] });
     await userEvent.setup().click(screen.getByRole('button', { name: 'Valeurs par défaut' }));
 
     expect(screen.getByRole('radio', { name: /Consommées \/ objectif/ })).toBeChecked();
     expect(screen.getByLabelText('Nom du repas « Collation »')).toHaveValue('');
     expect(savePreferences).not.toHaveBeenCalled();
   });
+
+  it('prévisualise le thème choisi et le rétablit en quittant sans enregistrer', async () => {
+    localStorage.clear();
+    document.documentElement.classList.remove('dark');
+    const { unmount } = renderPage({ ...DEFAULT_PREFERENCES, theme: 'light' });
+
+    await userEvent.setup().click(screen.getByRole('radio', { name: /Sombre/ }));
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+
+    unmount();
+    // Rien n'a été enregistré : le thème mémorisé (automatique, appareil clair) revient
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
+  });
+
+  it('enregistre le thème avec les autres paramètres', async () => {
+    renderPage();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('radio', { name: /Sombre/ }));
+    await user.click(screen.getByRole('button', { name: 'Enregistrer les paramètres' }));
+
+    expect(savePreferences).toHaveBeenCalledWith(expect.objectContaining({ theme: 'dark' }));
+  });
 });
+

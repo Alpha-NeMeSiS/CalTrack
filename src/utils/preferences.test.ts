@@ -25,6 +25,7 @@ describe('préférences', () => {
     });
 
     expect(prefs).toEqual({
+      theme: 'system',
       calorieDisplay: 'remaining',
       macroDisplay: 'percent',
       mealLabels: { snack: 'Collation du matin' },
@@ -39,6 +40,7 @@ describe('préférences', () => {
     const row = preferencesToRow(
       'user-1',
       {
+        theme: 'dark',
         calorieDisplay: 'consumed',
         macroDisplay: 'grams',
         mealLabels: { breakfast: 'Petit-déjeuner', lunch: ' Repas du midi ', dinner: '' },
@@ -49,6 +51,7 @@ describe('préférences', () => {
 
     expect(row).toEqual({
       user_id: 'user-1',
+      theme: 'dark',
       calorie_display: 'consumed',
       macro_display: 'grams',
       meal_label_breakfast: null,
