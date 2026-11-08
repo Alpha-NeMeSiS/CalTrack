@@ -1,30 +1,19 @@
+import plugin from 'tailwindcss/plugin';
+import { cssVariables, palettes, tailwindColors } from './theme.palette.js';
+
 /** @type {import('tailwindcss').Config} */
 export default {
+  // Thème sombre : classe « dark » posée sur <html> (voir src/utils/theme.ts)
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        kaizen: {
-          50: '#f3fbf8',
-          100: '#e6f7ef',
-          200: '#bfeedd',
-          300: '#99e5cc',
-          400: '#4fd3ad',
-          500: '#19b887',
-          600: '#158f6f',
-          700: '#106a53',
-          800: '#0b493a',
-          900: '#05261e',
-          1000: '#1d1d1d8c' 
-        },
-        shonen: {
-          50: '#fff8f5',
-          100: '#ffece1',
-          300: '#ffb185',
-          500: '#ff6b35',
-          700: '#cc4f28'
-        },
-        accent: '#ff6b35'
+        // Palettes clair / sombre via variables CSS (voir theme.palette.js)
+        ...tailwindColors(),
+        // Bordure translucide des cartes de macros
+        kaizen: { ...tailwindColors().kaizen, 1000: 'var(--c-kaizen-1000)' },
+        accent: 'rgb(var(--c-shonen-500) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['Inter', 'Noto Sans JP', 'ui-sans-serif', 'system-ui'],
@@ -48,5 +37,13 @@ export default {
       }
     }
   },
-  plugins: [],
+  plugins: [
+    // Valeurs des variables de couleur pour chaque thème
+    plugin(({ addBase }) => {
+      addBase({
+        ':root': { ...cssVariables(palettes.light), '--c-kaizen-1000': 'rgba(29, 29, 29, 0.55)' },
+        '.dark': { ...cssVariables(palettes.dark), '--c-kaizen-1000': 'rgba(255, 255, 255, 0.16)' },
+      });
+    }),
+  ],
 };

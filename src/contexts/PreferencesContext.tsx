@@ -4,20 +4,26 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from './useAuth';
 import { fetchPreferences, savePreferences as savePreferencesService } from '../services/preferences';
 import { DEFAULT_PREFERENCES, UserPreferences } from '../utils/preferences';
+import { applyTheme, readStoredTheme } from '../utils/theme';
 import { PreferencesContext } from './preferencesContextValue';
 
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
+  // Sans préférences enregistrées, le thème est celui choisi sur cet appareil
+  const deviceDefaults = (): UserPreferences => ({ ...DEFAULT_PREFERENCES, theme: readStoredTheme() });
+  const [preferences, setPreferences] = useState<UserPreferences>(deviceDefaults);
 
   useEffect(() => {
     let active = true;
-    setPreferences(DEFAULT_PREFERENCES);
+    setPreferences(deviceDefaults());
     if (!userId) return;
     fetchPreferences(userId)
       .then((loaded) => {
-        if (active) setPreferences(loaded);
+        if (!active || !loaded) return;
+        setPreferences(loaded);
+        // Le thème du compte s'applique aussi sur cet appareil
+        applyTheme(loaded.theme);
       })
       .catch((error) => {
         // Non bloquant : l'application reste utilisable avec l'affichage par défaut
@@ -31,7 +37,9 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   const savePreferences = useCallback(
     async (next: UserPreferences) => {
       if (!userId) return;
-      setPreferences(await savePreferencesService(userId, next));
+      const saved = await savePreferencesService(userId, next);
+      setPreferences(saved);
+      applyTheme(saved.theme);
     },
     [userId]
   );

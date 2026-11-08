@@ -6,6 +6,20 @@
     <title>CalTrack – Suivi calorique personnalisé</title>
     <meta name="description" content="Suivez vos calories, vos macros et votre poids avec des objectifs personnalisés." />
     <meta name="theme-color" content="#19b887" />
+    <script>
+      // Thème appliqué avant l'affichage (évite un flash clair en mode sombre).
+      // Même logique que src/utils/theme.ts.
+      (function () {
+        try {
+          var pref = localStorage.getItem('caltrack-theme') || 'system';
+          var dark = pref === 'dark' || (pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) {
+            document.documentElement.classList.add('dark');
+            document.querySelector('meta[name="theme-color"]').setAttribute('content', '#111827');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />

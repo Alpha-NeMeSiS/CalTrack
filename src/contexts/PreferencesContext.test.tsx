@@ -21,6 +21,8 @@ function Probe() {
 beforeEach(() => {
   fetchPreferences.mockReset();
   authValue.user = { id: 'user-1' };
+  localStorage.clear();
+  document.documentElement.classList.remove('dark');
 });
 
 describe('PreferencesProvider', () => {
@@ -47,4 +49,22 @@ describe('PreferencesProvider', () => {
     expect(fetchPreferences).not.toHaveBeenCalled();
     expect(screen.getByTestId('display')).toHaveTextContent('consumed');
   });
+
+  it('applique le thème du compte sur cet appareil', async () => {
+    fetchPreferences.mockResolvedValue({ ...DEFAULT_PREFERENCES, theme: 'dark' });
+    render(<PreferencesProvider><Probe /></PreferencesProvider>);
+
+    await waitFor(() => expect(document.documentElement.classList.contains('dark')).toBe(true));
+    expect(localStorage.getItem('caltrack-theme')).toBe('dark');
+  });
+
+  it("garde le thème de l'appareil si le compte n'a rien enregistré", async () => {
+    localStorage.setItem('caltrack-theme', 'dark');
+    fetchPreferences.mockResolvedValue(null);
+    render(<PreferencesProvider><Probe /></PreferencesProvider>);
+
+    await waitFor(() => expect(fetchPreferences).toHaveBeenCalled());
+    expect(localStorage.getItem('caltrack-theme')).toBe('dark');
+  });
 });
+

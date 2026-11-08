@@ -89,8 +89,8 @@ export function WeightChart({ points, targetWeight }: WeightChartProps) {
       >
         {yTicks.map((tick) => (
           <g key={tick}>
-            <line x1={PAD.left} x2={WIDTH - PAD.right} y1={y(tick)} y2={y(tick)} stroke="#e5e7eb" />
-            <text x={PAD.left - 6} y={y(tick)} textAnchor="end" dominantBaseline="middle" fontSize="11" fill="#6b7280">
+            <line x1={PAD.left} x2={WIDTH - PAD.right} y1={y(tick)} y2={y(tick)} className="stroke-gray-200" />
+            <text x={PAD.left - 6} y={y(tick)} textAnchor="end" dominantBaseline="middle" fontSize="11" className="fill-gray-500">
               {formatKg(tick)}
             </text>
           </g>
@@ -103,25 +103,25 @@ export function WeightChart({ points, targetWeight }: WeightChartProps) {
               x2={WIDTH - PAD.right}
               y1={y(targetWeight)}
               y2={y(targetWeight)}
-              stroke="#60a5fa"
+              className="stroke-blue-400"
               strokeWidth="2"
               strokeDasharray="6 4"
             />
-            <text x={WIDTH - PAD.right} y={y(targetWeight) - 6} textAnchor="end" fontSize="11" fill="#2563eb">
+            <text x={WIDTH - PAD.right} y={y(targetWeight) - 6} textAnchor="end" fontSize="11" className="fill-blue-600">
               Cible {formatKg(targetWeight)} kg
             </text>
           </g>
         )}
 
-        <path d={averagePath} fill="none" stroke="#19b887" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={averagePath} fill="none" className="stroke-kaizen-500" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
         {sorted.map((p) => (
-          <circle key={p.date} cx={x(p.date)} cy={y(p.weight_kg)} r="3.5" fill="#ffffff" stroke="#106a53" strokeWidth="1.5">
+          <circle key={p.date} cx={x(p.date)} cy={y(p.weight_kg)} r="3.5" className="fill-white stroke-kaizen-700" strokeWidth="1.5">
             <title>{`${formatDate(p.date)} : ${formatKg(p.weight_kg)} kg`}</title>
           </circle>
         ))}
 
-        <text x={PAD.left} y={HEIGHT - 6} fontSize="11" fill="#6b7280">{formatDate(first.date)}</text>
-        <text x={WIDTH - PAD.right} y={HEIGHT - 6} textAnchor="end" fontSize="11" fill="#6b7280">{formatDate(last.date)}</text>
+        <text x={PAD.left} y={HEIGHT - 6} fontSize="11" className="fill-gray-500">{formatDate(first.date)}</text>
+        <text x={WIDTH - PAD.right} y={HEIGHT - 6} textAnchor="end" fontSize="11" className="fill-gray-500">{formatDate(last.date)}</text>
       </svg>
 
       <figcaption className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">

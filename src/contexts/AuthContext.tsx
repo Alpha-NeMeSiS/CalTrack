@@ -14,6 +14,7 @@ import {
   Profile,
 } from '../lib/supabase';
 import type { AuthNotice } from '../utils/authRedirect';
+import { forgetThisDevice } from '../lib/push';
 
 // Type du contexte d'authentification exposé aux composants
 export interface AuthContextType {
@@ -202,6 +203,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Déconnexion : l'état local est vidé même si l'appel réseau échoue.
   // « local » : cet appareil seulement ; « global » : toutes les sessions.
   const signOut = async (scope: 'global' | 'local' = 'local') => {
+    // Ce navigateur ne doit plus recevoir les rappels de ce compte
+    await forgetThisDevice();
     try {
       const { error } = await supabase.auth.signOut({ scope });
       if (error) console.error('Error signing out:', error);

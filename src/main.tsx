@@ -6,6 +6,10 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { registerServiceWorker } from './lib/registerServiceWorker';
+import { applyTheme, readStoredTheme } from './utils/theme';
+
+// Thème mémorisé sur l'appareil (et suivi du réglage système)
+applyTheme(readStoredTheme(), { persist: false });
 
 // Création de la racine et rendu du composant principal
 createRoot(document.getElementById('root')!).render(
