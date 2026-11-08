@@ -8,9 +8,9 @@ export function PasswordRecoveryScreen() {
   const { user, dismissPasswordRecovery } = useAuth();
 
   return (
-    <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-gray-900 mb-2">Nouveau mot de passe</h2>
-      <p className="text-sm text-gray-600 mb-6">
+    <div className="w-full max-w-md mx-auto p-8 panel">
+      <h2 className="text-2xl font-bold text-ink mb-2">Nouveau mot de passe</h2>
+      <p className="text-sm text-muted mb-6">
         Choisissez le nouveau mot de passe de votre compte{user?.email ? ` (${user.email})` : ''}.
       </p>
 
@@ -20,7 +20,7 @@ export function PasswordRecoveryScreen() {
         <button
           type="button"
           onClick={dismissPasswordRecovery}
-          className="text-gray-600 hover:text-gray-900"
+          className="text-muted hover:text-ink"
         >
           Plus tard
         </button>

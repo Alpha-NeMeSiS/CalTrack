@@ -148,28 +148,28 @@ export function BarcodeScanner({ onDetected, onCancel, createDetector = createBa
   };
 
   return (
-    <section aria-labelledby="barcode-scanner-title" className="space-y-3 rounded-md border border-gray-200 p-3">
+    <section aria-labelledby="barcode-scanner-title" className="space-y-3 rounded-md border border-line p-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 id="barcode-scanner-title" className="text-sm font-semibold text-gray-900">
+        <h3 id="barcode-scanner-title" className="text-sm font-semibold text-ink">
           Scanner un code-barres
         </h3>
         <button
           type="button"
           onClick={onCancel}
           aria-label="Annuler le scan"
-          className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="rounded-md p-1 text-subtle hover:bg-surface-sunken hover:text-body focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
         >
           <X className="h-5 w-5" aria-hidden="true" />
         </button>
       </div>
 
       {status === 'error' ? (
-        <p role="alert" className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <p role="alert" className="rounded-md border border-warning-200 bg-warning-50 p-3 text-sm text-warning-800">
           {cameraError}
         </p>
       ) : (
         <div className="relative aspect-[4/3] max-h-[45vh] w-full overflow-hidden rounded-md bg-[#000] sm:aspect-video">
-          {/* Couleurs fixes : bg-black / text-white sont inversés par le thème sombre */}
+          {/* Couleurs fixes : bg-black / text-on-color sont inversés par le thème sombre */}
           <video ref={videoRef} muted playsInline autoPlay aria-hidden="true" className="h-full w-full object-cover" />
           {/* Cadre de visée */}
           <div className="pointer-events-none absolute inset-x-6 top-1/2 h-28 -translate-y-1/2 rounded-lg border-2 border-[rgba(255,255,255,0.85)] shadow-[0_0_0_9999px_rgba(0,0,0,0.4)]" />
@@ -183,7 +183,7 @@ export function BarcodeScanner({ onDetected, onCancel, createDetector = createBa
       )}
 
       <div className="space-y-1">
-        <label htmlFor="barcode-manual" className="block text-xs font-medium text-gray-600">
+        <label htmlFor="barcode-manual" className="block text-xs font-medium text-muted">
           Ou saisissez le code-barres
         </label>
         <div className="flex gap-2">
@@ -203,19 +203,19 @@ export function BarcodeScanner({ onDetected, onCancel, createDetector = createBa
             }}
             aria-invalid={manualError ? true : undefined}
             aria-describedby={manualError ? 'barcode-manual-error' : undefined}
-            className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="min-w-0 flex-1 field-input px-3 py-2 text-sm"
           />
           <button
             type="button"
             onClick={submitManualCode}
             disabled={!manualCode.trim()}
-            className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-400"
+            className="rounded-md btn-primary px-3 py-2 text-sm font-medium"
           >
             Chercher
           </button>
         </div>
         {manualError && (
-          <p id="barcode-manual-error" className="text-xs text-red-700">
+          <p id="barcode-manual-error" className="text-xs text-danger-700">
             {manualError}
           </p>
         )}

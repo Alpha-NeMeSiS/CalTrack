@@ -36,10 +36,10 @@ function GoalSummary({ goal }: { goal: Goal }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-lg font-semibold text-gray-900">{getGoalTypeLabel(goal.type)}</span>
+        <span className="text-lg font-semibold text-ink">{getGoalTypeLabel(goal.type)}</span>
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-            ended ? 'bg-amber-100 text-amber-800' : 'bg-kaizen-100 text-kaizen-700'
+            ended ? 'bg-warning-100 text-warning-800' : 'bg-brand-100 text-brand-700'
           }`}
         >
           {ended ? 'Terminé — suivi en maintien' : 'En cours'}
@@ -47,9 +47,9 @@ function GoalSummary({ goal }: { goal: Goal }) {
       </div>
       <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
         {details.map((item) => (
-          <div key={item.label} className="flex justify-between gap-4 border-b border-gray-100 pb-1">
-            <dt className="text-gray-500">{item.label}</dt>
-            <dd className="text-right font-medium text-gray-900">{item.value}</dd>
+          <div key={item.label} className="flex justify-between gap-4 border-b border-line-subtle pb-1">
+            <dt className="text-subtle">{item.label}</dt>
+            <dd className="text-right font-medium text-ink">{item.value}</dd>
           </div>
         ))}
       </dl>
@@ -79,7 +79,7 @@ function CalorieAdjustmentInfo({ goal, onCancel }: { goal: Goal; onCancel: () =>
   };
 
   return (
-    <div className="mt-4 flex flex-col gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mt-4 flex flex-col gap-2 rounded-md border border-info-200 bg-info-50 p-3 text-sm text-info-900 sm:flex-row sm:items-center sm:justify-between">
       <p>
         <span className="font-semibold">
           {adjustment > 0 ? '+' : '−'}
@@ -91,12 +91,12 @@ function CalorieAdjustmentInfo({ goal, onCancel }: { goal: Goal; onCancel: () =>
         type="button"
         onClick={handleCancel}
         disabled={cancelling}
-        className="shrink-0 rounded-md border border-blue-300 px-3 py-1.5 font-medium text-blue-800 hover:bg-blue-100 disabled:opacity-50"
+        className="shrink-0 rounded-md border border-info-300 px-3 py-1.5 font-medium text-info-800 hover:bg-info-100 disabled:opacity-50"
       >
         {cancelling ? 'Annulation…' : 'Annuler l’ajustement'}
       </button>
       {error && (
-        <p role="alert" className="text-red-700">
+        <p role="alert" className="text-danger-700">
           {error}
         </p>
       )}
@@ -132,14 +132,14 @@ export function GoalPage() {
   const history = buildGoalHistory(goals);
 
   if (loading) {
-    return <div className="py-12 text-center text-gray-500">Chargement…</div>;
+    return <div className="py-12 text-center text-subtle">Chargement…</div>;
   }
 
   if (loadError) {
     return (
-      <div role="alert" className="mx-auto max-w-4xl rounded-lg bg-white p-6 text-center shadow-md">
-        <p className="mb-4 text-red-700">{loadError}</p>
-        <button type="button" onClick={() => loadGoals()} className="btn-kaizen">
+      <div role="alert" className="mx-auto max-w-4xl panel p-6 text-center">
+        <p className="mb-4 text-danger-700">{loadError}</p>
+        <button type="button" onClick={() => loadGoals()} className="btn-brand">
           Réessayer
         </button>
       </div>
@@ -148,12 +148,12 @@ export function GoalPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <h1 className="text-2xl text-gray-900">Objectif</h1>
+      <h1 className="text-2xl text-ink">Objectif</h1>
 
       {activeGoal && (
-        <section aria-labelledby="current-goal-title" className="rounded-lg bg-white p-4 shadow-md sm:p-6">
-          <h2 id="current-goal-title" className="mb-4 flex items-center gap-2 text-lg text-gray-900">
-            <Target className="h-5 w-5 text-kaizen-600" aria-hidden="true" />
+        <section aria-labelledby="current-goal-title" className="panel p-4 sm:p-6">
+          <h2 id="current-goal-title" className="mb-4 flex items-center gap-2 text-lg text-ink">
+            <Target className="h-5 w-5 text-brand-600" aria-hidden="true" />
             Objectif actuel
           </h2>
           <GoalSummary goal={activeGoal} />
@@ -168,7 +168,7 @@ export function GoalPage() {
             />
           )}
           {adjustmentCancelled && (
-            <p role="status" className="mt-3 text-sm text-kaizen-700">
+            <p role="status" className="mt-3 text-sm text-brand-700">
               Ajustement annulé : vos calories suivent de nouveau le calcul de la formule.
             </p>
           )}
@@ -179,11 +179,11 @@ export function GoalPage() {
         <GoalProgressCard goal={activeGoal} currentWeight={profile.poids_kg} />
       )}
 
-      <section aria-labelledby="goal-form-title" className="rounded-lg bg-white p-4 shadow-md sm:p-6">
-        <h2 id="goal-form-title" className="mb-1 text-lg text-gray-900">
+      <section aria-labelledby="goal-form-title" className="panel p-4 sm:p-6">
+        <h2 id="goal-form-title" className="mb-1 text-lg text-ink">
           {activeGoal ? "Modifier l'objectif" : 'Définir un objectif'}
         </h2>
-        <p className="mb-6 text-sm text-gray-600">
+        <p className="mb-6 text-sm text-muted">
           {activeGoal
             ? 'Le nouvel objectif démarre aujourd’hui ; l’objectif actuel passe dans l’historique.'
             : 'Choisissez votre objectif pour obtenir vos calories et macros quotidiennes.'}
@@ -192,25 +192,25 @@ export function GoalPage() {
       </section>
 
       {history.length > 0 && (
-        <section aria-labelledby="goal-history-title" className="rounded-lg bg-white p-4 shadow-md sm:p-6">
-          <h2 id="goal-history-title" className="mb-4 flex items-center gap-2 text-lg text-gray-900">
-            <History className="h-5 w-5 text-gray-500" aria-hidden="true" />
+        <section aria-labelledby="goal-history-title" className="panel p-4 sm:p-6">
+          <h2 id="goal-history-title" className="mb-4 flex items-center gap-2 text-lg text-ink">
+            <History className="h-5 w-5 text-subtle" aria-hidden="true" />
             Historique
           </h2>
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-line-subtle">
             {history.map(({ goal, start, end, replaced }) => {
               const weights = [formatKg(goal.start_weight_kg), goal.type !== 'maintain' ? formatKg(goal.target_weight_kg) : null];
               return (
                 <li key={goal.id} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="font-medium text-gray-900">{getGoalTypeLabel(goal.type)}</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="font-medium text-ink">{getGoalTypeLabel(goal.type)}</p>
+                    <p className="text-sm text-muted">
                       Du {formatDate(start)} au {end ? formatDate(end) : '—'}
                       {replaced ? ' (remplacé)' : ''}
                     </p>
                   </div>
                   {(weights[0] || weights[1]) && (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted">
                       {weights[0] ?? '?'}
                       {weights[1] ? ` → ${weights[1]}` : ''}
                     </p>

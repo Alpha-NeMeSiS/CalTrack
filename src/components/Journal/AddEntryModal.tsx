@@ -83,17 +83,17 @@ function MealTypeSelector({
   const mealOptions = getVisibleMeals(preferences).map((meal) => ({ value: meal, label: getMealLabel(preferences, meal) }));
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-2">Type de repas (optionnel)</label>
+      <label className="field-label mb-2">Type de repas (optionnel)</label>
       <div className="grid grid-cols-2 gap-2">
         {mealOptions.map((meal) => (
           <button
             key={meal.value}
             type="button"
             onClick={() => onChange(value === meal.value ? undefined : meal.value)}
-            className={`py-2 px-3 text-sm border-2 rounded-md font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+            className={`py-2 px-3 text-sm border-2 rounded-md font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
               value === meal.value
-                ? 'border-blue-600 bg-blue-50 text-blue-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                ? 'border-primary-600 bg-primary-50 text-primary-700'
+                : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
             }`}
             aria-pressed={value === meal.value}
           >
@@ -393,7 +393,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   }, [onClose, submitting]);
 
   const libraryAlert = libraryMessage && (
-    <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+    <p role="alert" className="rounded-md border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
       {libraryMessage}
     </p>
   );
@@ -403,7 +403,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     return (
       <form onSubmit={handleSearchSubmit} className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Aliment</label>
+          <label className="field-label mb-2">Aliment</label>
           <FoodSearch
             onSelect={(food) => selectFood(food)}
             personalFoods={library.personalFoods}
@@ -425,7 +425,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
             }
           />
           {selectedFood && (
-            <div className="mt-3 flex items-center gap-3 rounded-md border border-blue-200 bg-blue-50 p-3">
+            <div className="mt-3 flex items-center gap-3 rounded-md border border-primary-200 bg-primary-50 p-3">
               {selectedFood.imageUrl && (
                 <img
                   src={selectedFood.imageUrl}
@@ -434,8 +434,8 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                 />
               )}
               <div className="min-w-0 flex-1">
-                <div className="font-medium text-blue-900">{foodLabel(selectedFood)}</div>
-                <div className="mt-1 text-sm text-blue-700">
+                <div className="font-medium text-primary-900">{foodLabel(selectedFood)}</div>
+                <div className="mt-1 text-sm text-primary-700">
                   {Math.round(selectedFood.kcal_per_100g)} kcal pour 100 g
                 </div>
               </div>
@@ -445,9 +445,9 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                 aria-pressed={isFavorite}
                 aria-label={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
                 title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-                className="flex-shrink-0 rounded-md p-2 text-blue-400 hover:bg-blue-100 hover:text-amber-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="flex-shrink-0 rounded-md p-2 text-primary-400 hover:bg-primary-100 hover:text-warning-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               >
-                <Star className={`h-5 w-5 ${isFavorite ? 'fill-amber-400 text-amber-500' : ''}`} aria-hidden="true" />
+                <Star className={`h-5 w-5 ${isFavorite ? 'fill-warning-400 text-warning-500' : ''}`} aria-hidden="true" />
               </button>
             </div>
           )}
@@ -458,7 +458,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
         {selectedFood && (
           <>
             <div>
-              <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="quantity" className="field-label mb-1">
                 Quantité (grammes)
               </label>
               <input
@@ -469,7 +469,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                 min="1"
                 step="1"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 field-input"
               />
               {/* Portions rapides : évite de taper la quantité */}
               <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Portions rapides">
@@ -479,7 +479,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                       type="button"
                       onClick={() => setQuantity(selectedFood.servingGrams!)}
                       aria-pressed={quantity === selectedFood.servingGrams}
-                      className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === selectedFood.servingGrams ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === selectedFood.servingGrams ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-line-strong text-body hover:bg-surface-muted'}`}
                     >
                       1 portion ({selectedFood.servingGrams} g)
                     </button>
@@ -487,7 +487,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                       type="button"
                       onClick={() => setQuantity(selectedFood.servingGrams! * 2)}
                       aria-pressed={quantity === selectedFood.servingGrams * 2}
-                      className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === selectedFood.servingGrams * 2 ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === selectedFood.servingGrams * 2 ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-line-strong text-body hover:bg-surface-muted'}`}
                     >
                       2 portions
                     </button>
@@ -499,7 +499,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                     type="button"
                     onClick={() => setQuantity(grams)}
                     aria-pressed={quantity === grams}
-                    className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === grams ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === grams ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-line-strong text-body hover:bg-surface-muted'}`}
                   >
                     {grams} g
                   </button>
@@ -509,19 +509,19 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
 
             <MealTypeSelector value={mealType} onChange={setMealType} />
 
-            <div className="bg-gray-50 p-4 rounded-md">
-              <h3 className="text-sm text-gray-900 mb-2">Valeurs nutritionnelles</h3>
+            <div className="bg-surface-muted p-4 rounded-md">
+              <h3 className="text-sm text-ink mb-2">Valeurs nutritionnelles</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="text-gray-600">Calories :</div>
-                <div className="font-medium text-gray-900">{calculated.kcal} kcal</div>
-                <div className="text-gray-600">Protéines :</div>
-                <div className="font-medium text-gray-900">{calculated.protein_g} g</div>
-                <div className="text-gray-600">Lipides :</div>
-                <div className="font-medium text-gray-900">{calculated.fat_g} g</div>
-                <div className="text-gray-600">Glucides :</div>
-                <div className="font-medium text-gray-900">{calculated.carbs_g} g</div>
-                <div className="text-gray-600">Fibres :</div>
-                <div className="font-medium text-gray-900">{calculated.fiber_g} g</div>
+                <div className="text-muted">Calories :</div>
+                <div className="font-medium text-ink">{calculated.kcal} kcal</div>
+                <div className="text-muted">Protéines :</div>
+                <div className="font-medium text-ink">{calculated.protein_g} g</div>
+                <div className="text-muted">Lipides :</div>
+                <div className="font-medium text-ink">{calculated.fat_g} g</div>
+                <div className="text-muted">Glucides :</div>
+                <div className="font-medium text-ink">{calculated.carbs_g} g</div>
+                <div className="text-muted">Fibres :</div>
+                <div className="font-medium text-ink">{calculated.fiber_g} g</div>
               </div>
             </div>
           </>
@@ -531,14 +531,14 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
+            className="flex-1 py-2 px-4 btn-secondary font-medium rounded-md"
           >
             Annuler
           </button>
           <button
             type="submit"
             disabled={!selectedFood || !isSearchQuantityValid || submitting}
-            className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors"
+            className="flex-1 py-2 px-4 btn-primary font-medium rounded-md"
           >
             {submitting ? 'Ajout en cours…' : 'Ajouter'}
           </button>
@@ -557,7 +557,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
 
     return (
       <div>
-        <label htmlFor={field} className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor={field} className="field-label mb-1">
           {label}
         </label>
         <input
@@ -576,12 +576,12 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
           }}
           aria-invalid={showError}
           aria-describedby={showError ? `${field}-error` : undefined}
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            showError ? 'border-red-400' : 'border-gray-300'
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+            showError ? 'border-danger-400' : 'border-line-strong'
           }`}
         />
         {showError && (
-          <p id={`${field}-error`} className="mt-1 text-sm text-red-600">
+          <p id={`${field}-error`} className="mt-1 text-sm text-danger-700">
             {error}
           </p>
         )}
@@ -594,7 +594,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     return (
       <form onSubmit={handleManualSubmit} className="space-y-6">
         {manualFromScan && (
-          <p className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+          <p className="rounded-md border border-primary-200 bg-primary-50 p-3 text-sm text-primary-800">
             Produit scanné : recopiez les valeurs de l’étiquette pour 100 g, puis indiquez la quantité mangée. Il sera
             enregistré dans vos aliments et reconnu au prochain scan.
           </p>
@@ -607,7 +607,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
           {renderManualField('qty_grammes', 'Quantité (g)', { min: 1, step: '1', required: true })}
 
           <fieldset className="md:col-span-2">
-            <legend className="mb-2 block text-sm font-medium text-gray-700">Valeurs saisies pour</legend>
+            <legend className="mb-2 field-label">Valeurs saisies pour</legend>
             <div className="flex flex-wrap gap-2">
               {[
                 { value: 'portion' as const, label: 'La quantité indiquée' },
@@ -616,7 +616,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                 <label
                   key={option.value}
                   className={`flex cursor-pointer items-center gap-2 rounded-md border-2 px-3 py-2 text-sm ${
-                    valuesBasis === option.value ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700'
+                    valuesBasis === option.value ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-line-strong text-body'
                   }`}
                 >
                   <input
@@ -644,8 +644,8 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
           onChange={(value) => setManualForm((current) => ({ ...current, meal_type: value }))}
         />
 
-        <div className="space-y-3 rounded-md border border-gray-200 p-4">
-          <label className="flex items-start gap-3 text-sm text-gray-800">
+        <div className="space-y-3 rounded-md border border-line p-4">
+          <label className="flex items-start gap-3 text-sm text-ink">
             <input
               type="checkbox"
               checked={saveToMyFoods}
@@ -654,12 +654,12 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
             />
             <span>
               <span className="font-medium">Enregistrer dans mes aliments</span>
-              <span className="block text-xs text-gray-500">Pour le retrouver dans la recherche et l’ajouter en un tap.</span>
+              <span className="block text-xs text-subtle">Pour le retrouver dans la recherche et l’ajouter en un tap.</span>
             </span>
           </label>
           {saveToMyFoods && (
             <div>
-              <label htmlFor="manual-barcode" className="mb-1 block text-sm font-medium text-gray-700">
+              <label htmlFor="manual-barcode" className="mb-1 field-label">
                 Code-barres
               </label>
               <input
@@ -672,16 +672,16 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                 onChange={(event) => setManualBarcode(event.target.value)}
                 aria-invalid={barcodeError ? true : undefined}
                 aria-describedby={barcodeError ? 'manual-barcode-error' : 'manual-barcode-hint'}
-                className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  barcodeError ? 'border-red-400' : 'border-gray-300'
+                className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                  barcodeError ? 'border-danger-400' : 'border-line-strong'
                 }`}
               />
               {barcodeError ? (
-                <p id="manual-barcode-error" className="mt-1 text-sm text-red-600">
+                <p id="manual-barcode-error" className="mt-1 text-sm text-danger-700">
                   {barcodeError}
                 </p>
               ) : (
-                <p id="manual-barcode-hint" className="mt-1 text-xs text-gray-500">
+                <p id="manual-barcode-hint" className="mt-1 text-xs text-subtle">
                   Le produit sera reconnu quand vous le scannerez.
                 </p>
               )}
@@ -689,7 +689,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
           )}
         </div>
 
-        <div className="rounded-md bg-gray-50 p-4 text-sm text-gray-600">
+        <div className="rounded-md bg-surface-muted p-4 text-sm text-muted">
           {valuesBasis === 'per100'
             ? `Pour ${Number.isFinite(manualForm.qty_grammes) ? manualForm.qty_grammes : 0} g : ${totals.kcal} kcal · P ${totals.protein_g} g · L ${totals.fat_g} g · G ${totals.carbs_g} g.`
             : 'Les valeurs saisies correspondent à la quantité indiquée, pas à 100 g.'}
@@ -699,14 +699,14 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
+            className="flex-1 py-2 px-4 btn-secondary font-medium rounded-md"
           >
             Annuler
           </button>
           <button
             type="submit"
             disabled={!isManualFormValid || submitting}
-            className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-medium rounded-md transition-colors"
+            className="flex-1 py-2 px-4 btn-primary font-medium rounded-md"
           >
             {submitting ? 'Ajout en cours…' : 'Ajouter'}
           </button>
@@ -717,7 +717,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
 
   const renderMineTab = () => (
     <div className="space-y-4">
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-muted">
         Vos aliments personnels apparaissent dans la recherche et sont reconnus au scan grâce à leur code-barres.
       </p>
       <button
@@ -728,7 +728,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
           setSaveToMyFoods(true);
           setValuesBasis('per100');
         }}
-        className="rounded-md border border-blue-600 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
+        className="rounded-md border border-primary-600 px-4 py-2 text-sm font-medium text-primary-700 hover:bg-primary-50"
       >
         Créer un aliment
       </button>
@@ -736,19 +736,19 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
       {libraryAlert}
 
       {library.loading ? (
-        <p className="text-sm text-gray-500">Chargement de vos aliments…</p>
+        <p className="text-sm text-subtle">Chargement de vos aliments…</p>
       ) : library.personalFoods.length === 0 ? (
-        <p className="rounded-md border border-dashed border-gray-300 p-4 text-center text-sm text-gray-500">
+        <p className="rounded-md border border-dashed border-line-strong p-4 text-center text-sm text-subtle">
           Aucun aliment personnel pour l’instant. Créez-en un, ou scannez un produit introuvable.
         </p>
       ) : (
-        <ul aria-label="Mes aliments" className="divide-y divide-gray-100 rounded-md border border-gray-200">
+        <ul aria-label="Mes aliments" className="divide-y divide-line-subtle rounded-md border border-line">
           {library.personalFoods.map((food) => (
             <li key={food.foodId} className="flex flex-wrap items-center gap-2 p-3">
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-gray-900">{food.name}</div>
-                <div className="text-xs text-gray-500">{Math.round(food.kcal_per_100g)} kcal pour 100 g</div>
-                {food.barcode && <div className="text-xs text-gray-400">Code-barres {food.barcode}</div>}
+                <div className="truncate text-sm font-medium text-ink">{food.name}</div>
+                <div className="text-xs text-subtle">{Math.round(food.kcal_per_100g)} kcal pour 100 g</div>
+                {food.barcode && <div className="text-xs text-subtle">Code-barres {food.barcode}</div>}
               </div>
               {confirmDeleteId === food.foodId ? (
                 <>
@@ -756,14 +756,14 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                     type="button"
                     onClick={() => handleDeletePersonal(food)}
                     aria-label={`Confirmer la suppression de « ${food.name} »`}
-                    className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
+                    className="rounded-md btn-danger px-3 py-1.5 text-sm font-medium"
                   >
                     Supprimer
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmDeleteId(null)}
-                    className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                    className="rounded-md btn-secondary px-3 py-1.5 text-sm"
                   >
                     Annuler
                   </button>
@@ -774,7 +774,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                     type="button"
                     onClick={() => handleUsePersonal(food)}
                     aria-label={`Utiliser « ${food.name} »`}
-                    className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+                    className="rounded-md btn-primary px-3 py-1.5 text-sm font-medium"
                   >
                     Utiliser
                   </button>
@@ -782,7 +782,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                     type="button"
                     onClick={() => setConfirmDeleteId(food.foodId ?? null)}
                     aria-label={`Supprimer « ${food.name} »`}
-                    className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                    className="rounded-md btn-secondary px-3 py-1.5 text-sm"
                   >
                     Supprimer
                   </button>
@@ -796,7 +796,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
       <button
         type="button"
         onClick={onClose}
-        className="w-full py-2 px-4 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
+        className="w-full py-2 px-4 btn-secondary font-medium rounded-md"
       >
         Fermer
       </button>
@@ -809,20 +809,20 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-entry-title"
-        className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        className="bg-surface rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
       >
-        <div className="flex items-center justify-between px-8 pt-8 pb-6 border-b border-gray-200">
+        <div className="flex items-center justify-between px-8 pt-8 pb-6 border-b border-line">
           <div>
-            <h2 id="add-entry-title" className="text-xl text-gray-900">Ajouter un aliment</h2>
-            <p className="mt-1 text-sm text-gray-500 first-letter:uppercase">{formatEntryDate(date)}</p>
+            <h2 id="add-entry-title" className="text-xl text-ink">Ajouter un aliment</h2>
+            <p className="mt-1 text-sm text-subtle first-letter:uppercase">{formatEntryDate(date)}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Fermer la fenêtre">
+          <button onClick={onClose} className="text-subtle hover:text-muted transition-colors" aria-label="Fermer la fenêtre">
             <X className="w-6 h-6" />
           </button>
         </div>
 
         <div className="px-6 pt-6">
-          <div role="tablist" aria-label="Mode d'ajout d'aliment" className="grid grid-cols-3 gap-2 rounded-lg bg-gray-100 p-1">
+          <div role="tablist" aria-label="Mode d'ajout d'aliment" className="grid grid-cols-3 gap-2 rounded-lg bg-surface-sunken p-1">
             {tabOptions.map((tab, index) => (
               <button
                 key={tab.value}
@@ -837,10 +837,10 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                 aria-controls={`add-entry-panel-${tab.value}`}
                 onClick={() => switchTab(tab.value)}
                 onKeyDown={(event) => handleTabKeyDown(event, index)}
-                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                   activeTab === tab.value
-                    ? 'bg-white text-blue-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-800'
+                    ? 'bg-surface text-primary-700 shadow-sm'
+                    : 'text-muted hover:text-ink'
                 }`}
               >
                 {tab.label}
@@ -851,7 +851,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
 
         <div className="p-6">
           {submitError && (
-            <div role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div role="alert" className="mb-4 rounded-md border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
               {submitError}
             </div>
           )}

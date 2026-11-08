@@ -19,15 +19,15 @@ export function SignOutEverywhere() {
 
   return (
     <section aria-labelledby="account-sessions-title" className="space-y-3">
-      <h2 id="account-sessions-title" className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-        <MonitorSmartphone className="h-5 w-5 text-gray-500" aria-hidden="true" />
+      <h2 id="account-sessions-title" className="flex items-center gap-2 text-lg font-semibold text-ink">
+        <MonitorSmartphone className="h-5 w-5 text-subtle" aria-hidden="true" />
         Appareils connectés
       </h2>
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-muted">
         Déconnectez CalTrack de tous vos appareils, celui-ci compris : utile si vous avez perdu un téléphone ou si
         vous pensez que quelqu’un d’autre utilise votre compte. Pensez aussi à changer votre mot de passe.
       </p>
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-subtle">
         Cet appareil est déconnecté tout de suite. Une application déjà ouverte sur un autre appareil peut rester
         utilisable jusqu’à l’expiration de sa session en cours (au plus 1 heure), puis elle est déconnectée.
       </p>
@@ -38,7 +38,7 @@ export function SignOutEverywhere() {
             type="button"
             onClick={handleConfirm}
             disabled={signingOut}
-            className="rounded-md bg-gray-900 px-4 py-2 font-medium text-white hover:bg-gray-800 disabled:opacity-60"
+            className="rounded-md bg-ink px-4 py-2 font-medium text-on-color hover:bg-ink/90 disabled:opacity-60"
           >
             {signingOut ? 'Déconnexion…' : 'Oui, me déconnecter partout'}
           </button>
@@ -46,7 +46,7 @@ export function SignOutEverywhere() {
             type="button"
             onClick={() => setConfirming(false)}
             disabled={signingOut}
-            className="rounded-md border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
+            className="rounded-md btn-secondary px-4 py-2 font-medium"
           >
             Annuler
           </button>
@@ -55,7 +55,7 @@ export function SignOutEverywhere() {
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="rounded-md border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
+          className="rounded-md btn-secondary px-4 py-2 font-medium"
         >
           Se déconnecter de tous les appareils
         </button>

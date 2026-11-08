@@ -51,13 +51,13 @@ function OptionGroup<T extends string>({
 }) {
   return (
     <fieldset>
-      <legend className="mb-2 text-sm font-medium text-gray-700">{legend}</legend>
+      <legend className="mb-2 text-sm font-medium text-body">{legend}</legend>
       <div className={`grid grid-cols-1 gap-2 ${columns === 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         {options.map((option) => (
           <label
             key={option.value}
             className={`flex cursor-pointer items-start gap-3 rounded-md border-2 p-3 transition-colors ${
-              value === option.value ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+              value === option.value ? 'border-primary-600 bg-primary-50' : 'border-line hover:border-line-strong'
             }`}
           >
             <input
@@ -69,8 +69,8 @@ function OptionGroup<T extends string>({
               className="mt-1"
             />
             <span>
-              <span className="block text-sm font-medium text-gray-900">{option.label}</span>
-              <span className="block text-xs text-gray-500">{option.example}</span>
+              <span className="block text-sm font-medium text-ink">{option.label}</span>
+              <span className="block text-xs text-subtle">{option.example}</span>
             </span>
           </label>
         ))}
@@ -114,7 +114,7 @@ export function SettingsPage() {
       reminderLogTime: logTime,
       timezone: deviceTimezone(),
     });
-    const parts = [weighInTime && `pesée à ${weighInTime}`, logTime && `journal à ${logTime}`].filter(Boolean);
+    const parts = [weighInTime && `pesée à ${weighInTime}`, logTime &&`journal à ${logTime}`].filter(Boolean);
     return `Rappels programmés : ${parts.join(' et ')} (heures modifiables ci-dessus).`;
   };
 
@@ -161,12 +161,12 @@ export function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <h1 className="text-2xl text-gray-900">Paramètres</h1>
+      <h1 className="text-2xl text-ink">Paramètres</h1>
 
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
-        <section aria-labelledby="display-title" className="space-y-5 rounded-lg bg-white p-4 shadow-md sm:p-6">
-          <h2 id="display-title" className="flex items-center gap-2 text-lg text-gray-900">
-            <Palette className="h-5 w-5 text-gray-500" aria-hidden="true" />
+        <section aria-labelledby="display-title" className="space-y-5 panel p-4 sm:p-6">
+          <h2 id="display-title" className="flex items-center gap-2 text-lg text-ink">
+            <Palette className="h-5 w-5 text-subtle" aria-hidden="true" />
             Affichage
           </h2>
           <OptionGroup
@@ -193,25 +193,25 @@ export function SettingsPage() {
           />
         </section>
 
-        <section aria-labelledby="meals-title" className="space-y-4 rounded-lg bg-white p-4 shadow-md sm:p-6">
+        <section aria-labelledby="meals-title" className="space-y-4 panel p-4 sm:p-6">
           <div>
-            <h2 id="meals-title" className="flex items-center gap-2 text-lg text-gray-900">
-              <UtensilsCrossed className="h-5 w-5 text-gray-500" aria-hidden="true" />
+            <h2 id="meals-title" className="flex items-center gap-2 text-lg text-ink">
+              <UtensilsCrossed className="h-5 w-5 text-subtle" aria-hidden="true" />
               Repas
             </h2>
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-1 text-sm text-muted">
               Renommez vos repas ou masquez ceux que vous ne prenez pas. Un repas masqué n’est plus proposé à
               l’ajout d’un aliment ; ce que vous avez déjà saisi reste affiché.
             </p>
           </div>
 
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-line-subtle">
             {ALL_MEALS.map((meal) => {
               const visible = !form.hiddenMeals.includes(meal);
               const isLastVisible = visible && visibleCount === 1;
               return (
                 <li key={meal} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:gap-4">
-                  <label className="flex min-w-[9rem] items-center gap-2 text-sm text-gray-700">
+                  <label className="flex min-w-[9rem] items-center gap-2 text-sm text-body">
                     <input
                       type="checkbox"
                       checked={visible}
@@ -233,7 +233,7 @@ export function SettingsPage() {
                       maxLength={MEAL_LABEL_MAX_LENGTH}
                       disabled={!visible}
                       onChange={(e) => setMealLabel(meal, e.target.value)}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+                      className="w-full field-input px-3 py-2 text-sm disabled:bg-surface-muted disabled:text-subtle"
                     />
                   </div>
                 </li>
@@ -255,7 +255,7 @@ export function SettingsPage() {
           <p
             role={message.type === 'error' ? 'alert' : 'status'}
             className={`rounded-md border p-3 text-sm ${
-              message.type === 'error' ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-700'
+              message.type === 'error' ? 'border-danger-200 bg-danger-50 text-danger-700' : 'border-success-200 bg-success-50 text-success-700'
             }`}
           >
             {message.text}
@@ -269,14 +269,14 @@ export function SettingsPage() {
               setForm(DEFAULT_PREFERENCES);
               setMessage(null);
             }}
-            className="rounded-md border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
+            className="rounded-md btn-secondary px-4 py-2 font-medium"
           >
             Valeurs par défaut
           </button>
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:bg-blue-400"
+            className="flex items-center justify-center gap-2 rounded-md btn-primary px-4 py-2 font-medium"
           >
             <Save className="h-4 w-4" aria-hidden="true" />
             {saving ? 'Enregistrement…' : 'Enregistrer les paramètres'}

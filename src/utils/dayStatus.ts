@@ -38,14 +38,14 @@ export const DAY_STATUS_LABELS: Record<DayStatus, string> = {
 
 /** Couleur de barre du graphique (nuance selon l'écart à l'objectif). */
 export function getBarColorClass(dayStatus: DayStatus, consumed: number, target: number): string {
-  if (dayStatus === 'not_logged') return 'bg-gray-200';
-  if (dayStatus === 'in_progress') return 'bg-blue-400';
-  if (!target || target <= 0) return 'bg-gray-300';
+  if (dayStatus === 'not_logged') return 'bg-surface-strong';
+  if (dayStatus === 'in_progress') return 'bg-info-400';
+  if (!target || target <= 0) return 'bg-line-strong';
 
   const percentage = (consumed / target) * 100;
-  if (dayStatus === 'ok') return 'bg-green-500';
+  if (dayStatus === 'ok') return 'bg-success-500';
   if (dayStatus === 'under') return percentage < 75 ? 'bg-orange-600' : 'bg-orange-400';
-  return percentage > 125 ? 'bg-red-600' : 'bg-red-400';
+  return percentage > 125 ? 'bg-danger-600' : 'bg-danger-400';
 }
 
 /**

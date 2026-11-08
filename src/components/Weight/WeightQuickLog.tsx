@@ -7,6 +7,7 @@ import { Scale } from 'lucide-react';
 import type { BodyComposition, WeightLog } from '../../lib/supabase';
 import { fetchWeightLogs } from '../../services/weights';
 import { addDaysToDateString, getTodayDate, parseLocalDate } from '../../utils/date';
+import { formatDecimal, formatKg } from '../../utils/format';
 import { PROFILE_LIMITS, validateBodyComposition } from '../../utils/validation';
 import { hasComposition, pickComposition } from '../../utils/bodyComposition';
 import { getLatestWeight, weightChangeSince } from '../../utils/weights';
@@ -40,9 +41,7 @@ const emptyComposition = (): Record<CompositionField, string> => ({
 
 const parseDecimal = (value: string) => (value.trim() ? Number(value.replace(',', '.')) : undefined);
 
-const formatKg = (value: number) =>
-  `${value.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`;
-const formatOne = (value: number) => value.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+const formatOne = (value: number) => formatDecimal(value);
 
 /** Résumé de la composition d'une pesée (ex : « Masse grasse 18,5 % · muscles 60,1 kg ») */
 function compositionSummary(log: BodyComposition): string | null {
@@ -123,20 +122,20 @@ export function WeightQuickLog({ userId, date, currentWeight, onSave }: WeightQu
   };
 
   return (
-    <section aria-labelledby="weight-quick-log-title" className="card-kaizen">
+    <section aria-labelledby="weight-quick-log-title" className="card-glass">
       <div className="flex flex-col gap-4 p-2 sm:flex-row sm:items-end sm:justify-between sm:p-4">
         <div>
-          <h2 id="weight-quick-log-title" className="flex items-center gap-2 text-lg text-shonen-700">
+          <h2 id="weight-quick-log-title" className="flex items-center gap-2 text-lg text-accent-700">
             <Scale className="h-5 w-5" aria-hidden="true" />
             Ma pesée
           </h2>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-muted">
             {latest ? (
               <>
-                Dernière : <span className="font-semibold text-gray-900">{formatKg(latest.weight_kg)}</span>{' '}
+                Dernière : <span className="font-semibold text-ink">{formatKg(latest.weight_kg)}</span>{' '}
                 le {parseLocalDate(latest.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                 {change7d !== null && (
-                  <span className="text-gray-500"> · {change7d > 0 ? '+' : ''}{formatKg(change7d)} sur 7 jours</span>
+                  <span className="text-subtle"> · {change7d > 0 ? '+' : ''}{formatKg(change7d)} sur 7 jours</span>
                 )}
               </>
             ) : (
@@ -144,13 +143,13 @@ export function WeightQuickLog({ userId, date, currentWeight, onSave }: WeightQu
             )}
           </p>
           {latest && compositionSummary(latest) && (
-            <p className="mt-0.5 text-xs text-gray-500">{compositionSummary(latest)}</p>
+            <p className="mt-0.5 text-xs text-subtle">{compositionSummary(latest)}</p>
           )}
         </div>
 
         <form id="weight-quick-log-form" onSubmit={handleSubmit} className="flex items-end gap-2">
           <div>
-            <label htmlFor="weight-input" className="block text-xs font-medium text-gray-600 mb-1">
+            <label htmlFor="weight-input" className="block text-xs font-medium text-muted mb-1">
               {isToday ? "Poids aujourd'hui (kg)" : 'Poids ce jour-là (kg)'}
             </label>
             <input
@@ -163,28 +162,28 @@ export function WeightQuickLog({ userId, date, currentWeight, onSave }: WeightQu
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder={String(logForDate?.weight_kg ?? currentWeight)}
-              className="w-28 rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-kaizen-500"
+              className="w-28 rounded-md border border-line-strong px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
-          <button type="submit" disabled={saving || !value} className="btn-kaizen disabled:opacity-50">
+          <button type="submit" disabled={saving || !value} className="btn-brand disabled:opacity-50">
             {saving ? 'Enregistrement…' : logForDate ? 'Mettre à jour' : 'Enregistrer'}
           </button>
         </form>
       </div>
 
-      <details className="mx-2 mb-2 rounded-md border border-gray-200 sm:mx-4">
-        <summary className="cursor-pointer select-none px-3 py-2 text-sm text-gray-700">
+      <details className="mx-2 mb-2 rounded-md border border-line sm:mx-4">
+        <summary className="cursor-pointer select-none px-3 py-2 text-sm text-body">
           Composition (facultatif)
         </summary>
-        <div className="space-y-2 border-t border-gray-200 p-3">
-          <p className="text-xs text-gray-500">
+        <div className="space-y-2 border-t border-line p-3">
+          <p className="text-xs text-subtle">
             Valeurs de votre balance impédancemètre, enregistrées avec la pesée. Elles alimentent la courbe masse grasse /
             masse maigre (Tendances) et, pour la dernière pesée, le calcul de vos besoins.
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             {COMPOSITION_INPUTS.map((field) => (
               <div key={field.key}>
-                <label htmlFor={`weigh-in-${field.key}`} className="mb-1 block text-xs font-medium text-gray-600">
+                <label htmlFor={`weigh-in-${field.key}`} className="mb-1 block text-xs font-medium text-muted">
                   {field.label}
                 </label>
                 <input
@@ -195,7 +194,7 @@ export function WeightQuickLog({ userId, date, currentWeight, onSave }: WeightQu
                   autoComplete="off"
                   value={composition[field.key]}
                   onChange={(e) => setComposition((current) => ({ ...current, [field.key]: e.target.value }))}
-                  className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-kaizen-500"
+                  className="w-full rounded-md border border-line-strong px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
             ))}
@@ -206,7 +205,7 @@ export function WeightQuickLog({ userId, date, currentWeight, onSave }: WeightQu
       {message && (
         <p
           role={message.type === 'error' ? 'alert' : 'status'}
-          className={`px-2 pb-2 text-sm sm:px-4 ${message.type === 'error' ? 'text-red-700' : 'text-kaizen-700'}`}
+          className={`px-2 pb-2 text-sm sm:px-4 ${message.type === 'error' ? 'text-danger-700' : 'text-brand-700'}`}
         >
           {message.text}
         </p>

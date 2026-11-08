@@ -9,6 +9,7 @@ import { applyCalorieAdjustment } from '../../services/goals';
 import type { UserProfile } from '../../utils/calculations';
 import { ADJUSTMENT_COOLDOWN_DAYS, CalorieAdjustmentSuggestion, dismissKey } from '../../utils/calorieAdjustment';
 import { addDaysToDateString } from '../../utils/date';
+import { formatNumber, formatSigned } from '../../utils/format';
 import { EXPENDITURE_WINDOW_DAYS } from '../../utils/insights';
 
 interface CalorieAdjustmentCardProps {
@@ -20,10 +21,6 @@ interface CalorieAdjustmentCardProps {
   onApplied: (goal: Goal) => void;
 }
 
-const formatNumber = (value: number, digits = 0) =>
-  value.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
-const formatSigned = (value: number, digits = 0) =>
-  `${value > 0 ? '+' : value < 0 ? '−' : ''}${formatNumber(Math.abs(value), digits)}`;
 
 function readDismissed(goalId: string): string | null {
   try {
@@ -91,7 +88,7 @@ export function CalorieAdjustmentCard({ userId, profile, goal, suggestion, today
 
   if (appliedKcal !== null) {
     return (
-      <p role="status" className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+      <p role="status" className="rounded-lg border border-success-200 bg-success-50 p-4 text-sm text-success-800">
         Objectif ajusté : {formatNumber(appliedKcal)} kcal/j dès aujourd’hui. Vous pouvez annuler cet ajustement dans
         l’onglet Objectif.
       </p>
@@ -99,34 +96,34 @@ export function CalorieAdjustmentCard({ userId, profile, goal, suggestion, today
   }
 
   return (
-    <section aria-labelledby="calorie-adjustment-title" className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
-      <h3 id="calorie-adjustment-title" className="flex items-center gap-2 text-sm font-semibold text-blue-900">
+    <section aria-labelledby="calorie-adjustment-title" className="space-y-3 rounded-lg border border-info-200 bg-info-50 p-4">
+      <h3 id="calorie-adjustment-title" className="flex items-center gap-2 text-sm font-semibold text-info-900">
         <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
         Ajuster vos calories ?
       </h3>
-      <p className="text-sm text-blue-900">{explanation(goal, suggestion)}</p>
-      <p className="text-base font-semibold text-blue-900">
+      <p className="text-sm text-info-900">{explanation(goal, suggestion)}</p>
+      <p className="text-base font-semibold text-info-900">
         {formatNumber(suggestion.currentTargetKcal)} kcal/j → {formatNumber(suggestion.proposedTargetKcal)} kcal/j (
         {formatSigned(suggestion.deltaKcal)} kcal)
       </p>
-      <p className="text-xs text-blue-800">
+      <p className="text-xs text-info-800">
         Calculé sur vos {EXPENDITURE_WINDOW_DAYS} derniers jours (repas saisis et pesées). Fiable si vos journées sont
         saisies en entier. Les protéines et les lipides ne changent pas : seuls les glucides suivent.
       </p>
       {error && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-danger-700">
           {error}
         </p>
       )}
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={handleApply} disabled={applying} className="btn-kaizen disabled:opacity-50">
+        <button type="button" onClick={handleApply} disabled={applying} className="btn-brand disabled:opacity-50">
           {applying ? 'Application…' : 'Appliquer'}
         </button>
         <button
           type="button"
           onClick={handleDismiss}
           disabled={applying}
-          className="rounded-md border border-blue-300 px-4 py-2 text-sm font-medium text-blue-800 hover:bg-blue-100"
+          className="rounded-md border border-info-300 px-4 py-2 text-sm font-medium text-info-800 hover:bg-info-100"
         >
           Pas maintenant
         </button>

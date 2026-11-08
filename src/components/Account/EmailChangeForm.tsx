@@ -50,16 +50,16 @@ export function EmailChangeForm() {
 
   return (
     <section aria-labelledby="account-email-title" className="space-y-3">
-      <h2 id="account-email-title" className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-        <Mail className="h-5 w-5 text-gray-500" aria-hidden="true" />
+      <h2 id="account-email-title" className="flex items-center gap-2 text-lg font-semibold text-ink">
+        <Mail className="h-5 w-5 text-subtle" aria-hidden="true" />
         Adresse email
       </h2>
-      <p className="text-sm text-gray-600">
-        Adresse actuelle : <span className="font-medium text-gray-900">{currentEmail}</span>
+      <p className="text-sm text-muted">
+        Adresse actuelle : <span className="font-medium text-ink">{currentEmail}</span>
       </p>
 
       {pendingEmail && !message && (
-        <p role="status" className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <p role="status" className="rounded-md border border-warning-200 bg-warning-50 p-3 text-sm text-warning-800">
           Changement en attente vers <span className="font-medium">{pendingEmail}</span> : confirmez-le depuis le lien
           reçu par email.
         </p>
@@ -67,7 +67,7 @@ export function EmailChangeForm() {
 
       <form onSubmit={handleSubmit} noValidate className="space-y-3">
         <div>
-          <label htmlFor="new-email" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="new-email" className="mb-1 field-label">
             Nouvelle adresse email
           </label>
           <input
@@ -76,7 +76,7 @@ export function EmailChangeForm() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full field-input px-3 py-2"
           />
         </div>
 
@@ -84,7 +84,7 @@ export function EmailChangeForm() {
           <p
             role={message.type === 'error' ? 'alert' : 'status'}
             className={`rounded-md border p-3 text-sm ${
-              message.type === 'error' ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-700'
+              message.type === 'error' ? 'border-danger-200 bg-danger-50 text-danger-700' : 'border-success-200 bg-success-50 text-success-700'
             }`}
           >
             {message.text}
@@ -94,7 +94,7 @@ export function EmailChangeForm() {
         <button
           type="submit"
           disabled={saving || !email.trim()}
-          className="w-full rounded-md bg-blue-600 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-blue-400"
+          className="w-full rounded-md btn-primary px-4 py-2 font-medium"
         >
           {saving ? 'Envoi…' : 'Changer d’adresse'}
         </button>

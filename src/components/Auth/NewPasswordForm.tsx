@@ -52,18 +52,18 @@ export function NewPasswordForm({ onDone, submitLabel = 'Enregistrer le mot de p
   return (
     <form onSubmit={handleSubmit} className="space-y-4" aria-label="Changement de mot de passe">
       {error && (
-        <div role="alert" className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+        <div role="alert" className="p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded-md text-sm">
           {error}
         </div>
       )}
       {success && (
-        <div role="status" className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-md text-sm">
+        <div role="status" className="p-3 bg-success-50 border border-success-200 text-success-700 rounded-md text-sm">
           Mot de passe modifié.
         </div>
       )}
 
       <div>
-        <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="new-password" className="field-label mb-1">
           Nouveau mot de passe
         </label>
         <input
@@ -73,13 +73,13 @@ export function NewPasswordForm({ onDone, submitLabel = 'Enregistrer le mot de p
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 field-input"
         />
-        <p className="mt-1 text-xs text-gray-500">Au moins {MIN_PASSWORD_LENGTH} caractères.</p>
+        <p className="mt-1 text-xs text-subtle">Au moins {MIN_PASSWORD_LENGTH} caractères.</p>
       </div>
 
       <div>
-        <label htmlFor="new-password-confirm" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="new-password-confirm" className="field-label mb-1">
           Confirmer le mot de passe
         </label>
         <input
@@ -89,14 +89,14 @@ export function NewPasswordForm({ onDone, submitLabel = 'Enregistrer le mot de p
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 field-input"
         />
       </div>
 
       <button
         type="submit"
         disabled={loading || !password || !confirm}
-        className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-md transition-colors"
+        className="w-full py-2 px-4 btn-primary font-medium rounded-md"
       >
         {loading ? 'Enregistrement…' : submitLabel}
       </button>

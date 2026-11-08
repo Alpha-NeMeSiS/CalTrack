@@ -29,13 +29,13 @@ describe('GoalProgressCard', () => {
 
     const section = screen.getByTestId('weight-progress');
     expect(within(section).getByText('Départ : 82 kg')).toBeInTheDocument();
-    expect(within(section).getByText('Évolution : -3.0 kg · 50 %')).toBeInTheDocument();
+    expect(within(section).getByText('Évolution : −3,0 kg · 50 %')).toBeInTheDocument();
     expect(within(section).getByText('Dans les temps')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Progression vers le poids cible' })).toHaveAttribute(
       'aria-valuenow',
       '50'
     );
-    expect(screen.getByText('-3.0 kg')).toBeInTheDocument(); // reste à perdre
+    expect(screen.getByText('−3,0 kg')).toBeInTheDocument(); // reste à perdre
   });
 
   it('signale un retard sur le rythme prévu', () => {
@@ -46,7 +46,7 @@ describe('GoalProgressCard', () => {
   it('signale un objectif atteint', () => {
     render(<GoalProgressCard goal={lossGoal} currentWeight={75.5} />);
     expect(screen.getByText('Objectif atteint')).toBeInTheDocument();
-    expect(screen.getByText('0.0 kg')).toBeInTheDocument();
+    expect(screen.getByText('0,0 kg')).toBeInTheDocument();
   });
 
   it("masque l'évolution du poids pour un ancien objectif sans poids de départ", () => {

@@ -261,10 +261,10 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
           type="button"
           role="tab"
           aria-selected={category === 'ciqual'}
-          className={`px-3 py-1 rounded-md border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+          className={`px-3 py-1 rounded-md border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
             category === 'ciqual'
-              ? 'border-blue-500 bg-blue-50 text-blue-700'
-              : 'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200'
+              ? 'border-primary-500 bg-primary-50 text-primary-700'
+              : 'border-line bg-surface-sunken text-body hover:bg-surface-strong'
           }`}
           onClick={() => setCategory('ciqual')}
         >
@@ -274,10 +274,10 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
           type="button"
           role="tab"
           aria-selected={category === 'off'}
-          className={`px-3 py-1 rounded-md border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+          className={`px-3 py-1 rounded-md border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
             category === 'off'
-              ? 'border-blue-500 bg-blue-50 text-blue-700'
-              : 'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200'
+              ? 'border-primary-500 bg-primary-50 text-primary-700'
+              : 'border-line bg-surface-sunken text-body hover:bg-surface-strong'
           }`}
           onClick={() => setCategory('off')}
         >
@@ -288,7 +288,7 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
       <div className="flex gap-2">
         <div className="relative min-w-0 flex-1">
           <Search
-            className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-subtle"
             aria-hidden="true"
           />
           <input
@@ -305,7 +305,7 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
                 ? 'Rechercher (ex: riz, poulet, pomme)'
                 : 'Rechercher un produit (ex: yaourt Danone)'
             }
-            className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full field-input py-2 pl-10 pr-4"
             role="combobox"
             aria-expanded={expanded}
             aria-controls={listboxId}
@@ -328,10 +328,10 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
           aria-expanded={scannerOpen}
           aria-label="Scanner un code-barres"
           title="Scanner un code-barres"
-          className={`flex flex-shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+          className={`flex flex-shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
             scannerOpen
-              ? 'border-blue-500 bg-blue-50 text-blue-700'
-              : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+              ? 'border-primary-500 bg-primary-50 text-primary-700'
+              : 'border-line-strong text-body hover:bg-surface-muted'
           }`}
         >
           <ScanBarcode className="h-5 w-5" aria-hidden="true" />
@@ -348,8 +348,8 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
           role={barcodeMessage.type === 'error' ? 'alert' : 'status'}
           className={`rounded-md border p-3 text-sm ${
             barcodeMessage.type === 'error'
-              ? 'border-red-200 bg-red-50 text-red-700'
-              : 'border-gray-200 bg-gray-50 text-gray-700'
+              ? 'border-danger-200 bg-danger-50 text-danger-700'
+              : 'border-line bg-surface-muted text-body'
           }`}
         >
           {barcodeMessage.text}
@@ -357,7 +357,7 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
             <button
               type="button"
               onClick={() => onCreateFood(barcodeMessage.draft!)}
-              className="mt-2 block rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+              className="mt-2 block rounded-md btn-primary px-3 py-1.5 text-sm font-medium"
             >
               Créer cet aliment
             </button>
@@ -371,9 +371,9 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
           qui défile, une liste absolue était coupée et un seul résultat restait visible. */}
       {expanded && (
         <div data-testid="food-search-results">
-          <div className="max-h-72 w-full overflow-y-auto overscroll-contain rounded-md border border-gray-200 bg-white shadow-sm">
+          <div className="max-h-72 w-full overflow-y-auto overscroll-contain rounded-md border border-line bg-surface shadow-sm">
             {loading && (
-              <div className="p-4 text-center text-sm text-gray-500">Recherche…</div>
+              <div className="p-4 text-center text-sm text-subtle">Recherche…</div>
             )}
 
             {!loading && items.length > 0 && (
@@ -392,7 +392,7 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => handleSelect(food)}
                         className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors focus:outline-none ${
-                          isActive ? 'bg-blue-50' : 'hover:bg-gray-50'
+                          isActive ? 'bg-primary-50' : 'hover:bg-surface-muted'
                         }`}
                       >
                         {food.imageUrl && (
@@ -404,17 +404,17 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
                           />
                         )}
                         <div className="flex-1">
-                          <div className="flex flex-wrap items-center gap-2 text-gray-900">
+                          <div className="flex flex-wrap items-center gap-2 text-ink">
                             <span className="font-medium">{food.name}</span>
                             {food.brand && (
-                              <span className="text-xs text-gray-500">{food.brand}</span>
+                              <span className="text-xs text-subtle">{food.brand}</span>
                             )}
                           </div>
-                          <div className="mt-1 text-xs text-gray-500">
+                          <div className="mt-1 text-xs text-subtle">
                             {Math.round(food.kcal_per_100g)} kcal · P {formatMacro(food.protein_g)} g · L {formatMacro(food.fat_g)} g · G {formatMacro(food.carbs_g)} g · F {formatMacro(food.fiber_g)} g (100 g)
                           </div>
                         </div>
-                        <span className="rounded bg-gray-100 px-2 py-1 text-[10px] font-semibold text-gray-600">
+                        <span className="rounded bg-surface-sunken px-2 py-1 text-[10px] font-semibold text-muted">
                           {food.source === 'ciqual' ? 'CIQUAL' : food.source === 'custom' ? 'PERSO' : 'OFF'}
                         </span>
                       </button>
@@ -425,7 +425,7 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
             )}
 
             {!loading && items.length === 0 && (
-              <div className="p-4 text-center text-sm text-gray-500">
+              <div className="p-4 text-center text-sm text-subtle">
                 {statusMessage ?? 'Aucun résultat'}
               </div>
             )}

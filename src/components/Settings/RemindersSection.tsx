@@ -95,7 +95,7 @@ export function RemindersSection({ weighInTime, logTime, onChange, onDeviceEnabl
     update: (time: string | null) => void
   ) => (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <label className="flex items-start gap-2 text-sm text-gray-700">
+      <label className="flex items-start gap-2 text-sm text-body">
         <input
           type="checkbox"
           className="mt-1"
@@ -103,8 +103,8 @@ export function RemindersSection({ weighInTime, logTime, onChange, onDeviceEnabl
           onChange={(e) => update(e.target.checked ? fallback : null)}
         />
         <span>
-          <span className="block font-medium text-gray-900">{label}</span>
-          <span className="block text-xs text-gray-500">{hint}</span>
+          <span className="block font-medium text-ink">{label}</span>
+          <span className="block text-xs text-subtle">{hint}</span>
         </span>
       </label>
       <div>
@@ -117,20 +117,20 @@ export function RemindersSection({ weighInTime, logTime, onChange, onDeviceEnabl
           value={value ?? fallback}
           disabled={value === null}
           onChange={(e) => update(e.target.value || fallback)}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:text-gray-400"
+          className="field-input px-3 py-2 text-sm disabled:text-subtle"
         />
       </div>
     </div>
   );
 
   return (
-    <section aria-labelledby="reminders-title" className="space-y-4 rounded-lg bg-white p-4 shadow-md sm:p-6">
+    <section aria-labelledby="reminders-title" className="space-y-4 panel p-4 sm:p-6">
       <div>
-        <h2 id="reminders-title" className="flex items-center gap-2 text-lg text-gray-900">
-          <BellRing className="h-5 w-5 text-gray-500" aria-hidden="true" />
+        <h2 id="reminders-title" className="flex items-center gap-2 text-lg text-ink">
+          <BellRing className="h-5 w-5 text-subtle" aria-hidden="true" />
           Rappels
         </h2>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-muted">
           Une notification à l’heure choisie, seulement si ce n’est pas déjà fait ce jour-là.
         </p>
       </div>
@@ -154,13 +154,13 @@ export function RemindersSection({ weighInTime, logTime, onChange, onDeviceEnabl
         )}
       </div>
 
-      <div className="rounded-md border border-gray-200 p-3" data-testid="push-device">
-        <p className="text-sm font-medium text-gray-900">Notifications sur cet appareil</p>
+      <div className="rounded-md border border-line p-3" data-testid="push-device">
+        <p className="text-sm font-medium text-ink">Notifications sur cet appareil</p>
         {deviceState === null ? (
-          <p className="mt-1 text-sm text-gray-500">Vérification…</p>
+          <p className="mt-1 text-sm text-subtle">Vérification…</p>
         ) : deviceState === 'enabled' || deviceState === 'disabled' ? (
           <>
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-1 text-sm text-muted">
               {deviceState === 'enabled'
                 ? 'Activées : cet appareil reçoit vos rappels.'
                 : 'Désactivées : activez-les pour recevoir vos rappels ici.'}
@@ -172,7 +172,7 @@ export function RemindersSection({ weighInTime, logTime, onChange, onDeviceEnabl
                     type="button"
                     onClick={test}
                     disabled={busy}
-                    className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                    className="rounded-md btn-secondary px-3 py-2 text-sm font-medium disabled:opacity-60"
                   >
                     Envoyer une notification de test
                   </button>
@@ -180,7 +180,7 @@ export function RemindersSection({ weighInTime, logTime, onChange, onDeviceEnabl
                     type="button"
                     onClick={disable}
                     disabled={busy}
-                    className="rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+                    className="rounded-md px-3 py-2 text-sm font-medium text-muted hover:bg-surface-muted disabled:opacity-60"
                   >
                     Désactiver sur cet appareil
                   </button>
@@ -190,7 +190,7 @@ export function RemindersSection({ weighInTime, logTime, onChange, onDeviceEnabl
                   type="button"
                   onClick={enable}
                   disabled={busy}
-                  className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:bg-blue-400"
+                  className="rounded-md btn-primary px-3 py-2 text-sm font-medium"
                 >
                   {busy ? 'Activation…' : 'Activer les notifications sur cet appareil'}
                 </button>
@@ -198,12 +198,12 @@ export function RemindersSection({ weighInTime, logTime, onChange, onDeviceEnabl
             </div>
           </>
         ) : (
-          <p className="mt-1 text-sm text-gray-600">{DEVICE_MESSAGES[deviceState]}</p>
+          <p className="mt-1 text-sm text-muted">{DEVICE_MESSAGES[deviceState]}</p>
         )}
         {message && (
           <p
             role={message.type === 'error' ? 'alert' : 'status'}
-            className={`mt-2 text-sm ${message.type === 'error' ? 'text-red-700' : 'text-green-700'}`}
+            className={`mt-2 text-sm ${message.type === 'error' ? 'text-danger-700' : 'text-success-700'}`}
           >
             {message.text}
           </p>

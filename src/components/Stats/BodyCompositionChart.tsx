@@ -5,6 +5,7 @@
 import type { WeightLog } from '../../lib/supabase';
 import { compositionChange, compositionPoints, CompositionPoint } from '../../utils/bodyComposition';
 import { parseLocalDate } from '../../utils/date';
+import { formatKg, formatSigned } from '../../utils/format';
 
 interface BodyCompositionChartProps {
   logs: readonly WeightLog[];
@@ -14,8 +15,7 @@ const WIDTH = 200;
 const HEIGHT = 56;
 const PAD = 4;
 
-const formatKg = (value: number) => `${value.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`;
-const formatSigned = (value: number) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${formatKg(Math.abs(value))}`;
+const formatSignedKg = (value: number) => `${formatSigned(value, 1)} kg`;
 const formatDate = (date: string) => parseLocalDate(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 
 function Sparkline({ points, values, label, strokeClass }: { points: CompositionPoint[]; values: number[]; label: string; strokeClass: string }) {
@@ -51,7 +51,7 @@ export function BodyCompositionChart({ logs }: BodyCompositionChartProps) {
 
   if (points.length === 0) {
     return (
-      <p className="rounded-lg bg-gray-50 p-4 text-sm text-gray-500">
+      <p className="rounded-lg bg-surface-muted p-4 text-sm text-subtle">
         Pour suivre votre masse grasse et votre masse maigre, ajoutez la composition de votre balance impédancemètre
         lors de vos pesées (carte « Ma pesée », section « Composition »).
       </p>
@@ -61,25 +61,25 @@ export function BodyCompositionChart({ logs }: BodyCompositionChartProps) {
   const last = points[points.length - 1];
   const change = compositionChange(points);
   const series = [
-    { label: 'Masse grasse', values: points.map((p) => p.fatKg), current: last.fatKg, delta: change?.fatKg, strokeClass: 'stroke-amber-500' },
-    { label: 'Masse maigre', values: points.map((p) => p.leanKg), current: last.leanKg, delta: change?.leanKg, strokeClass: 'stroke-kaizen-500' },
+    { label: 'Masse grasse', values: points.map((p) => p.fatKg), current: last.fatKg, delta: change?.fatKg, strokeClass: 'stroke-warning-500' },
+    { label: 'Masse maigre', values: points.map((p) => p.leanKg), current: last.leanKg, delta: change?.leanKg, strokeClass: 'stroke-brand-500' },
   ];
 
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {series.map((item) => (
-          <div key={item.label} role="group" aria-label={item.label} className="rounded-lg border border-gray-200 bg-white p-3">
-            <div className="text-xs font-medium text-gray-600">{item.label}</div>
+          <div key={item.label} role="group" aria-label={item.label} className="rounded-lg border border-line bg-surface p-3">
+            <div className="text-xs font-medium text-muted">{item.label}</div>
             <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-xl font-semibold text-gray-900">{formatKg(item.current)}</span>
-              {item.delta !== undefined && <span className="text-sm text-gray-600">{formatSigned(item.delta)}</span>}
+              <span className="text-xl font-semibold text-ink">{formatKg(item.current)}</span>
+              {item.delta !== undefined && <span className="text-sm text-muted">{formatSignedKg(item.delta)}</span>}
             </div>
             {points.length > 1 && <Sparkline points={points} values={item.values} label={item.label} strokeClass={item.strokeClass} />}
           </div>
         ))}
       </div>
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-subtle">
         {change
           ? `Évolution depuis le ${formatDate(change.since)} (${points.length} mesures). Mesures d’impédancemètre : comparez-les dans les mêmes conditions (le matin, à jeun).`
           : `Mesure du ${formatDate(last.date)}. Ajoutez une deuxième mesure pour voir l’évolution.`}

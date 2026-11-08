@@ -93,7 +93,7 @@ export function AccountMenu({ identity, onNavigate, onSignOut }: AccountMenuProp
   };
 
   const itemClass =
-    'flex w-full items-center gap-3 rounded-md px-3 py-3 text-left text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none sm:py-2';
+    'flex w-full items-center gap-3 rounded-md px-3 py-3 text-left text-sm text-body hover:bg-surface-sunken focus:bg-surface-sunken focus:outline-none sm:py-2';
 
   return (
     <>
@@ -111,11 +111,11 @@ export function AccountMenu({ identity, onNavigate, onSignOut }: AccountMenuProp
             setOpen(true);
           }
         }}
-        className="flex min-h-[44px] items-center gap-2 rounded-full p-1 text-sm text-gray-700 hover:bg-white/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-kaizen-500 sm:pr-3"
+        className="flex min-h-[44px] items-center gap-2 rounded-full p-1 text-sm text-body hover:bg-surface/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 sm:pr-3"
       >
         <Avatar identity={identity} className="h-9 w-9 text-sm" />
         <span className="hidden max-w-[16rem] truncate sm:inline">{displayName}</span>
-        <ChevronDown className="hidden h-4 w-4 text-gray-500 sm:block" aria-hidden="true" />
+        <ChevronDown className="hidden h-4 w-4 text-subtle sm:block" aria-hidden="true" />
       </button>
 
       {open &&
@@ -130,30 +130,30 @@ export function AccountMenu({ identity, onNavigate, onSignOut }: AccountMenuProp
               aria-label="Compte"
               onKeyDown={handleMenuKeyDown}
               style={{ '--menu-top': `${position.top}px`, '--menu-right': `${position.right}px` } as CSSProperties}
-              className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl bg-white p-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-xl sm:inset-x-auto sm:bottom-auto sm:right-[var(--menu-right)] sm:top-[var(--menu-top)] sm:w-64 sm:rounded-lg sm:border sm:border-gray-200 sm:pb-2"
+              className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl bg-surface p-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-xl sm:inset-x-auto sm:bottom-auto sm:right-[var(--menu-right)] sm:top-[var(--menu-top)] sm:w-64 sm:rounded-lg sm:border sm:border-line sm:pb-2"
             >
-              <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-gray-300 sm:hidden" aria-hidden="true" />
+              <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-line-strong sm:hidden" aria-hidden="true" />
               <div className="px-3 py-2" role="none">
-                <p className="text-xs text-gray-500">Connecté en tant que</p>
-                <p className="truncate text-sm font-medium text-gray-900">{displayName}</p>
-                {hasName && <p className="truncate text-xs text-gray-500">{identity.email}</p>}
+                <p className="text-xs text-subtle">Connecté en tant que</p>
+                <p className="truncate text-sm font-medium text-ink">{displayName}</p>
+                {hasName && <p className="truncate text-xs text-subtle">{identity.email}</p>}
               </div>
-              <div className="my-1 border-t border-gray-100" role="none" />
+              <div className="my-1 border-t border-line-subtle" role="none" />
               <button type="button" role="menuitem" className={itemClass} onClick={() => choose(() => onNavigate('profile'))}>
-                <User className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                <User className="h-4 w-4 text-subtle" aria-hidden="true" />
                 Mon profil
               </button>
               <button type="button" role="menuitem" className={itemClass} onClick={() => choose(() => onNavigate('account'))}>
-                <ShieldCheck className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                <ShieldCheck className="h-4 w-4 text-subtle" aria-hidden="true" />
                 Compte et sécurité
               </button>
               <button type="button" role="menuitem" className={itemClass} onClick={() => choose(() => onNavigate('settings'))}>
-                <Settings className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                <Settings className="h-4 w-4 text-subtle" aria-hidden="true" />
                 Paramètres
               </button>
-              <div className="my-1 border-t border-gray-100" role="none" />
+              <div className="my-1 border-t border-line-subtle" role="none" />
               <button type="button" role="menuitem" className={itemClass} onClick={() => choose(onSignOut)}>
-                <LogOut className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                <LogOut className="h-4 w-4 text-subtle" aria-hidden="true" />
                 Se déconnecter
               </button>
             </div>
