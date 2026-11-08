@@ -131,6 +131,8 @@ export function useFoodLibrary(userId: string | undefined) {
     usualFor,
     favoriteFoods,
     recentFoods: recentsShown,
+    /** Dernières entrées du journal (repas habituel des recettes) */
+    recentEntries: entries,
     personalFoods: personalNormalized,
     isFavorite: (food: NormalizedFood) => Boolean(findFavorite(food)),
     toggleFavorite,
