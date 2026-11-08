@@ -7,7 +7,7 @@ import { LoginForm } from './components/Auth/LoginForm';
 import { SignupForm } from './components/Auth/SignupForm';
 import { OnboardingForm } from './components/Onboarding/OnboardingForm';
 import { Header } from './components/Layout/Header';
-import { Navigation } from './components/Layout/Navigation';
+import { Navigation, AppView } from './components/Layout/Navigation';
 import { Dashboard } from './components/Dashboard/Dashboard';
 import { WeeklyTrends } from './components/Stats/WeeklyTrends';
 import { Settings } from './components/Settings/Settings';
@@ -20,7 +20,7 @@ function AppContent() {
   // Mode d'auth (login / signup) pour l'écran d'authentification
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   // Vue courante affichée dans l'application: dashboard, tendances ou paramètres
-  const [currentView, setCurrentView] = useState<'dashboard' | 'trends' | 'settings'>('dashboard');
+  const [currentView, setCurrentView] = useState<AppView>('dashboard');
   const [dashboardDate, setDashboardDate] = useState<string>(() => getTodayDate());
 
   // Écouteur global pour naviguer vers les paramètres depuis d'autres composants
@@ -118,7 +118,8 @@ function AppContent() {
       <Header />
       <Navigation currentView={currentView} onViewChange={setCurrentView} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* pb-28 sur mobile : place pour la barre d'onglets fixée en bas et le bouton « Ajouter » */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-28 sm:py-8">
         {currentView === 'dashboard' && (
           <Dashboard activeDate={dashboardDate} onActiveDateChange={setDashboardDate} />
         )}

@@ -53,26 +53,26 @@ export function GoalProgressCard({ goal, currentWeight }: GoalProgressCardProps)
   const progressBarWidth = Math.min(Math.max(time.percent, 0), 100);
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
+    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 sm:p-6 border border-blue-200">
       <div className="flex items-center gap-2 mb-4">
         <Target className="w-5 h-5 text-blue-600" />
         <h3 className="text-lg text-blue-600">Progression de l'objectif</h3>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <div className="bg-white rounded-md p-3">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
+        <div className="bg-white rounded-md p-2 sm:p-3">
           <div className="text-xs text-gray-600 mb-1">Poids actuel</div>
-          <div className="text-2xl font-bold text-gray-900">{currentWeight} kg</div>
+          <div className="text-lg sm:text-2xl font-bold text-gray-900">{currentWeight} kg</div>
         </div>
 
-        <div className="bg-white rounded-md p-3">
+        <div className="bg-white rounded-md p-2 sm:p-3">
           <div className="text-xs text-gray-600 mb-1">Objectif</div>
-          <div className="text-2xl font-bold text-blue-600">{goal.target_weight_kg} kg</div>
+          <div className="text-lg sm:text-2xl font-bold text-blue-600">{goal.target_weight_kg} kg</div>
         </div>
 
-        <div className="bg-white rounded-md p-3">
+        <div className="bg-white rounded-md p-2 sm:p-3">
           <div className="text-xs text-gray-600 mb-1">Reste à atteindre</div>
-          <div className="text-2xl font-bold text-gray-900">
+          <div className="text-lg sm:text-2xl font-bold text-gray-900">
             {progress.goal_reached ? '0.0 kg' : formatKg(progress.weight_change)}
           </div>
         </div>
