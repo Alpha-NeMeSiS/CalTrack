@@ -81,6 +81,9 @@ export interface Goal {
   duration_weeks?: number | null;
   start_date?: string | null;
   end_date?: string | null;
+  /** Migration 20261108172544 : ajustement accepté d'après la dépense réelle (kcal/j) */
+  calorie_adjustment_kcal?: number | null;
+  calorie_adjustment_at?: string | null;
   created_at: string;
 }
 
@@ -142,7 +145,16 @@ export interface Entry {
   created_at: string;
 }
 
-export interface WeightLog {
+/** Composition corporelle facultative (balance impédancemètre) */
+export interface BodyComposition {
+  body_fat_pct?: number | null;
+  muscle_mass_kg?: number | null;
+  bone_mass_kg?: number | null;
+  body_water_pct?: number | null;
+  visceral_fat_rating?: number | null;
+}
+
+export interface WeightLog extends BodyComposition {
   id: string;
   user_id: string;
   date: string;

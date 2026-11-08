@@ -126,3 +126,36 @@ export async function activateNewGoal(
   await upsertDailyTargetForGoal(userId, today, profile, goal);
   return goal;
 }
+
+/**
+ * Enregistre l'ajustement des calories accepté (ou 0 pour l'annuler) sur
+ * l'objectif, puis recalcule la cible du jour. Les jours passés gardent leur
+ * cible.
+ */
+export async function applyCalorieAdjustment({
+  userId,
+  goal,
+  adjustmentKcal,
+  profile,
+  today,
+  now = new Date(),
+}: {
+  userId: string;
+  goal: Goal;
+  adjustmentKcal: number;
+  profile: UserProfile;
+  today: string;
+  now?: Date;
+}): Promise<Goal> {
+  const { data, error } = await supabase
+    .from('goals')
+    .update({ calorie_adjustment_kcal: Math.round(adjustmentKcal), calorie_adjustment_at: now.toISOString() })
+    .eq('id', goal.id)
+    .select()
+    .single();
+  if (error) throw error;
+
+  const updated = { ...goal, ...(data as Partial<Goal>), calorie_adjustment_kcal: Math.round(adjustmentKcal) };
+  await upsertDailyTargetForGoal(userId, today, profile, updated);
+  return updated;
+}

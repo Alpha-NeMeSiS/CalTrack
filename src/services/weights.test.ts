@@ -72,4 +72,36 @@ describe('services/weights', () => {
     expect(supabaseMock.callsFor('profiles', 'update')).toHaveLength(0);
     expect(supabaseMock.callsFor('daily_targets', 'upsert')).toHaveLength(0);
   });
+
+  it('enregistre la composition avec la pesée, sans écraser les mesures laissées vides', async () => {
+    supabaseMock.setHandler(() => ({ data: { id: 'w' }, error: null }));
+    await upsertWeightLog('user-1', '2025-01-10', 79.6, { body_fat_pct: 18.5, muscle_mass_kg: undefined, bone_mass_kg: null });
+
+    const [call] = supabaseMock.calls;
+    expect(getOperationArgs(call, 'upsert')?.[0]).toEqual({ user_id: 'user-1', date: '2025-01-10', weight_kg: 79.6, body_fat_pct: 18.5 });
+  });
+
+  it('dernière pesée : la composition met aussi à jour le profil et la cible du jour', async () => {
+    supabaseMock.setHandler((call) => {
+      if (call.table === 'weight_logs' && hasOperation(call, 'select') && !hasOperation(call, 'upsert')) {
+        return { data: [{ date: '2025-01-10', weight_kg: 79.6 }], error: null };
+      }
+      return { data: { id: 'ok' }, error: null };
+    });
+
+    await recordWeight({
+      userId: 'user-1',
+      date: '2025-01-10',
+      weightKg: 79.6,
+      composition: { muscle_mass_kg: 60.1, bone_mass_kg: 3.2 },
+      profile,
+      goalForToday: makeGoal(),
+      today: '2025-01-10',
+    });
+
+    const [profileUpdate] = supabaseMock.callsFor('profiles', 'update');
+    expect(getOperationArgs(profileUpdate, 'update')?.[0]).toMatchObject({ poids_kg: 79.6, muscle_mass_kg: 60.1, bone_mass_kg: 3.2 });
+    const [target] = supabaseMock.callsFor('daily_targets', 'upsert');
+    expect(target).toBeDefined();
+  });
 });

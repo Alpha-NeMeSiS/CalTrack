@@ -181,6 +181,17 @@ describe('calculateCompleteTargets', () => {
     expect(targets.calories_kcal).toBe(expectedCalories);
     expect(targets.protein_g).toBe(140);
   });
+
+  it('ajoute l’ajustement accepté, sans descendre sous le plancher', () => {
+    const goal = { type: 'loss' as const, activity_level: 1.55, method: 'mifflin' as const, deficit_or_surplus_pct: 20, protein_g_per_kg: 2, fat_g_per_kg_min: 0.8 };
+    const base = calculateCompleteTargets(baseProfile, goal).calories_kcal;
+
+    expect(calculateCompleteTargets(baseProfile, { ...goal, calorie_adjustment_kcal: 150 }).calories_kcal).toBe(base + 150);
+    // Plancher homme : 1 500 kcal (au moins le métabolisme de base)
+    const floored = calculateCompleteTargets(baseProfile, { ...goal, calorie_adjustment_kcal: -1000 });
+    expect(floored.calories_kcal).toBe(getCalorieFloor(baseProfile, calculateBMR(baseProfile)));
+    expect(floored.calorie_floor_applied).toBe(true);
+  });
 });
 
 describe('calculateDailySummary', () => {

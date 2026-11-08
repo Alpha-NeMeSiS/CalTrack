@@ -24,6 +24,8 @@ export interface GoalParams {
   target_weight_kg?: number;
   duration_weeks?: number;
   start_date?: string;
+  /** Ajustement accepté d'après la dépense réelle (kcal/j), voir calorieAdjustment.ts */
+  calorie_adjustment_kcal?: number | null;
 }
 
 export interface MacroTargets {
@@ -259,7 +261,8 @@ export function calculateMacros(
 export function calculateCompleteTargets(profile: UserProfile, goal: GoalParams): MacroTargets {
   const bmr = calculateBMR(profile, goal.method);
   const tdee = calculateTDEE(bmr, goal.activity_level);
-  const rawCalories = calculateTargetCalories(tdee, goal.type, goal.deficit_or_surplus_pct);
+  const rawCalories =
+    calculateTargetCalories(tdee, goal.type, goal.deficit_or_surplus_pct) + Math.round(Number(goal.calorie_adjustment_kcal) || 0);
 
   // Garde-fou : un déficit ne doit pas descendre sous le plancher de sécurité
   const floor = getCalorieFloor(profile, bmr);

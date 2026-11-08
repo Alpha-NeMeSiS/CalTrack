@@ -5,11 +5,14 @@ import { supabase, Goal, WeightLog } from '../../lib/supabase';
 import { fetchActiveGoal } from '../../services/goals';
 import { fetchWeightLogs } from '../../services/weights';
 import { WeightChart } from './WeightChart';
+import { BodyCompositionChart } from './BodyCompositionChart';
 import { InsightsPanel } from './InsightsPanel';
+import { CalorieAdjustmentCard } from './CalorieAdjustmentCard';
 import { useAuth } from '../../contexts/useAuth';
 import { calculateBMR, calculateDailySummary, calculateTDEE } from '../../utils/calculations';
 import { chooseBmrMethod } from '../../utils/goals';
-import type { DayIntake } from '../../utils/insights';
+import { DayIntake, estimateExpenditure } from '../../utils/insights';
+import { CalorieAdjustmentSuggestion, suggestCalorieAdjustment } from '../../utils/calorieAdjustment';
 import { addDaysToDateString, getTodayDate, parseLocalDate } from '../../utils/date';
 import {
   DayStatus,
@@ -76,6 +79,10 @@ export function WeeklyTrends() {
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
 
   // Dépense « théorique » (formule) pour la comparer à la dépense estimée
+  // Suggestion appliquée : gardée affichée (message de confirmation) après la
+  // mise à jour de l'objectif, qui ne propose plus rien pendant une semaine
+  const [appliedSuggestion, setAppliedSuggestion] = useState<CalorieAdjustmentSuggestion | null>(null);
+
   const formulaExpenditure = useMemo(
     () =>
       activeGoal && profile
@@ -208,6 +215,17 @@ export function WeeklyTrends() {
   const axisMax = ticks[ticks.length - 1];
   const toPx = (value: number) => Math.round((Math.max(0, value) / axisMax) * CHART_HEIGHT_PX);
 
+  // Ajustement des calories proposé d'après la dépense réelle
+  const suggestion =
+    activeGoal && profile
+      ? suggestCalorieAdjustment({
+          profile,
+          goal: activeGoal,
+          expenditure: estimateExpenditure(monthData.map((day) => day.intake), weights, getTodayDate()),
+        })
+      : null;
+  const shownSuggestion = appliedSuggestion ?? suggestion;
+
   return (
     <div className="bg-white rounded-lg shadow-md">
       <div className="p-4 sm:p-6 border-b border-gray-200">
@@ -221,6 +239,20 @@ export function WeeklyTrends() {
           today={getTodayDate()}
           formulaExpenditureKcal={formulaExpenditure}
         />
+
+        {shownSuggestion && activeGoal && profile && user && (
+          <CalorieAdjustmentCard
+            userId={user.id}
+            profile={profile}
+            goal={activeGoal}
+            suggestion={shownSuggestion}
+            today={getTodayDate()}
+            onApplied={(updated) => {
+              setAppliedSuggestion(shownSuggestion);
+              setActiveGoal(updated);
+            }}
+          />
+        )}
 
         <div>
           <h3 className="text-sm text-gray-900 mb-4">Graphique des calories</h3>
@@ -313,6 +345,11 @@ export function WeeklyTrends() {
         <div>
           <h3 className="text-sm text-gray-900 mb-3">Évolution du poids (90 jours)</h3>
           <WeightChart points={weights} targetWeight={targetWeight} />
+        </div>
+
+        <div>
+          <h3 className="text-sm text-gray-900 mb-3">Composition corporelle (90 jours)</h3>
+          <BodyCompositionChart logs={weights} />
         </div>
 
         <div>

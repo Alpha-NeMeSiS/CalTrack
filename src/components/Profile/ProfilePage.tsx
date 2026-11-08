@@ -6,7 +6,7 @@
 // (une seule source de vérité, comme sur le tableau de bord).
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { KeyRound, Save } from 'lucide-react';
-import { supabase, Goal } from '../../lib/supabase';
+import { supabase, Goal, BodyComposition } from '../../lib/supabase';
 import { useAuth } from '../../contexts/useAuth';
 import { fetchActiveGoal, upsertDailyTargetForGoal } from '../../services/goals';
 import { recordWeight } from '../../services/weights';
@@ -83,6 +83,20 @@ export function ProfilePage() {
     loadGoal();
   }, [loadGoal]);
 
+  // Composition mise à jour ailleurs (pesée avec composition) : le formulaire
+  // la reprend, sinon un enregistrement remettrait les anciennes valeurs
+  const { body_fat_pct, body_water_pct, visceral_fat_rating, muscle_mass_kg, bone_mass_kg } = profile ?? {};
+  useEffect(() => {
+    setForm((current) => ({
+      ...current,
+      body_fat_pct: body_fat_pct ?? undefined,
+      body_water_pct: body_water_pct ?? undefined,
+      visceral_fat_rating: visceral_fat_rating ?? undefined,
+      muscle_mass_kg: muscle_mass_kg ?? undefined,
+      bone_mass_kg: bone_mass_kg ?? undefined,
+    }));
+  }, [body_fat_pct, body_water_pct, visceral_fat_rating, muscle_mass_kg, bone_mass_kg]);
+
   if (!user || !profile) return null;
 
   const handleSave = async (event: FormEvent) => {
@@ -129,11 +143,12 @@ export function ProfilePage() {
   };
 
   // Pesée : si c'est la plus récente, le poids du profil et la cible du jour suivent
-  const handleSaveWeight = async (weightKg: number, date: string) => {
+  const handleSaveWeight = async (weightKg: number, date: string, composition?: BodyComposition) => {
     const profileUpdated = await recordWeight({
       userId: user.id,
       date,
       weightKg,
+      composition,
       profile,
       goalForToday: activeGoal,
       today: getTodayDate(),

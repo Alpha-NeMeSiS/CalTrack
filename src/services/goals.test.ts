@@ -4,6 +4,7 @@ import { makeDailyTarget, makeGoal, makeProfile } from '../test/fixtures';
 import { buildDailyTargetPayload } from '../utils/goals';
 import {
   activateNewGoal,
+  applyCalorieAdjustment,
   ensureDailyTargetForDate,
   fetchActiveGoal,
   fetchUserGoals,
@@ -189,5 +190,38 @@ describe('activateNewGoal', () => {
 
     await expect(activateNewGoal('user-1', profile, input, '2025-02-10')).rejects.toThrow('update refusé');
     expect(supabaseMock.callsFor('daily_targets')).toHaveLength(0);
+  });
+});
+
+describe('applyCalorieAdjustment', () => {
+  it('enregistre l’ajustement sur l’objectif et recalcule la cible du jour', async () => {
+    const goal = makeGoal({ id: 'goal-1' });
+    supabaseMock.setHandler((call) =>
+      call.table === 'goals'
+        ? { data: { ...goal, calorie_adjustment_kcal: 150, calorie_adjustment_at: '2026-11-08T10:00:00.000Z' }, error: null }
+        : { data: makeDailyTarget(), error: null }
+    );
+
+    const updated = await applyCalorieAdjustment({
+      userId: 'user-1',
+      goal,
+      adjustmentKcal: 150,
+      profile,
+      today: '2026-11-08',
+      now: new Date('2026-11-08T10:00:00Z'),
+    });
+
+    expect(updated.calorie_adjustment_kcal).toBe(150);
+    const [update] = supabaseMock.callsFor('goals', 'update');
+    expect(getOperationArgs(update, 'update')?.[0]).toEqual({
+      calorie_adjustment_kcal: 150,
+      calorie_adjustment_at: '2026-11-08T10:00:00.000Z',
+    });
+    expect(update.operations).toContainEqual({ method: 'eq', args: ['id', 'goal-1'] });
+
+    const [target] = supabaseMock.callsFor('daily_targets', 'upsert');
+    const payload = getOperationArgs(target, 'upsert')?.[0] as { calories_kcal: number; date: string };
+    expect(payload.date).toBe('2026-11-08');
+    expect(payload.calories_kcal).toBe(buildDailyTargetPayload('user-1', '2026-11-08', profile, { ...goal, calorie_adjustment_kcal: 150 }).calories_kcal);
   });
 });
