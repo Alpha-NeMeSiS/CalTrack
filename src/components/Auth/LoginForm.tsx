@@ -4,6 +4,7 @@
 // réinitialisation (ForgotPasswordForm).
 import { useState } from 'react';
 import { useAuth } from '../../contexts/useAuth';
+import { describeAuthError } from '../../utils/authErrors';
 import { ForgotPasswordForm } from './ForgotPasswordForm';
 
 export function LoginForm({ onToggle }: { onToggle: () => void }) {
@@ -23,7 +24,7 @@ export function LoginForm({ onToggle }: { onToggle: () => void }) {
     const { error } = await signIn(email, password);
 
     if (error) {
-      setError(error.message);
+      setError(describeAuthError(error, 'La connexion a échoué. Vérifiez votre connexion internet puis réessayez.'));
     }
 
     setLoading(false);

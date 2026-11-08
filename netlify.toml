@@ -6,6 +6,11 @@
   to = "/.netlify/functions/off-search"
   status = 200
 
+[[redirects]]
+  from = "/api/off/product"
+  to = "/.netlify/functions/off-product"
+  status = 200
+
 # PWA : le service worker et le manifeste doivent toujours être revalidés,
 # sinon une ancienne version du service worker resterait active.
 [[headers]]
