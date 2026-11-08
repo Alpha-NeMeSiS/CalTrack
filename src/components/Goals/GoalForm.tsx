@@ -8,6 +8,7 @@ import type { Goal } from '../../lib/supabase';
 import { useAuth } from '../../contexts/useAuth';
 import { calculateBMR, calculateTDEE, calculateOptimalDeficitOrSurplus } from '../../utils/calculations';
 import { getTodayDate } from '../../utils/date';
+import { formatNumber } from '../../utils/format';
 import { activateNewGoal } from '../../services/goals';
 import { validateGoalInput } from '../../utils/validation';
 import { chooseBmrMethod, DEFAULT_PROTEIN_G_PER_KG } from '../../utils/goals';
@@ -85,12 +86,12 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
   return (
       <div className="space-y-6">
         <div>
-          <label htmlFor="activity_level" className="block text-sm font-medium text-gray-700 mb-2">Niveau d'activité</label>
+          <label htmlFor="activity_level" className="field-label mb-2">Niveau d'activité</label>
           <select
             id="activity_level"
             value={goalData.activity_level}
             onChange={(e) => setGoalData({ ...goalData, activity_level: Number(e.target.value) })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 field-input"
           >
             <option value={1.2}>Sédentaire (peu ou pas d'exercice)</option>
             <option value={1.375}>Légèrement actif (1-3 jours/semaine)</option>
@@ -101,7 +102,7 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Type d'objectif</label>
+          <label className="field-label mb-2">Type d'objectif</label>
           <div className="grid grid-cols-3 gap-4">
             <button
               type="button"
@@ -109,8 +110,8 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
               onClick={() => setGoalData({ ...goalData, goal_type: 'loss' })}
               className={`py-3 px-4 border-2 rounded-md font-medium transition-colors ${
                 goalData.goal_type === 'loss'
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                  ? 'border-primary-600 bg-primary-50 text-primary-700'
+                  : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
               }`}
             >
               Perte
@@ -121,8 +122,8 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
               onClick={() => setGoalData({ ...goalData, goal_type: 'maintain' })}
               className={`py-3 px-4 border-2 rounded-md font-medium transition-colors ${
                 goalData.goal_type === 'maintain'
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                  ? 'border-primary-600 bg-primary-50 text-primary-700'
+                  : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
               }`}
             >
               Maintien
@@ -133,8 +134,8 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
               onClick={() => setGoalData({ ...goalData, goal_type: 'gain' })}
               className={`py-3 px-4 border-2 rounded-md font-medium transition-colors ${
                 goalData.goal_type === 'gain'
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                  ? 'border-primary-600 bg-primary-50 text-primary-700'
+                  : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
               }`}
             >
               Prise
@@ -143,8 +144,8 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
         </div>
 
         {goalData.goal_type === 'maintain' && (
-          <div className="bg-blue-50 p-4 rounded-md border border-blue-200">
-            <label htmlFor="duration_maintain" className="block text-xs font-medium text-blue-900 mb-1">
+          <div className="bg-primary-50 p-4 rounded-md border border-primary-200">
+            <label htmlFor="duration_maintain" className="block text-xs font-medium text-primary-900 mb-1">
               Durée du maintien en semaines (optionnel)
             </label>
             <input
@@ -158,9 +159,9 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
               max="260"
               step="1"
               placeholder="Ex: 12"
-              className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
-            <p className="mt-1 text-xs text-blue-600">
+            <p className="mt-1 text-xs text-primary-600">
               Laissez vide pour un objectif de maintien sans limite de temps
             </p>
           </div>
@@ -168,15 +169,15 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
 
         {goalData.goal_type !== 'maintain' && (
           <>
-            <div className="bg-blue-50 p-4 rounded-md border border-blue-200">
-              <h3 className="text-sm text-blue-900 mb-2">Objectif de poids et durée (optionnel)</h3>
-              <p className="text-xs text-blue-700 mb-3">
+            <div className="bg-primary-50 p-4 rounded-md border border-primary-200">
+              <h3 className="text-sm text-primary-900 mb-2">Objectif de poids et durée (optionnel)</h3>
+              <p className="text-xs text-primary-700 mb-3">
                 Définissez un poids cible et une durée pour un calcul automatique du déficit/surplus optimal
               </p>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="target_weight" className="block text-xs font-medium text-blue-900 mb-1">
+                  <label htmlFor="target_weight" className="block text-xs font-medium text-primary-900 mb-1">
                     Poids cible (kg)
                   </label>
                   <input
@@ -204,12 +205,12 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
                     max="300"
                     step="0.1"
                     placeholder="Ex: 70"
-                    className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="duration" className="block text-xs font-medium text-blue-900 mb-1">
+                  <label htmlFor="duration" className="block text-xs font-medium text-primary-900 mb-1">
                     Durée (semaines)
                   </label>
                   <input
@@ -236,21 +237,21 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
                     min="1"
                     max="260"
                     placeholder="Ex: 20"
-                    className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
 
               {goalData.target_weight_kg && goalData.duration_weeks && profile && (
-                <div className="mt-3 text-xs text-blue-700">
-                  Changement : {Math.abs(goalData.target_weight_kg - profile.poids_kg).toFixed(1)} kg sur {goalData.duration_weeks} semaines
-                  ({(Math.abs(goalData.target_weight_kg - profile.poids_kg) / goalData.duration_weeks).toFixed(2)} kg/sem)
+                <div className="mt-3 text-xs text-primary-700">
+                  Changement : {formatNumber(Math.abs(goalData.target_weight_kg - profile.poids_kg), 1)} kg sur {goalData.duration_weeks} semaines
+                  ({formatNumber(Math.abs(goalData.target_weight_kg - profile.poids_kg) / goalData.duration_weeks, 2)} kg/sem)
                 </div>
               )}
             </div>
 
             <div>
-              <label htmlFor="deficit" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="deficit" className="field-label mb-1">
                 {goalData.goal_type === 'loss' ? 'Déficit calorique (%)' : 'Surplus calorique (%)'}
               </label>
               <input
@@ -261,9 +262,9 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
                 min="5"
                 max="30"
                 step="5"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 field-input"
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-subtle">
                 {goalData.target_weight_kg && goalData.duration_weeks
                   ? 'Calculé automatiquement'
                   : goalData.goal_type === 'loss'
@@ -275,20 +276,20 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
         )}
 
         <div>
-          <label htmlFor="protein_g_per_kg" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="protein_g_per_kg" className="field-label mb-1">
             Protéines
           </label>
           <select
             id="protein_g_per_kg"
             value={goalData.protein_g_per_kg}
             onChange={(e) => setGoalData({ ...goalData, protein_g_per_kg: Number(e.target.value) })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 field-input"
           >
             {PROTEIN_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-subtle">
             Par kg de poids de référence (votre poids, plafonné à un IMC de 25).
           </p>
         </div>
@@ -318,18 +319,18 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
         )}
 
         {activeGoal && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-subtle">
             Enregistrer crée un nouvel objectif qui démarre aujourd'hui : la progression repart de votre poids actuel.
           </p>
         )}
 
         {success && (
-          <p role="status" className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-md text-sm">
+          <p role="status" className="p-3 bg-success-50 border border-success-200 text-success-700 rounded-md text-sm">
             {success}
           </p>
         )}
         {error && (
-          <p role="alert" className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+          <p role="alert" className="p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded-md text-sm">
             {error}
           </p>
         )}
@@ -338,7 +339,7 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
           type="button"
           onClick={handleSaveGoal}
           disabled={loading}
-          className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-md transition-colors"
+          className="flex items-center justify-center gap-2 w-full py-3 px-4 btn-primary font-medium rounded-md"
         >
           <Save className="w-5 h-5" />
           {loading ? 'Enregistrement...' : 'Enregistrer l\'objectif'}

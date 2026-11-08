@@ -33,16 +33,16 @@ export function GoalTargetsPreview({ profile, goal, onApplyDuration }: GoalTarge
 
   return (
     <section aria-label="Aperçu de votre objectif quotidien" className="space-y-3">
-      <div className="rounded-md border border-kaizen-200 bg-kaizen-50 p-4">
-        <div className="flex items-center gap-2 text-sm font-medium text-kaizen-700">
+      <div className="rounded-md border border-brand-200 bg-brand-50 p-4">
+        <div className="flex items-center gap-2 text-sm font-medium text-brand-700">
           <Flame className="h-4 w-4" aria-hidden="true" />
           Votre objectif quotidien
         </div>
         <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <span className="text-2xl font-bold text-gray-900" data-testid="preview-calories">
+          <span className="text-2xl font-bold text-ink" data-testid="preview-calories">
             {targets.calories_kcal} kcal
           </span>
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-muted">
             Protéines {formatG(targets.protein_g)} · Lipides {formatG(targets.fat_g)} · Glucides{' '}
             {formatG(targets.carbs_g)} · Fibres {formatG(targets.fiber_g ?? 0)}
           </span>
@@ -50,7 +50,7 @@ export function GoalTargetsPreview({ profile, goal, onApplyDuration }: GoalTarge
       </div>
 
       {targets.calorie_floor_applied && (
-        <div role="status" className="flex gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <div role="status" className="flex gap-2 rounded-md border border-warning-200 bg-warning-50 p-3 text-sm text-warning-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
           <p>
             Calories relevées à {targets.calories_kcal} kcal : un déficit plus important descendrait sous votre
@@ -60,7 +60,7 @@ export function GoalTargetsPreview({ profile, goal, onApplyDuration }: GoalTarge
       )}
 
       {warnings.map((warning) => (
-        <div key={warning.message} role="status" className="flex gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <div key={warning.message} role="status" className="flex gap-2 rounded-md border border-warning-200 bg-warning-50 p-3 text-sm text-warning-800">
           <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
           <div className="space-y-2">
             <p>{warning.message}</p>
@@ -68,7 +68,7 @@ export function GoalTargetsPreview({ profile, goal, onApplyDuration }: GoalTarge
               <button
                 type="button"
                 onClick={() => onApplyDuration(warning.suggestedDurationWeeks!)}
-                className="rounded-md border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                className="rounded-md border border-warning-300 bg-surface px-3 py-1 text-xs font-medium text-warning-900 hover:bg-warning-100"
               >
                 Utiliser {warning.suggestedDurationWeeks} semaines
               </button>

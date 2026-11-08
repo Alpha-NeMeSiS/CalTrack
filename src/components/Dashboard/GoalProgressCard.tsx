@@ -8,6 +8,8 @@ import { calculateGoalProgress } from '../../utils/calculations';
 import { useEffect, useState } from 'react';
 import { computeTimeProgress, humanizeRemainingDays, addWeeks, formatDateFR } from '../../lib/timeProgress';
 import { parseLocalDate } from '../../utils/date';
+import { formatDecimal, formatNumber, formatPercent, formatSigned } from '../../utils/format';
+import { Badge, type BadgeTone } from '../ui/Badge';
 
 interface GoalProgressCardProps {
   goal: Goal;
@@ -38,12 +40,11 @@ export function GoalProgressCard({ goal, currentWeight }: GoalProgressCardProps)
     now
   );
 
-  const formatKg = (value: number) => `${value > 0 ? '+' : ''}${value.toFixed(1)} kg`;
-  const weightStatus = progress.goal_reached
-    ? { label: 'Objectif atteint', className: 'bg-green-100 text-green-700' }
+  const weightStatus: { label: string; tone: BadgeTone } = progress.goal_reached
+    ? { label: 'Objectif atteint', tone: 'success' }
     : progress.on_track
-      ? { label: 'Dans les temps', className: 'bg-blue-100 text-blue-700' }
-      : { label: 'En retard sur le rythme prévu', className: 'bg-orange-100 text-orange-700' };
+      ? { label: 'Dans les temps', tone: 'info' }
+      : { label: 'En retard sur le rythme prévu', tone: 'warning' };
 
   // parseLocalDate : évite le décalage UTC de new Date('YYYY-MM-DD')
   const start = parseLocalDate(goal.start_date);
@@ -53,27 +54,27 @@ export function GoalProgressCard({ goal, currentWeight }: GoalProgressCardProps)
   const progressBarWidth = Math.min(Math.max(time.percent, 0), 100);
 
   return (
-    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 sm:p-6 border border-blue-200">
+    <div className="bg-gradient-to-br from-info-50 to-info-100 rounded-lg p-4 sm:p-6 border border-info-200">
       <div className="flex items-center gap-2 mb-4">
-        <Target className="w-5 h-5 text-blue-600" />
-        <h3 className="text-lg text-blue-600">Progression de l'objectif</h3>
+        <Target className="w-5 h-5 text-info-600" />
+        <h3 className="text-lg text-info-600">Progression de l'objectif</h3>
       </div>
 
       <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
-        <div className="bg-white rounded-md p-2 sm:p-3">
-          <div className="text-xs text-gray-600 mb-1">Poids actuel</div>
-          <div className="text-lg sm:text-2xl font-bold text-gray-900">{currentWeight} kg</div>
+        <div className="bg-surface rounded-md p-2 sm:p-3">
+          <div className="text-xs text-muted mb-1">Poids actuel</div>
+          <div className="text-lg sm:text-2xl font-bold text-ink">{currentWeight} kg</div>
         </div>
 
-        <div className="bg-white rounded-md p-2 sm:p-3">
-          <div className="text-xs text-gray-600 mb-1">Objectif</div>
-          <div className="text-lg sm:text-2xl font-bold text-blue-600">{goal.target_weight_kg} kg</div>
+        <div className="bg-surface rounded-md p-2 sm:p-3">
+          <div className="text-xs text-muted mb-1">Objectif</div>
+          <div className="text-lg sm:text-2xl font-bold text-info-600">{formatDecimal(Number(goal.target_weight_kg))} kg</div>
         </div>
 
-        <div className="bg-white rounded-md p-2 sm:p-3">
-          <div className="text-xs text-gray-600 mb-1">Reste à atteindre</div>
-          <div className="text-lg sm:text-2xl font-bold text-gray-900">
-            {progress.goal_reached ? '0.0 kg' : formatKg(progress.weight_change)}
+        <div className="bg-surface rounded-md p-2 sm:p-3">
+          <div className="text-xs text-muted mb-1">Reste à atteindre</div>
+          <div className="text-lg sm:text-2xl font-bold text-ink">
+            {formatSigned(progress.goal_reached ? 0 : progress.weight_change, 1)} kg
           </div>
         </div>
       </div>
@@ -81,19 +82,19 @@ export function GoalProgressCard({ goal, currentWeight }: GoalProgressCardProps)
       {hasStartWeight && (
         <div className="mb-4" data-testid="weight-progress">
           <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
-            <span className="text-sm font-medium text-gray-700">Progression du poids</span>
-            <span className={`text-xs font-medium px-2 py-1 rounded-full ${weightStatus.className}`}>
+            <span className="text-sm font-medium text-body">Progression du poids</span>
+            <Badge tone={weightStatus.tone} className="rounded-full">
               {weightStatus.label}
-            </span>
+            </Badge>
           </div>
-          <div className="flex justify-between text-xs text-gray-600 mb-1">
-            <span>Départ : {progress.start_weight} kg</span>
+          <div className="flex justify-between text-xs text-muted mb-1">
+            <span>Départ : {formatDecimal(progress.start_weight)} kg</span>
             <span>
-              Évolution : {formatKg(progress.actual_weight_change)} · {progress.weight_progress_pct.toFixed(0)} %
+              Évolution : {formatSigned(progress.actual_weight_change, 1)} kg · {formatPercent(progress.weight_progress_pct)}
             </span>
           </div>
           <div
-            className="relative w-full h-3 bg-white rounded-full overflow-hidden"
+            className="relative w-full h-3 bg-surface rounded-full overflow-hidden"
             role="progressbar"
             aria-label="Progression vers le poids cible"
             aria-valuemin={0}
@@ -101,7 +102,7 @@ export function GoalProgressCard({ goal, currentWeight }: GoalProgressCardProps)
             aria-valuenow={Math.round(progress.weight_progress_pct)}
           >
             <div
-              className="absolute top-0 left-0 h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-500"
+              className="absolute top-0 left-0 h-full bg-gradient-to-r from-success-400 to-success-600 transition-all duration-500"
               style={{ width: `${progress.weight_progress_pct}%` }}
             />
           </div>
@@ -110,49 +111,49 @@ export function GoalProgressCard({ goal, currentWeight }: GoalProgressCardProps)
 
       <div className="mb-4">
         <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium text-gray-700">Progression temporelle</span>
-          <span className="text-sm text-blue-600">{time.percent.toFixed(1)}%</span>
+          <span className="text-sm font-medium text-body">Progression temporelle</span>
+          <span className="text-sm text-info-600">{formatPercent(time.percent, 1)}</span>
         </div>
-        <div className="relative w-full h-3 bg-white rounded-full overflow-hidden" role="progressbar" aria-label="Progression temporelle" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(time.percent)}>
+        <div className="relative w-full h-3 bg-surface rounded-full overflow-hidden" role="progressbar" aria-label="Progression temporelle" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(time.percent)}>
           <div
-            className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500"
+            className="absolute top-0 left-0 h-full bg-gradient-to-r from-info-500 to-info-600 transition-all duration-500"
             style={{ width: `${progressBarWidth}%` }}
           />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-sm">
-        <div className="flex items-center gap-2 bg-white rounded-md p-2">
-          <Calendar className="w-4 h-4 text-gray-500" />
+        <div className="flex items-center gap-2 bg-surface rounded-md p-2">
+          <Calendar className="w-4 h-4 text-subtle" />
           <div>
-            <div className="text-xs text-gray-500">Temps écoulé</div>
-            <div className="font-semibold text-gray-900">
+            <div className="text-xs text-subtle">Temps écoulé</div>
+            <div className="font-semibold text-ink">
               {Math.floor(time.elapsedWeeks)} semaine{time.elapsedWeeks > 1 ? 's' : ''} 
               {time.elapsedDays % 7 > 0 ? ` et ${time.elapsedDays % 7} jour${time.elapsedDays % 7 > 1 ? 's' : ''}` : ''} 
-              <span className="text-xs text-gray-500 ml-1">/ {Math.ceil(time.totalWeeks)} sem.</span>
+              <span className="text-xs text-subtle ml-1">/ {Math.ceil(time.totalWeeks)} sem.</span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 bg-white rounded-md p-2">
-          <TrendingUp className="w-4 h-4 text-gray-500" />
+        <div className="flex items-center gap-2 bg-surface rounded-md p-2">
+          <TrendingUp className="w-4 h-4 text-subtle" />
           <div>
-            <div className="text-xs text-gray-500">Rythme cible</div>
-            <div className="font-semibold text-gray-900">
-              {Math.abs(progress.weekly_rate_target).toFixed(2)} kg/sem
+            <div className="text-xs text-subtle">Rythme cible</div>
+            <div className="font-semibold text-ink">
+              {formatNumber(Math.abs(progress.weekly_rate_target), 2)} kg/sem
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mt-4 pt-4 border-t border-blue-200">
+      <div className="mt-4 pt-4 border-t border-info-200">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">Date de fin prévue :</span>
-          <span className="font-semibold text-gray-900">{formatDateFR(end)}</span>
+          <span className="text-muted">Date de fin prévue :</span>
+          <span className="font-semibold text-ink">{formatDateFR(end)}</span>
         </div>
         <div className="flex items-center justify-between text-sm mt-2">
-          <span className="text-gray-600">Temps restant :</span>
-          <span className="font-semibold text-blue-600">
+          <span className="text-muted">Temps restant :</span>
+          <span className="font-semibold text-info-600">
             {time.percent >= 100 ? 'Terminé' : humanizeRemainingDays(now, end, start)}
           </span>
         </div>

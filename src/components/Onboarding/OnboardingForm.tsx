@@ -11,6 +11,7 @@ import {
   UserProfile,
 } from '../../utils/calculations';
 import { getTodayDate } from '../../utils/date';
+import { formatNumber } from '../../utils/format';
 import { activateNewGoal } from '../../services/goals';
 import { chooseBmrMethod } from '../../utils/goals';
 import { upsertWeightLog } from '../../services/weights';
@@ -145,20 +146,20 @@ export function OnboardingForm() {
 
   if (step === 1) {
     return (
-      <div className="w-full max-w-2xl mx-auto p-8 bg-white rounded-lg shadow-md">
-        <h2 className="text-2xl text-gray-900 mb-6">Informations personnelles</h2>
+      <div className="w-full max-w-2xl mx-auto p-8 panel">
+        <h2 className="text-2xl text-ink mb-6">Informations personnelles</h2>
 
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Sexe</label>
+            <label className="field-label mb-2">Sexe</label>
             <div className="flex gap-4">
               <button
                 type="button"
                 onClick={() => updateFormData('sexe', 'M')}
                 className={`flex-1 py-3 px-4 border-2 rounded-md font-medium transition-colors ${
                   formData.sexe === 'M'
-                    ? 'border-blue-600 bg-blue-50 text-blue-700'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                    ? 'border-primary-600 bg-primary-50 text-primary-700'
+                    : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
                 }`}
               >
                 Homme
@@ -168,8 +169,8 @@ export function OnboardingForm() {
                 onClick={() => updateFormData('sexe', 'F')}
                 className={`flex-1 py-3 px-4 border-2 rounded-md font-medium transition-colors ${
                   formData.sexe === 'F'
-                    ? 'border-blue-600 bg-blue-50 text-blue-700'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                    ? 'border-primary-600 bg-primary-50 text-primary-700'
+                    : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
                 }`}
               >
                 Femme
@@ -178,7 +179,7 @@ export function OnboardingForm() {
           </div>
 
           <div>
-            <label htmlFor="date_naissance" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="date_naissance" className="field-label mb-1">
               Date de naissance
             </label>
             <input
@@ -188,13 +189,13 @@ export function OnboardingForm() {
               onChange={(e) => updateFormData('date_naissance', e.target.value)}
               max={getTodayDate()}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 field-input"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="taille_cm" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="taille_cm" className="field-label mb-1">
                 Taille (cm)
               </label>
               <input
@@ -205,12 +206,12 @@ export function OnboardingForm() {
                 min="100"
                 max="250"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 field-input"
               />
             </div>
 
             <div>
-              <label htmlFor="poids_kg" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="poids_kg" className="field-label mb-1">
                 Poids (kg)
               </label>
               <input
@@ -222,13 +223,13 @@ export function OnboardingForm() {
                 max="300"
                 step="0.1"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 field-input"
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="body_fat_pct" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="body_fat_pct" className="field-label mb-1">
               Pourcentage de masse grasse (optionnel)
             </label>
             <input
@@ -240,15 +241,15 @@ export function OnboardingForm() {
               max={PROFILE_LIMITS.body_fat_pct.max}
               step="0.1"
               placeholder="Si connu"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 field-input"
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-subtle">
               Si fourni, la formule Katch-McArdle sera utilisée pour plus de précision
             </p>
           </div>
 
           {profileErrors.length > 0 && (
-            <div role="alert" className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+            <div role="alert" className="p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded-md text-sm">
               <ul className="list-disc pl-5 space-y-1">
                 {profileErrors.map((message) => (
                   <li key={message}>{message}</li>
@@ -261,7 +262,7 @@ export function OnboardingForm() {
             type="button"
             onClick={handleNextStep}
             disabled={!formData.date_naissance}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-md transition-colors"
+            className="w-full py-3 px-4 btn-primary font-medium rounded-md"
           >
             Suivant
           </button>
@@ -271,22 +272,22 @@ export function OnboardingForm() {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-8 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl text-gray-900 mb-6">Votre objectif</h2>
+    <div className="w-full max-w-2xl mx-auto p-8 panel">
+      <h2 className="text-2xl text-ink mb-6">Votre objectif</h2>
 
       {error && (
-        <div className="mb-6 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+        <div className="mb-6 p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded-md text-sm">
           {error}
         </div>
       )}
 
       <div className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Niveau d'activité</label>
+          <label className="field-label mb-2">Niveau d'activité</label>
           <select
             value={formData.activity_level}
             onChange={(e) => updateFormData('activity_level', Number(e.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 field-input"
           >
             <option value={1.2}>Sédentaire (peu ou pas d'exercice)</option>
             <option value={1.375}>Légèrement actif (1-3 jours/semaine)</option>
@@ -297,15 +298,15 @@ export function OnboardingForm() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Objectif</label>
+          <label className="field-label mb-2">Objectif</label>
           <div className="grid grid-cols-3 gap-4">
             <button
               type="button"
               onClick={() => updateFormData('goal_type', 'loss')}
               className={`py-3 px-4 border-2 rounded-md font-medium transition-colors ${
                 formData.goal_type === 'loss'
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                  ? 'border-primary-600 bg-primary-50 text-primary-700'
+                  : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
               }`}
             >
               Perte de poids
@@ -315,8 +316,8 @@ export function OnboardingForm() {
               onClick={() => updateFormData('goal_type', 'maintain')}
               className={`py-3 px-4 border-2 rounded-md font-medium transition-colors ${
                 formData.goal_type === 'maintain'
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                  ? 'border-primary-600 bg-primary-50 text-primary-700'
+                  : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
               }`}
             >
               Maintien
@@ -326,8 +327,8 @@ export function OnboardingForm() {
               onClick={() => updateFormData('goal_type', 'gain')}
               className={`py-3 px-4 border-2 rounded-md font-medium transition-colors ${
                 formData.goal_type === 'gain'
-                  ? 'border-blue-600 bg-blue-50 text-blue-700'
-                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                  ? 'border-primary-600 bg-primary-50 text-primary-700'
+                  : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
               }`}
             >
               Prise de masse
@@ -336,14 +337,14 @@ export function OnboardingForm() {
         </div>
 
         {formData.goal_type === 'maintain' ? (
-          <div className="bg-blue-50 p-4 rounded-md border border-blue-200">
-            <h3 className="text-sm font-semibold text-blue-900 mb-2">Durée de maintien (optionnel)</h3>
-            <p className="text-xs text-blue-700 mb-3">
+          <div className="bg-primary-50 p-4 rounded-md border border-primary-200">
+            <h3 className="text-sm font-semibold text-primary-900 mb-2">Durée de maintien (optionnel)</h3>
+            <p className="text-xs text-primary-700 mb-3">
               Définissez une durée pour votre période de maintien. Cela vous permettra de suivre votre progression.
             </p>
 
             <div>
-              <label htmlFor="duration_weeks_maintain" className="block text-xs font-medium text-blue-900 mb-1">
+              <label htmlFor="duration_weeks_maintain" className="block text-xs font-medium text-primary-900 mb-1">
                 Durée (semaines)
               </label>
               <input
@@ -354,24 +355,24 @@ export function OnboardingForm() {
                 min="1"
                 max="260"
                 placeholder="Ex: 12"
-                className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
-              <p className="mt-1 text-xs text-blue-600">
+              <p className="mt-1 text-xs text-primary-600">
                 Laissez vide pour un objectif de maintien sans limite de temps
               </p>
             </div>
           </div>
         ) : (
           <>
-            <div className="bg-blue-50 p-4 rounded-md border border-blue-200">
-              <h3 className="text-sm font-semibold text-blue-900 mb-2">Définir une période et un objectif de poids</h3>
-              <p className="text-xs text-blue-700 mb-3">
+            <div className="bg-primary-50 p-4 rounded-md border border-primary-200">
+              <h3 className="text-sm font-semibold text-primary-900 mb-2">Définir une période et un objectif de poids</h3>
+              <p className="text-xs text-primary-700 mb-3">
                 Vous pouvez définir un poids cible et une durée. Le déficit/surplus calorique sera calculé automatiquement.
               </p>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="target_weight_kg" className="block text-xs font-medium text-blue-900 mb-1">
+                  <label htmlFor="target_weight_kg" className="block text-xs font-medium text-primary-900 mb-1">
                     Poids cible (kg)
                   </label>
                   <input
@@ -406,12 +407,12 @@ export function OnboardingForm() {
                     max="300"
                     step="0.1"
                     placeholder="Ex: 70"
-                    className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="duration_weeks" className="block text-xs font-medium text-blue-900 mb-1">
+                  <label htmlFor="duration_weeks" className="block text-xs font-medium text-primary-900 mb-1">
                     Durée (semaines)
                   </label>
                   <input
@@ -445,21 +446,21 @@ export function OnboardingForm() {
                     min="1"
                     max="260"
                     placeholder="Ex: 20"
-                    className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
               </div>
 
               {formData.target_weight_kg && formData.duration_weeks && (
-                <div className="mt-3 text-xs text-blue-700">
-                  Changement de poids : {Math.abs(formData.target_weight_kg - formData.poids_kg).toFixed(1)} kg sur {formData.duration_weeks} semaines
-                  ({(Math.abs(formData.target_weight_kg - formData.poids_kg) / formData.duration_weeks).toFixed(2)} kg/semaine)
+                <div className="mt-3 text-xs text-primary-700">
+                  Changement de poids : {formatNumber(Math.abs(formData.target_weight_kg - formData.poids_kg), 1)} kg sur {formData.duration_weeks} semaines
+                  ({formatNumber(Math.abs(formData.target_weight_kg - formData.poids_kg) / formData.duration_weeks, 2)} kg/semaine)
                 </div>
               )}
             </div>
 
             <div>
-              <label htmlFor="deficit_or_surplus_pct" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="deficit_or_surplus_pct" className="field-label mb-1">
                 {formData.goal_type === 'loss' ? 'Déficit calorique (%)' : 'Surplus calorique (%)'}
               </label>
               <input
@@ -470,9 +471,9 @@ export function OnboardingForm() {
                 min="5"
                 max="30"
                 step="5"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 field-input"
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-subtle">
                 {formData.target_weight_kg && formData.duration_weeks
                   ? 'Calculé automatiquement selon votre objectif'
                   : formData.goal_type === 'loss'
@@ -522,7 +523,7 @@ export function OnboardingForm() {
           <button
             type="button"
             onClick={() => setStep(1)}
-            className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
+            className="flex-1 py-3 px-4 btn-secondary font-medium rounded-md"
           >
             Retour
           </button>
@@ -530,7 +531,7 @@ export function OnboardingForm() {
             type="button"
             onClick={handleSubmit}
             disabled={loading}
-            className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-md transition-colors"
+            className="flex-1 py-3 px-4 btn-primary font-medium rounded-md"
           >
             {loading ? 'Création...' : 'Commencer'}
           </button>

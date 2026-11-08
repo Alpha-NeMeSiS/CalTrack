@@ -35,28 +35,28 @@ export function ForgotPasswordForm({ initialEmail = '', onBack }: ForgotPassword
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-gray-900 mb-2">Mot de passe oublié</h2>
+    <div className="w-full max-w-md mx-auto p-8 panel">
+      <h2 className="text-2xl font-bold text-ink mb-2">Mot de passe oublié</h2>
 
       {sent ? (
-        <div role="status" className="mt-4 p-3 bg-green-50 border border-green-200 text-green-800 rounded-md text-sm">
+        <div role="status" className="mt-4 p-3 bg-success-50 border border-success-200 text-success-800 rounded-md text-sm">
           Si un compte existe pour <span className="font-medium">{email.trim()}</span>, un email contenant un lien
           de réinitialisation vient d'être envoyé. Pensez à vérifier vos courriers indésirables.
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted">
             Saisissez l'adresse de votre compte : nous vous enverrons un lien pour choisir un nouveau mot de passe.
           </p>
 
           {error && (
-            <div role="alert" className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+            <div role="alert" className="p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded-md text-sm">
               {error}
             </div>
           )}
 
           <div>
-            <label htmlFor="reset-email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="reset-email" className="field-label mb-1">
               Email
             </label>
             <input
@@ -66,14 +66,14 @@ export function ForgotPasswordForm({ initialEmail = '', onBack }: ForgotPassword
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 field-input"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading || !email.trim()}
-            className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-md transition-colors"
+            className="w-full py-2 px-4 btn-primary font-medium rounded-md"
           >
             {loading ? 'Envoi…' : 'Envoyer le lien'}
           </button>
@@ -81,7 +81,7 @@ export function ForgotPasswordForm({ initialEmail = '', onBack }: ForgotPassword
       )}
 
       <p className="mt-4 text-center text-sm">
-        <button type="button" onClick={onBack} className="text-blue-600 hover:text-blue-700 font-medium">
+        <button type="button" onClick={onBack} className="text-primary-600 hover:text-primary-700 font-medium">
           Retour à la connexion
         </button>
       </p>

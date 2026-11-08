@@ -35,16 +35,16 @@ describe('getDayStatus', () => {
 
 describe('getBarColorClass', () => {
   it('utilise des couleurs neutres pour « non renseigné » et « en cours »', () => {
-    expect(getBarColorClass('not_logged', 0, 2000)).toBe('bg-gray-200');
-    expect(getBarColorClass('in_progress', 800, 2000)).toBe('bg-blue-400');
+    expect(getBarColorClass('not_logged', 0, 2000)).toBe('bg-surface-strong');
+    expect(getBarColorClass('in_progress', 800, 2000)).toBe('bg-info-400');
   });
 
   it("nuance selon l'écart à l'objectif", () => {
-    expect(getBarColorClass('ok', 2000, 2000)).toBe('bg-green-500');
+    expect(getBarColorClass('ok', 2000, 2000)).toBe('bg-success-500');
     expect(getBarColorClass('under', 1700, 2000)).toBe('bg-orange-400');
     expect(getBarColorClass('under', 1000, 2000)).toBe('bg-orange-600');
-    expect(getBarColorClass('over', 2200, 2000)).toBe('bg-red-400');
-    expect(getBarColorClass('over', 2800, 2000)).toBe('bg-red-600');
+    expect(getBarColorClass('over', 2200, 2000)).toBe('bg-danger-400');
+    expect(getBarColorClass('over', 2800, 2000)).toBe('bg-danger-600');
   });
 });
 

@@ -52,20 +52,20 @@ const CHART_HEIGHT_PX = 200;
 
 // Styles des lignes de l'historique selon le statut
 const ROW_STYLES: Record<DayStatus, { bg: string; text: string }> = {
-  not_logged: { bg: 'bg-gray-50', text: 'text-gray-500' },
-  in_progress: { bg: 'bg-blue-50', text: 'text-blue-700' },
-  under: { bg: 'bg-orange-50', text: 'text-orange-600' },
-  ok: { bg: 'bg-green-50', text: 'text-green-600' },
-  over: { bg: 'bg-red-50', text: 'text-red-600' },
+  not_logged: { bg: 'bg-surface-muted', text: 'text-subtle' },
+  in_progress: { bg: 'bg-info-50', text: 'text-info-700' },
+  under: { bg: 'bg-orange-50', text: 'text-orange-700' },
+  ok: { bg: 'bg-success-50', text: 'text-success-700' },
+  over: { bg: 'bg-danger-50', text: 'text-danger-700' },
 };
 
 // Légende du graphique
 const LEGEND: Array<{ label: string; swatch: string }> = [
-  { label: DAY_STATUS_LABELS.ok, swatch: 'bg-green-500' },
+  { label: DAY_STATUS_LABELS.ok, swatch: 'bg-success-500' },
   { label: DAY_STATUS_LABELS.under, swatch: 'bg-orange-400' },
-  { label: DAY_STATUS_LABELS.over, swatch: 'bg-red-500' },
-  { label: DAY_STATUS_LABELS.in_progress, swatch: 'bg-blue-400' },
-  { label: DAY_STATUS_LABELS.not_logged, swatch: 'bg-gray-200' },
+  { label: DAY_STATUS_LABELS.over, swatch: 'bg-danger-500' },
+  { label: DAY_STATUS_LABELS.in_progress, swatch: 'bg-info-400' },
+  { label: DAY_STATUS_LABELS.not_logged, swatch: 'bg-surface-strong' },
 ];
 
 // Composant principal pour afficher les tendances hebdomadaires
@@ -183,20 +183,20 @@ export function WeeklyTrends() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl text-gray-900 mb-4">Tendances 7 jours</h2>
-        <div className="text-center py-8 text-gray-500">Chargement...</div>
+      <div className="panel p-6">
+        <h2 className="text-xl text-ink mb-4">Tendances 7 jours</h2>
+        <div className="text-center py-8 text-subtle">Chargement...</div>
       </div>
     );
   }
 
   if (loadError) {
     return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl text-gray-900 mb-4">Tendances et historique</h2>
+      <div className="panel p-6">
+        <h2 className="text-xl text-ink mb-4">Tendances et historique</h2>
         <div role="alert" className="text-center py-8">
-          <p className="text-red-700 mb-4">{loadError}</p>
-          <button type="button" onClick={() => loadWeekData()} className="btn-kaizen">
+          <p className="text-danger-700 mb-4">{loadError}</p>
+          <button type="button" onClick={() => loadWeekData()} className="btn-brand">
             Réessayer
           </button>
         </div>
@@ -227,9 +227,9 @@ export function WeeklyTrends() {
   const shownSuggestion = appliedSuggestion ?? suggestion;
 
   return (
-    <div className="bg-white rounded-lg shadow-md">
-      <div className="p-4 sm:p-6 border-b border-gray-200">
-        <h2 className="text-xl text-gray-900">Tendances et historique</h2>
+    <div className="panel">
+      <div className="p-4 sm:p-6 border-b border-line">
+        <h2 className="text-xl text-ink">Tendances et historique</h2>
       </div>
 
       <div className="p-4 sm:p-6 space-y-6">
@@ -255,15 +255,15 @@ export function WeeklyTrends() {
         )}
 
         <div>
-          <h3 className="text-sm text-gray-900 mb-4">Graphique des calories</h3>
-          <div className="bg-gray-50 p-3 sm:p-4 rounded-lg">
+          <h3 className="text-sm text-ink mb-4">Graphique des calories</h3>
+          <div className="bg-surface-muted p-3 sm:p-4 rounded-lg">
             <div className="flex gap-2" role="img" aria-label="Calories consommées et objectif sur les 7 derniers jours">
               {/* Axe Y : graduations positionnées sur la même échelle que les barres */}
               <div className="relative w-10 shrink-0" style={{ height: CHART_HEIGHT_PX }} aria-hidden="true">
                 {ticks.map((tick) => (
                   <span
                     key={tick}
-                    className="absolute right-0 translate-y-1/2 text-[11px] leading-none text-gray-500"
+                    className="absolute right-0 translate-y-1/2 text-[11px] leading-none text-subtle"
                     style={{ bottom: toPx(tick) }}
                   >
                     {tick}
@@ -276,7 +276,7 @@ export function WeeklyTrends() {
                 {ticks.map((tick) => (
                   <div
                     key={tick}
-                    className="absolute inset-x-0 border-t border-gray-200"
+                    className="absolute inset-x-0 border-t border-line"
                     style={{ bottom: toPx(tick) }}
                     aria-hidden="true"
                   />
@@ -297,7 +297,7 @@ export function WeeklyTrends() {
                       <div key={day.date} className="relative flex h-full flex-1 items-end justify-center group" title={tooltip}>
                         {day.summary && (
                           <div
-                            className="absolute inset-x-0 border-t-2 border-dashed border-blue-400"
+                            className="absolute inset-x-0 border-t-2 border-dashed border-info-400"
                             style={{ bottom: toPx(target) }}
                             aria-hidden="true"
                           />
@@ -309,7 +309,7 @@ export function WeeklyTrends() {
                           />
                         ) : (
                           // Journée non renseignée (ou sans objectif) : simple repère gris
-                          <div className="w-full h-1 rounded-t bg-gray-200" />
+                          <div className="w-full h-1 rounded-t bg-surface-strong" />
                         )}
                       </div>
                     );
@@ -321,7 +321,7 @@ export function WeeklyTrends() {
             {/* Jours de la semaine, alignés sur les barres */}
             <div className="flex gap-1.5 sm:gap-2 mt-1 pl-12">
               {weekData.map((day) => (
-                <div key={day.date} className="flex-1 text-center text-xs text-gray-600 font-medium capitalize">
+                <div key={day.date} className="flex-1 text-center text-xs text-muted font-medium capitalize">
                   {parseLocalDate(day.date).toLocaleDateString('fr-FR', { weekday: 'short' })}
                 </div>
               ))}
@@ -331,30 +331,36 @@ export function WeeklyTrends() {
               {LEGEND.map((item) => (
                 <div key={item.label} className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded ${item.swatch}`} />
-                  <span className="text-gray-600">{item.label}</span>
+                  <span className="text-muted">{item.label}</span>
                 </div>
               ))}
               <div className="flex items-center gap-2">
-                <div className="w-6 border-t-2 border-dashed border-blue-400" />
-                <span className="text-gray-600">Objectif</span>
+                <div className="w-6 border-t-2 border-dashed border-info-400" />
+                <span className="text-muted">Objectif</span>
               </div>
             </div>
           </div>
         </div>
 
         <div>
-          <h3 className="text-sm text-gray-900 mb-3">Évolution du poids (90 jours)</h3>
+          <h3 className="text-sm text-ink mb-3">Évolution du poids (90 jours)</h3>
           <WeightChart points={weights} targetWeight={targetWeight} />
         </div>
 
         <div>
-          <h3 className="text-sm text-gray-900 mb-3">Composition corporelle (90 jours)</h3>
+          <h3 className="text-sm text-ink mb-3">Composition corporelle (90 jours)</h3>
           <BodyCompositionChart logs={weights} />
         </div>
 
         <div>
-          <h3 className="text-sm text-gray-900 mb-3">Historique détaillé (30 jours)</h3>
-          <div className="space-y-2 h-[400px] overflow-y-auto pr-2 scrollbar scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400 scrollbar-track-transparent">
+          <h3 id="daily-history-title" className="text-sm text-ink mb-3">Historique détaillé (30 jours)</h3>
+          {/* Zone défilante atteignable au clavier (flèches) et nommée pour les lecteurs d'écran */}
+          <div
+            role="region"
+            aria-labelledby="daily-history-title"
+            tabIndex={0}
+            className="space-y-2 h-[400px] overflow-y-auto pr-2 rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+          >
             {monthData.map((day) => {
               const date = parseLocalDate(day.date);
               const dayName = date.toLocaleDateString('fr-FR', { weekday: 'short' });
@@ -362,12 +368,12 @@ export function WeeklyTrends() {
 
               if (!day.summary || !day.dayStatus) {
                 return (
-                  <div key={day.date} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                  <div key={day.date} className="flex items-center justify-between p-3 bg-surface-muted rounded-md">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 text-sm font-medium text-gray-600 capitalize">{dayName}</div>
-                      <div className="text-xs text-gray-500">{dateStr}</div>
+                      <div className="w-12 text-sm font-medium text-muted capitalize">{dayName}</div>
+                      <div className="text-xs text-subtle">{dateStr}</div>
                     </div>
-                    <div className="text-sm text-gray-400">Pas d’objectif</div>
+                    <div className="text-sm text-subtle">Pas d’objectif</div>
                   </div>
                 );
               }
@@ -379,12 +385,12 @@ export function WeeklyTrends() {
                 return (
                   <div key={day.date} className={`flex items-center justify-between p-3 ${style.bg} rounded-md`}>
                     <div className="flex items-center gap-3">
-                      <div className="w-12 text-sm font-medium text-gray-600 capitalize">{dayName}</div>
-                      <div className="text-xs text-gray-500">{dateStr}</div>
+                      <div className="w-12 text-sm font-medium text-muted capitalize">{dayName}</div>
+                      <div className="text-xs text-subtle">{dateStr}</div>
                     </div>
                     <div className={`text-sm ${style.text}`}>
                       {statusLabel}
-                      <span className="text-gray-400"> · objectif {Math.round(day.summary.target.calories_kcal)} kcal</span>
+                      <span className="text-subtle"> · objectif {Math.round(day.summary.target.calories_kcal)} kcal</span>
                     </div>
                   </div>
                 );
@@ -393,17 +399,17 @@ export function WeeklyTrends() {
               return (
                 <div key={day.date} className={`flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3 p-3 ${style.bg} rounded-md`}>
                   <div className="flex items-center gap-3">
-                    <div className="w-12 text-sm font-medium text-gray-900 capitalize">{dayName}</div>
-                    <div className="text-xs text-gray-600">{dateStr}</div>
+                    <div className="w-12 text-sm font-medium text-ink capitalize">{dayName}</div>
+                    <div className="text-xs text-muted">{dateStr}</div>
                   </div>
 
                   <div className="flex items-start justify-between gap-3 sm:justify-end sm:gap-4">
-                    <div className="text-sm text-gray-700">
+                    <div className="text-sm text-body">
                       <div className="flex items-baseline gap-1">
                         <span className="font-semibold">{Math.round(day.summary.consumed.calories_kcal)}</span>
-                        <span className="text-gray-500"> / {Math.round(day.summary.target.calories_kcal)} kcal</span>
+                        <span className="text-subtle"> / {Math.round(day.summary.target.calories_kcal)} kcal</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-500 mt-1">
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-subtle mt-1">
                         <div>P: <span className="font-semibold">{Math.round(day.summary.consumed.protein_g)} g</span> / {Math.round(day.summary.target.protein_g)} g</div>
                         <div>L: <span className="font-semibold">{Math.round(day.summary.consumed.fat_g)} g</span> / {Math.round(day.summary.target.fat_g)} g</div>
                         <div>G: <span className="font-semibold">{Math.round(day.summary.consumed.carbs_g)} g</span> / {Math.round(day.summary.target.carbs_g)} g</div>

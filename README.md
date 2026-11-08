@@ -73,6 +73,7 @@ Par défaut, Vite démarre sur `http://localhost:5173`.
 - `npm run test:watch` : relance les tests à chaque modification.
 - `npm run test:coverage` : génère un rapport de couverture dans `coverage/`.
 - `npm run test:db` : rejoue les migrations sur un Postgres vierge et lance les tests SQL (voir « Tests de la base de données »).
+- `npm run test:a11y` : contrôle l'accessibilité des écrans principaux avec axe (voir « Accessibilité »).
 
 ## Tests
 
@@ -86,6 +87,12 @@ Les tests utilisent **Vitest** (environnement `jsdom`) et **Testing Library**. I
 | `src/services/` | Accès Supabase des objectifs et cibles quotidiennes |
 | `src/components/` | Composants React (Dashboard, AddEntryModal, FoodSearch, LoginForm, MacroCard, CalorieRing) |
 | `netlify/tests/` | Fonctions Netlify `off-search` et `off-product` (proxy Open Food Facts) |
+
+### Accessibilité
+
+`npm run test:a11y` construit l'application, la sert localement avec un Supabase simulé (`e2e/fixtures/supabase.ts`) et passe les écrans principaux (connexion, journal, ajout d'un aliment, tendances, objectif, profil, paramètres, compte) au crible d'**axe** (règles WCAG 2.2 A et AA), sur mobile et sur ordinateur, en thème clair et sombre. La CI (job « Accessibilité ») le lance à chaque push. En local, installer Chromium une fois : `npx playwright install chromium`.
+
+Les couleurs, composants et règles d'interface sont décrits dans [`docs/design-system.md`](docs/design-system.md).
 
 Outils partagés dans `src/test/` :
 
@@ -169,16 +176,19 @@ netlify/
   tests/           # Tests des fonctions Netlify
 src/
   components/      # UI par domaine (Auth, Dashboard, Journal, Goals, Profile, Account, etc.)
+    ui/            # Composants de base du design system (Button, Card, Badge, Field)
   contexts/        # Contexte d'authentification (AuthContext) et hook useAuth
   lib/             # Clients/abstractions (supabase, APIs nutrition)
   services/        # Accès Supabase (objectifs, cibles quotidiennes)
   utils/           # Calculs métier, dates locales, logique des objectifs (fonctions pures)
   test/            # Outils partagés pour les tests
+e2e/               # Contrôle d'accessibilité (Playwright + axe, Supabase simulé)
 supabase/
   functions/       # Edge Functions (rappels push)
   migrations/      # Schéma SQL versionné
   templates/       # Modèles d'emails Supabase Auth en français
 docs/
+  design-system.md # Couleurs par rôle, composants, règles de contraste
   emails.md        # Configurer l'envoi des emails (SMTP, modèles)
 ```
 

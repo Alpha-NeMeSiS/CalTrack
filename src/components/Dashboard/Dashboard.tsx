@@ -256,14 +256,14 @@ export function Dashboard({
   const header = (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <Calendar className="w-6 h-6 text-gray-600" aria-hidden="true" />
+        <Calendar className="w-6 h-6 text-muted" aria-hidden="true" />
         <input
           type="date"
           aria-label="Date affichée"
           value={selectedDate}
           onChange={(e) => handleDateChange(e.target.value)}
           max={getTodayDate()}
-          className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-kaizen-500"
+          className="px-3 py-2 border border-line-strong rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
       </div>
 
@@ -271,7 +271,7 @@ export function Dashboard({
         <button
           type="button"
           onClick={() => setShowAddModal(true)}
-          className="btn-kaizen hidden sm:flex items-center gap-2"
+          className="btn-brand hidden sm:flex items-center gap-2"
         >
           <Plus className="w-5 h-5" aria-hidden="true" />
           Ajouter
@@ -285,7 +285,7 @@ export function Dashboard({
       <div className="max-w-7xl mx-auto space-y-6">
         {header}
         <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Chargement...</div>
+          <div className="text-subtle">Chargement...</div>
         </div>
       </div>
     );
@@ -296,9 +296,9 @@ export function Dashboard({
       <div className="max-w-7xl mx-auto space-y-6">
         {header}
         <div className="max-w-2xl mx-auto text-center py-12">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-            <p className="text-red-700 mb-4">{loadError}</p>
-            <button onClick={() => loadDayData()} className="btn-kaizen">
+          <div className="bg-danger-50 border border-danger-200 rounded-lg p-6">
+            <p className="text-danger-700 mb-4">{loadError}</p>
+            <button onClick={() => loadDayData()} className="btn-brand">
               Réessayer
             </button>
           </div>
@@ -312,11 +312,11 @@ export function Dashboard({
       <div className="max-w-7xl mx-auto space-y-6">
         {header}
         <div className="max-w-2xl mx-auto text-center py-12">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-            <h3 className="text-lg text-yellow-900 mb-2">
+          <div className="bg-warning-50 border border-warning-200 rounded-lg p-6">
+            <h3 className="text-lg text-warning-900 mb-2">
               Aucun objectif défini pour cette date
             </h3>
-            <p className="text-yellow-700 mb-4">
+            <p className="text-warning-700 mb-4">
               {goalForDate
                 ? "Impossible de calculer la cible de cette journée."
                 : 'Vous devez définir un objectif pour commencer le suivi de vos apports.'}
@@ -325,7 +325,7 @@ export function Dashboard({
               <button
                 type="button"
                 onClick={() => openGoalPage()}
-                className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors"
+                className="inline-block px-6 py-3 btn-primary font-medium rounded-md"
               >
                 Définir un objectif
               </button>
@@ -345,26 +345,26 @@ export function Dashboard({
       {header}
 
       {actionError && (
-        <div role="alert" className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+        <div role="alert" className="p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded-md text-sm">
           {actionError}
         </div>
       )}
 
       {/* Objectif de perte/prise terminé : suivi automatique en maintien */}
       {goalForDate && goalForDate.type !== 'maintain' && goalForDate.end_date && isGoalEndedOn(goalForDate, selectedDate) && (
-        <div role="status" className="flex flex-col gap-3 rounded-lg border border-kaizen-200 bg-kaizen-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-kaizen-800">
+        <div role="status" className="flex flex-col gap-3 rounded-lg border border-brand-200 bg-brand-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-brand-800">
             <span className="font-semibold">Objectif terminé le {formatDateFR(parseLocalDate(goalForDate.end_date))}.</span>{' '}
             Vos journées sont maintenant suivies en maintien ({Math.round(target.calories_kcal)} kcal).
           </p>
-          <button type="button" onClick={openGoalPage} className="btn-kaizen whitespace-nowrap text-sm">
+          <button type="button" onClick={openGoalPage} className="btn-brand whitespace-nowrap text-sm">
             Définir un nouvel objectif
           </button>
         </div>
       )}
 
       {/* 1. Calories et macros du jour : l'information principale, en premier */}
-      <div className="card-kaizen">
+      <div className="card-glass">
         <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-8 p-2 sm:p-6">
           <div className="flex-shrink-0">
             <CalorieRing
@@ -383,7 +383,7 @@ export function Dashboard({
               consumed={summary.consumed.protein_g}
               target={summary.target.protein_g}
               unit="g"
-              color="bg-kaizen-500"
+              color="bg-brand-500"
               display={preferences.macroDisplay}
             />
             <MacroCard
@@ -391,7 +391,7 @@ export function Dashboard({
               consumed={summary.consumed.fat_g}
               target={summary.target.fat_g}
               unit="g"
-              color="bg-shonen-300"
+              color="bg-accent-300"
               display={preferences.macroDisplay}
             />
             <MacroCard
@@ -399,7 +399,7 @@ export function Dashboard({
               consumed={summary.consumed.carbs_g}
               target={summary.target.carbs_g}
               unit="g"
-              color="bg-kaizen-300"
+              color="bg-brand-300"
               display={preferences.macroDisplay}
             />
             <MacroCard
@@ -407,7 +407,7 @@ export function Dashboard({
               consumed={summary.consumed.fiber_g}
               target={summary.target.fiber_g ?? 25}
               unit="g"
-              color="bg-emerald-400"
+              color="bg-success-400"
               display={preferences.macroDisplay}
             />
           </div>
@@ -415,51 +415,51 @@ export function Dashboard({
       </div>
 
       {/* 2. Journal du jour, regroupé par repas */}
-      <div className="card-kaizen">
-        <div className="flex flex-wrap items-center justify-between gap-2 p-4 sm:p-6 border-b border-white/20">
-          <h2 className="text-lg text-shonen-700">Journal du jour</h2>
+      <div className="card-glass">
+        <div className="flex flex-wrap items-center justify-between gap-2 p-4 sm:p-6 border-b border-surface/20">
+          <h2 className="text-lg text-accent-700">Journal du jour</h2>
           <button
             type="button"
             onClick={handleCopyPreviousDay}
             disabled={copying}
-            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="rounded-md btn-secondary bg-surface px-3 py-1.5 text-sm disabled:opacity-50"
           >
             {copying ? 'Copie…' : 'Copier les repas de la veille'}
           </button>
         </div>
 
         {journalMessage && (
-          <p role="status" className="px-4 pt-3 text-sm text-kaizen-700 sm:px-6">{journalMessage}</p>
+          <p role="status" className="px-4 pt-3 text-sm text-brand-700 sm:px-6">{journalMessage}</p>
         )}
 
         {entries.length === 0 ? (
-          <div className="p-12 text-center text-gray-600">
+          <div className="p-12 text-center text-muted">
             <p>Aucun aliment enregistré pour cette journée</p>
             <button
               onClick={() => setShowAddModal(true)}
-              className="mt-4 btn-kaizen"
+              className="mt-4 btn-brand"
             >
               Ajouter votre premier aliment
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-line-subtle">
             {groupEntriesByMeal(entries, (meal) => getMealLabel(preferences, meal)).map((group) => (
               <section key={group.meal} aria-label={group.label} className="py-2">
                 <div className="flex items-baseline justify-between px-4 pt-2 sm:px-6">
-                  <h3 className="text-sm font-semibold text-gray-700">{group.label}</h3>
-                  <span className="text-xs text-gray-500">{group.kcal} kcal</span>
+                  <h3 className="text-sm font-semibold text-body">{group.label}</h3>
+                  <span className="text-xs text-subtle">{group.kcal} kcal</span>
                 </div>
 
                 {group.entries.map((entry) => (
                   <div key={entry.id} className="px-4 py-3 sm:px-6">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
-                        <span className="font-medium text-gray-900">{entry.label || 'Aliment sans nom'}</span>
-                        <div className="mt-1 text-sm text-gray-600">
+                        <span className="font-medium text-ink">{entry.label || 'Aliment sans nom'}</span>
+                        <div className="mt-1 text-sm text-muted">
                           {entry.qty_grammes}g · {Math.round(entry.kcal)} kcal
                         </div>
-                        <div className="mt-1 text-xs text-gray-500">
+                        <div className="mt-1 text-xs text-subtle">
                           P: {entry.protein_g}g · L: {entry.fat_g}g · G: {entry.carbs_g}g
                         </div>
                       </div>
@@ -469,7 +469,7 @@ export function Dashboard({
                           type="button"
                           onClick={() => startEditing(entry)}
                           aria-label={`Modifier ${entry.label || 'cet aliment'}`}
-                          className="text-gray-600 hover:text-gray-900"
+                          className="text-muted hover:text-ink"
                         >
                           Modifier
                         </button>
@@ -477,7 +477,7 @@ export function Dashboard({
                           type="button"
                           onClick={() => handleDeleteEntry(entry.id, entry.label)}
                           aria-label={`Supprimer ${entry.label || 'cet aliment'}`}
-                          className="text-red-600 hover:text-red-700"
+                          className="text-danger-600 hover:text-danger-700"
                         >
                           Supprimer
                         </button>
@@ -491,26 +491,26 @@ export function Dashboard({
                           handleUpdateEntry(entry);
                         }}
                         aria-label={`Modifier ${entry.label || 'cet aliment'}`}
-                        className="mt-3 flex flex-wrap items-end gap-3 rounded-md bg-gray-50 p-3"
+                        className="mt-3 flex flex-wrap items-end gap-3 rounded-md bg-surface-muted p-3"
                       >
                         <div>
-                          <label htmlFor={`edit-qty-${entry.id}`} className="mb-1 block text-xs text-gray-600">Quantité (g)</label>
+                          <label htmlFor={`edit-qty-${entry.id}`} className="mb-1 block text-xs text-muted">Quantité (g)</label>
                           <input
                             id={`edit-qty-${entry.id}`}
                             type="text"
                             inputMode="decimal"
                             value={editing.quantity}
                             onChange={(e) => setEditing({ ...editing, quantity: e.target.value })}
-                            className="w-24 rounded-md border border-gray-300 px-2 py-1.5"
+                            className="w-24 rounded-md border border-line-strong px-2 py-1.5"
                           />
                         </div>
                         <div>
-                          <label htmlFor={`edit-meal-${entry.id}`} className="mb-1 block text-xs text-gray-600">Repas</label>
+                          <label htmlFor={`edit-meal-${entry.id}`} className="mb-1 block text-xs text-muted">Repas</label>
                           <select
                             id={`edit-meal-${entry.id}`}
                             value={editing.meal}
                             onChange={(e) => setEditing({ ...editing, meal: e.target.value as MealType | '' })}
-                            className="rounded-md border border-gray-300 px-2 py-1.5"
+                            className="rounded-md border border-line-strong px-2 py-1.5"
                           >
                             <option value="">Sans repas</option>
                             {/* Repas visibles, plus celui de l'entrée s'il a été masqué depuis */}
@@ -522,14 +522,14 @@ export function Dashboard({
                           </select>
                         </div>
                         <div className="flex gap-2">
-                          <button type="submit" disabled={savingEdit} className="btn-kaizen text-sm disabled:opacity-50">
+                          <button type="submit" disabled={savingEdit} className="btn-brand text-sm disabled:opacity-50">
                             {savingEdit ? 'Enregistrement…' : 'Enregistrer'}
                           </button>
-                          <button type="button" onClick={() => setEditing(null)} className="rounded-md px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100">
+                          <button type="button" onClick={() => setEditing(null)} className="rounded-md px-3 py-1.5 text-sm text-muted hover:bg-surface-sunken">
                             Annuler
                           </button>
                         </div>
-                        {editError && <p role="alert" className="w-full text-sm text-red-700">{editError}</p>}
+                        {editError && <p role="alert" className="w-full text-sm text-danger-700">{editError}</p>}
                       </form>
                     )}
                   </div>
@@ -556,7 +556,7 @@ export function Dashboard({
           type="button"
           onClick={() => setShowAddModal(true)}
           aria-label="Ajouter un aliment"
-          className="sm:hidden fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-kaizen-500 text-white shadow-lg shadow-kaizen-500/30 transition-transform active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-kaizen-300"
+          className="sm:hidden fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-on-color shadow-lg shadow-brand-600/30 transition-transform active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-300"
         >
           <Plus className="h-7 w-7" aria-hidden="true" />
         </button>

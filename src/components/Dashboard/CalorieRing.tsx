@@ -20,11 +20,11 @@ export function CalorieRing({ consumed, target, status, inProgress = false, disp
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
   const statusConfig = {
-    under: { color: 'text-orange-600', bg: 'bg-orange-100', stroke: 'stroke-orange-600', label: 'Sous l\'objectif' },
-    ok: { color: 'text-green-600', bg: 'bg-green-100', stroke: 'stroke-green-600', label: 'Objectif atteint' },
-    over: { color: 'text-red-600', bg: 'bg-red-100', stroke: 'stroke-red-600', label: 'Au-dessus' },
+    under: { color: 'text-orange-700', bg: 'bg-orange-100', stroke: 'stroke-orange-600', label: 'Sous l\'objectif' },
+    ok: { color: 'text-success-700', bg: 'bg-success-100', stroke: 'stroke-success-600', label: 'Objectif atteint' },
+    over: { color: 'text-danger-700', bg: 'bg-danger-100', stroke: 'stroke-danger-600', label: 'Au-dessus' },
   };
-  const inProgressConfig = { color: 'text-blue-700', bg: 'bg-blue-50', stroke: 'stroke-blue-600', label: 'En cours' };
+  const inProgressConfig = { color: 'text-info-700', bg: 'bg-info-50', stroke: 'stroke-info-600', label: 'En cours' };
 
   const config = inProgress && status === 'under' ? inProgressConfig : statusConfig[status];
 
@@ -36,7 +36,7 @@ export function CalorieRing({ consumed, target, status, inProgress = false, disp
             cx="96"
             cy="96"
             r="70"
-            className="stroke-gray-200"
+            className="stroke-line"
             strokeWidth="12"
             fill="none"
           />
@@ -56,14 +56,14 @@ export function CalorieRing({ consumed, target, status, inProgress = false, disp
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           {display === 'remaining' ? (
             <>
-              <div className="text-3xl font-bold text-gray-900">{Math.round(Math.abs(target - consumed))}</div>
-              <div className="text-xs text-gray-500 mt-1">{consumed > target ? 'kcal en trop' : 'kcal restantes'}</div>
+              <div className="text-3xl font-bold text-ink">{Math.round(Math.abs(target - consumed))}</div>
+              <div className="text-xs text-subtle mt-1">{consumed > target ? 'kcal en trop' : 'kcal restantes'}</div>
             </>
           ) : (
             <>
-              <div className="text-3xl font-bold text-gray-900">{Math.round(consumed)}</div>
-              <div className="text-sm text-gray-500">/ {Math.round(target)}</div>
-              <div className="text-xs text-gray-400 mt-1">kcal</div>
+              <div className="text-3xl font-bold text-ink">{Math.round(consumed)}</div>
+              <div className="text-sm text-subtle">/ {Math.round(target)}</div>
+              <div className="text-xs text-subtle mt-1">kcal</div>
             </>
           )}
         </div>
@@ -73,7 +73,7 @@ export function CalorieRing({ consumed, target, status, inProgress = false, disp
         {config.label}
       </div>
 
-      <div className="mt-2 text-sm text-gray-600">
+      <div className="mt-2 text-sm text-muted">
         {display === 'remaining' ? (
           `${Math.round(consumed)} / ${Math.round(target)} kcal consommées`
         ) : (

@@ -69,17 +69,17 @@ export function IdentityCard() {
   };
 
   const inputClass =
-    'w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500';
+    'w-full field-input px-3 py-2';
 
   return (
-    <section aria-label="Identité" className="space-y-5 rounded-lg bg-white p-4 shadow-md sm:p-6">
+    <section aria-label="Identité" className="space-y-5 panel p-4 sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <Avatar identity={profile} className="h-20 w-20 text-2xl" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-medium text-gray-900">{getDisplayName(profile)}</p>
-          <p className="truncate text-sm text-gray-500">{profile.email}</p>
+          <p className="truncate text-lg font-medium text-ink">{getDisplayName(profile)}</p>
+          <p className="truncate text-sm text-subtle">{profile.email}</p>
           {profile.created_at && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-subtle">
               Membre depuis {new Date(profile.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
             </p>
           )}
@@ -97,7 +97,7 @@ export function IdentityCard() {
             type="button"
             disabled={photoBusy}
             onClick={() => fileInput.current?.click()}
-            className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-md btn-secondary px-3 py-2 text-sm font-medium disabled:opacity-60"
           >
             <Camera className="h-4 w-4" aria-hidden="true" />
             {photoBusy ? 'Envoi…' : profile.profile_picture_url ? 'Changer la photo' : 'Ajouter une photo'}
@@ -107,7 +107,7 @@ export function IdentityCard() {
               type="button"
               disabled={photoBusy}
               onClick={() => runPhotoAction(() => removeProfilePhoto(user.id, profile.profile_picture_url), 'Photo retirée.')}
-              className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted hover:bg-surface-muted disabled:opacity-60"
             >
               <Trash2 className="h-4 w-4" aria-hidden="true" />
               Retirer
@@ -118,7 +118,7 @@ export function IdentityCard() {
 
       <form onSubmit={handleSaveNames} noValidate className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <div>
-          <label htmlFor="first_name" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="first_name" className="mb-1 field-label">
             Prénom
           </label>
           <input
@@ -132,7 +132,7 @@ export function IdentityCard() {
           />
         </div>
         <div>
-          <label htmlFor="last_name" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="last_name" className="mb-1 field-label">
             Nom
           </label>
           <input
@@ -148,7 +148,7 @@ export function IdentityCard() {
         <button
           type="submit"
           disabled={savingNames}
-          className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:bg-blue-400"
+          className="inline-flex items-center justify-center gap-2 rounded-md btn-primary px-4 py-2 font-medium"
         >
           <Save className="h-4 w-4" aria-hidden="true" />
           {savingNames ? 'Enregistrement…' : 'Enregistrer le nom'}
@@ -158,7 +158,7 @@ export function IdentityCard() {
       {message && (
         <p
           role={message.type === 'error' ? 'alert' : 'status'}
-          className={`text-sm ${message.type === 'error' ? 'text-red-700' : 'text-green-700'}`}
+          className={`text-sm ${message.type === 'error' ? 'text-danger-700' : 'text-success-700'}`}
         >
           {message.text}
         </p>

@@ -50,10 +50,10 @@ function AppScreens() {
   // Affiche un écran de chargement tant que l'authentification/profile n'est pas prête
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-muted flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <div className="text-gray-600">Chargement...</div>
+          <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-muted">Chargement...</div>
         </div>
       </div>
     );
@@ -62,7 +62,7 @@ function AppScreens() {
   // Arrivée depuis le lien « mot de passe oublié » : choisir le nouveau mot de passe
   if (user && passwordRecovery) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex flex-col items-center justify-center p-4">
         <AuthBrand />
         <PasswordRecoveryScreen />
       </div>
@@ -72,7 +72,7 @@ function AppScreens() {
   // Si l'utilisateur n'est pas connecté, afficher le formulaire de connexion / inscription
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex flex-col items-center justify-center p-4">
         <AuthBrand />
         {authMode === 'login' ? (
           <LoginForm onToggle={() => setAuthMode('signup')} />
@@ -87,14 +87,14 @@ function AppScreens() {
   // ne PAS afficher l'onboarding, qui risquerait d'écraser un profil existant.
   if (profileError) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div role="alert" className="w-full max-w-md bg-white rounded-lg shadow-md p-8 text-center">
-          <p className="text-red-700 mb-6">{profileError}</p>
+      <div className="min-h-screen bg-surface-muted flex items-center justify-center p-4">
+        <div role="alert" className="w-full max-w-md panel p-8 text-center">
+          <p className="text-danger-700 mb-6">{profileError}</p>
           <div className="flex gap-3">
             <button
               type="button"
               onClick={() => signOut()}
-              className="flex-1 py-2 px-4 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors"
+              className="flex-1 py-2 px-4 btn-secondary font-medium rounded-md"
             >
               Se déconnecter
             </button>
@@ -109,7 +109,7 @@ function AppScreens() {
                   setRetryingProfile(false);
                 }
               }}
-              className="flex-1 py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-md transition-colors"
+              className="flex-1 py-2 px-4 btn-primary font-medium rounded-md"
             >
               {retryingProfile ? 'Nouvelle tentative…' : 'Réessayer'}
             </button>
@@ -122,7 +122,7 @@ function AppScreens() {
   // Si l'utilisateur est connecté mais n'a pas de profil complet, afficher le formulaire d'onboarding
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
         <OnboardingForm />
       </div>
     );
@@ -130,7 +130,7 @@ function AppScreens() {
 
   // Vue principale de l'application lorsque l'utilisateur est connecté et profil rempli
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface-muted">
       <Header />
       <Navigation currentView={currentView} onViewChange={setCurrentView} />
 

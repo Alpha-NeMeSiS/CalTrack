@@ -24,3 +24,8 @@ dist-ssr
 
 # Rapports de couverture de tests
 coverage
+
+# Tests de bout en bout (Playwright)
+dist-e2e
+test-results
+playwright-report

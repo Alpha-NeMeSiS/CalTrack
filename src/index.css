@@ -2,21 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-	/* Palette : alias lisibles des variables de couleur (définies par
-	   tailwind.config.js à partir de theme.palette.js, en clair et en sombre) */
-	--kaizen-50: rgb(var(--c-kaizen-50));
-	--kaizen-500: rgb(var(--c-kaizen-500));
-	--shonen-300: rgb(var(--c-shonen-300));
-	--shonen-500: rgb(var(--c-shonen-500));
-	--shonen-700: rgb(var(--c-shonen-700));
-	--accent: rgb(var(--c-shonen-500));
+/* Les couleurs (variables --c-*) sont définies par tailwind.config.js à partir
+   de theme.palette.js, en clair (:root) et en sombre (.dark). Guide des rôles
+   et des composants : docs/design-system.md */
 
-	/* Shared tokens */
-	--radius-lg: 1rem;
+:root {
+	/* Carte « verre » (en-tête, navigation, tableau de bord) */
 	--glass-bg: rgba(255, 255, 255, 0.62);
 	--glass-border: rgba(255, 255, 255, 0.28);
-	--page-text: #0f172a;
 	color-scheme: light;
 }
 
@@ -24,17 +17,15 @@
 .dark {
 	--glass-bg: rgba(17, 24, 39, 0.72);
 	--glass-border: rgba(255, 255, 255, 0.06);
-	--page-text: #e5e7eb;
 	/* Contrôles natifs (dates, listes, barres de défilement) en sombre */
 	color-scheme: dark;
 }
 
-/* Base styles to drive the Kaizen + Shonen look */
 @layer base {
 	html, body, #root {
 		height: 100%;
-		background: linear-gradient(180deg, var(--kaizen-50) 0%, rgb(var(--c-white)) 100%);
-		color: var(--page-text);
+		background: linear-gradient(180deg, rgb(var(--c-brand-50)) 0%, rgb(var(--c-surface)) 100%);
+		color: rgb(var(--c-ink));
 		-webkit-font-smoothing: antialiased;
 		-moz-osx-font-smoothing: grayscale;
 	}
@@ -48,52 +39,77 @@
 	input:not([type='checkbox']):not([type='radio']):not([type='range']),
 	select,
 	textarea {
-		background-color: rgb(var(--c-white));
+		background-color: rgb(var(--c-surface));
 	}
 
 	h1, h2, h3, h4 {
 		font-family: 'Bangers', 'Noto Sans JP', system-ui;
 		letter-spacing: 0.5px;
-		color: var(--shonen-700);
+		color: rgb(var(--c-accent-700));
 	}
 
 	a {
-		color: var(--kaizen-500);
+		color: rgb(var(--c-brand-700));
 		text-decoration: none;
 	}
+}
 
-	/* Small utility components that reflect the theme */
-	.btn-kaizen {
-		@apply inline-flex items-center justify-center px-4 py-2 rounded-full text-white font-semibold shadow-md transition-transform;
-		background: linear-gradient(90deg, var(--kaizen-500), rgb(var(--c-kaizen-400)));
+/* Composants : couleurs et états partagés. Les dimensions (padding, largeur,
+   arrondi spécifique) restent sur chaque élément. Équivalents React dans
+   src/components/ui/. */
+@layer components {
+	/* Boutons */
+	.btn-primary {
+		@apply bg-primary-600 text-on-color transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-primary-300;
+	}
+	.btn-secondary {
+		@apply border border-line-strong text-body transition-colors hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60;
+	}
+	.btn-danger {
+		@apply bg-danger-600 text-on-color transition-colors hover:bg-danger-700 disabled:cursor-not-allowed disabled:bg-danger-300;
+	}
+	/* Bouton de la marque (pilule verte). Vert foncé : le texte blanc sur le vert
+	   du logo (brand-500) ne dépasse pas 2,5:1 */
+	.btn-brand {
+		@apply inline-flex items-center justify-center rounded-full bg-brand-700 px-4 py-2 font-semibold text-on-color shadow-md transition-colors hover:bg-brand-800;
 	}
 
-	.btn-shonen-accent {
-		@apply inline-flex items-center justify-center px-3 py-1.5 rounded-md text-white font-bold;
-		background: linear-gradient(90deg, var(--shonen-300), var(--shonen-500));
-		box-shadow: 0 6px 18px rgba(255,107,53,0.12);
+	/* Cartes */
+	.panel {
+		@apply rounded-lg bg-surface shadow-md;
 	}
-
-	.card-kaizen {
-		@apply rounded-xl p-4 shadow-lg border;
+	.card-glass {
+		@apply rounded-xl border p-4 shadow-lg;
 		background: var(--glass-bg);
 		border-color: var(--glass-border);
 		backdrop-filter: blur(6px);
 	}
 
-	/* Emphasized small badge */
-	.badge-energy {
-		@apply inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold;
-		background: rgba(255,107,53,0.12);
-		color: var(--shonen-500);
+	/* Champs de formulaire */
+	.field-label {
+		@apply block text-sm font-medium text-body;
+	}
+	.field-input {
+		@apply rounded-md border border-line-strong focus:outline-none focus:ring-2 focus:ring-primary-500;
+	}
+
+	/* Pastilles de statut : badge + ton */
+	.badge {
+		@apply inline-flex items-center whitespace-nowrap rounded px-2 py-1 text-xs font-medium;
+	}
+	.badge-success {
+		@apply bg-success-50 text-success-700;
+	}
+	.badge-warning {
+		@apply bg-warning-50 text-warning-800;
+	}
+	.badge-danger {
+		@apply bg-danger-50 text-danger-700;
+	}
+	.badge-info {
+		@apply bg-info-50 text-info-700;
+	}
+	.badge-neutral {
+		@apply bg-surface-sunken text-muted;
 	}
 }
-
-/* Additional utilities available via Tailwind class names */
-@layer components {
-	.focus-punch:focus {
-		animation: punch 600ms ease-in-out;
-	}
-}
-
-/* Keep Tailwind utilities afterwards */

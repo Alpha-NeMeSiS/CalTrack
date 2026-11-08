@@ -35,18 +35,18 @@ export function LoginForm({ onToggle }: { onToggle: () => void }) {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto p-8 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Connexion</h2>
+    <div className="w-full max-w-md mx-auto p-8 panel">
+      <h2 className="text-2xl font-bold text-ink mb-6">Connexion</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div role="alert" className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+          <div role="alert" className="p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded-md text-sm">
             {error}
           </div>
         )}
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="email" className="field-label mb-1">
             Email
           </label>
           <input
@@ -56,19 +56,19 @@ export function LoginForm({ onToggle }: { onToggle: () => void }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 field-input"
           />
         </div>
 
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="password" className="field-label">
               Mot de passe
             </label>
             <button
               type="button"
               onClick={() => setShowForgot(true)}
-              className="text-sm text-blue-600 hover:text-blue-700"
+              className="text-sm text-primary-600 hover:text-primary-700"
             >
               Mot de passe oublié ?
             </button>
@@ -80,22 +80,22 @@ export function LoginForm({ onToggle }: { onToggle: () => void }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 field-input"
           />
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-md transition-colors"
+          className="w-full py-2 px-4 btn-primary font-medium rounded-md"
         >
           {loading ? 'Connexion...' : 'Se connecter'}
         </button>
       </form>
 
-      <p className="mt-4 text-center text-sm text-gray-600">
+      <p className="mt-4 text-center text-sm text-muted">
         Pas encore de compte ?{' '}
-        <button onClick={onToggle} className="text-blue-600 hover:text-blue-700 font-medium">
+        <button onClick={onToggle} className="text-primary-600 hover:text-primary-700 font-medium">
           Créer un compte
         </button>
       </p>

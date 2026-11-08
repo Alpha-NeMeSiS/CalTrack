@@ -18,9 +18,8 @@ import { EmailChangeForm } from '../Account/EmailChangeForm';
 import { NewPasswordForm } from '../Auth/NewPasswordForm';
 import { IdentityCard } from './IdentityCard';
 import { WeightQuickLog } from '../Weight/WeightQuickLog';
+import { formatNumber } from '../../utils/format';
 
-const formatNumber = (value: number, digits = 0) =>
-  value.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
 /** Mesures détaillées facultatives (balance impédancemètre, bilan) */
 type DetailedField = 'body_water_pct' | 'muscle_mass_kg' | 'bone_mass_kg' | 'visceral_fat_rating';
@@ -196,39 +195,39 @@ export function ProfilePage() {
   ];
 
   const inputClass =
-    'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500';
+    'w-full px-3 py-2 field-input';
   const choiceClass = (active: boolean) =>
     `flex-1 py-3 px-4 border-2 rounded-md font-medium transition-colors ${
-      active ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+      active ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
     }`;
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <h1 className="text-2xl text-gray-900">Mon profil</h1>
+      <h1 className="text-2xl text-ink">Mon profil</h1>
 
       <IdentityCard />
 
-      <section aria-label="Connexion" className="space-y-8 rounded-lg bg-white p-4 shadow-md sm:p-6">
+      <section aria-label="Connexion" className="space-y-8 panel p-4 sm:p-6">
         <EmailChangeForm />
-        <section aria-labelledby="profile-password-title" className="space-y-3 border-t border-gray-200 pt-6">
-          <h2 id="profile-password-title" className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-            <KeyRound className="h-5 w-5 text-gray-500" aria-hidden="true" />
+        <section aria-labelledby="profile-password-title" className="space-y-3 border-t border-line pt-6">
+          <h2 id="profile-password-title" className="flex items-center gap-2 text-lg font-semibold text-ink">
+            <KeyRound className="h-5 w-5 text-subtle" aria-hidden="true" />
             Mot de passe
           </h2>
           <NewPasswordForm submitLabel="Changer le mot de passe" />
         </section>
       </section>
 
-      <section aria-labelledby="indicators-title" className="rounded-lg bg-white p-4 shadow-md sm:p-6">
-        <h2 id="indicators-title" className="mb-4 text-lg text-gray-900">
+      <section aria-labelledby="indicators-title" className="panel p-4 sm:p-6">
+        <h2 id="indicators-title" className="mb-4 text-lg text-ink">
           Vos repères
         </h2>
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {indicators.map((item) => (
-            <div key={item.label} className="rounded-lg border border-gray-200 p-3">
-              <dt className="text-xs font-medium text-gray-600">{item.label}</dt>
-              <dd className="mt-1 text-lg font-semibold text-gray-900">{item.value}</dd>
-              {item.hint && <dd className="mt-1 text-xs text-gray-500">{item.hint}</dd>}
+            <div key={item.label} className="rounded-lg border border-line p-3">
+              <dt className="text-xs font-medium text-muted">{item.label}</dt>
+              <dd className="mt-1 text-lg font-semibold text-ink">{item.value}</dd>
+              {item.hint && <dd className="mt-1 text-xs text-subtle">{item.hint}</dd>}
             </div>
           ))}
         </dl>
@@ -236,15 +235,15 @@ export function ProfilePage() {
 
       <WeightQuickLog userId={user.id} date={getTodayDate()} currentWeight={profile.poids_kg} onSave={handleSaveWeight} />
 
-      <section aria-labelledby="body-title" className="rounded-lg bg-white p-4 shadow-md sm:p-6">
-        <h2 id="body-title" className="mb-1 text-lg text-gray-900">
+      <section aria-labelledby="body-title" className="panel p-4 sm:p-6">
+        <h2 id="body-title" className="mb-1 text-lg text-ink">
           Données corporelles
         </h2>
-        <p className="mb-6 text-sm text-gray-600">Elles servent à calculer vos besoins caloriques.</p>
+        <p className="mb-6 text-sm text-muted">Elles servent à calculer vos besoins caloriques.</p>
 
         <form onSubmit={handleSave} noValidate className="space-y-6" aria-labelledby="body-title">
           <fieldset>
-            <legend className="mb-2 block text-sm font-medium text-gray-700">Sexe</legend>
+            <legend className="mb-2 field-label">Sexe</legend>
             <div className="flex gap-4">
               <button type="button" aria-pressed={form.sexe === 'M'} onClick={() => setForm({ ...form, sexe: 'M' })} className={choiceClass(form.sexe === 'M')}>
                 Homme
@@ -257,7 +256,7 @@ export function ProfilePage() {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
-              <label htmlFor="date_naissance" className="mb-1 block text-sm font-medium text-gray-700">
+              <label htmlFor="date_naissance" className="mb-1 field-label">
                 Date de naissance
               </label>
               <input
@@ -270,7 +269,7 @@ export function ProfilePage() {
               />
             </div>
             <div>
-              <label htmlFor="taille_cm" className="mb-1 block text-sm font-medium text-gray-700">
+              <label htmlFor="taille_cm" className="mb-1 field-label">
                 Taille (cm)
               </label>
               <input
@@ -284,7 +283,7 @@ export function ProfilePage() {
               />
             </div>
             <div>
-              <label htmlFor="body_fat_pct" className="mb-1 block text-sm font-medium text-gray-700">
+              <label htmlFor="body_fat_pct" className="mb-1 field-label">
                 Masse grasse (%, optionnel)
               </label>
               <input
@@ -304,13 +303,13 @@ export function ProfilePage() {
           <details
             open={detailsOpen}
             onToggle={(event) => setDetailsOpen(event.currentTarget.open)}
-            className="rounded-md border border-gray-200"
+            className="rounded-md border border-line"
           >
-            <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-gray-800">
-              Mesures détaillées <span className="font-normal text-gray-500">(facultatif)</span>
+            <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-ink">
+              Mesures détaillées <span className="font-normal text-subtle">(facultatif)</span>
             </summary>
-            <div className="space-y-4 border-t border-gray-200 p-4">
-              <p className="text-xs text-gray-600">
+            <div className="space-y-4 border-t border-line p-4">
+              <p className="text-xs text-muted">
                 Valeurs d’une balance impédancemètre ou d’un bilan (salle de sport, diététicien). Elles servent à estimer
                 votre masse maigre, pour un métabolisme de base plus précis. Renseignez seulement celles que vous avez et
                 mettez-les à jour de temps en temps.
@@ -320,7 +319,7 @@ export function ProfilePage() {
                   const limits = PROFILE_LIMITS[field.key];
                   return (
                     <div key={field.key}>
-                      <label htmlFor={field.key} className="mb-1 block text-sm font-medium text-gray-700">
+                      <label htmlFor={field.key} className="mb-1 field-label">
                         {field.label}
                       </label>
                       <input
@@ -335,7 +334,7 @@ export function ProfilePage() {
                         onChange={(e) => setForm({ ...form, [field.key]: optionalNumber(e.target.value) })}
                         className={inputClass}
                       />
-                      <p id={`${field.key}-hint`} className="mt-1 text-xs text-gray-500">
+                      <p id={`${field.key}-hint`} className="mt-1 text-xs text-subtle">
                         {field.hint}
                       </p>
                     </div>
@@ -345,7 +344,7 @@ export function ProfilePage() {
             </div>
           </details>
 
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-subtle">
             Poids actuel : {formatNumber(profile.poids_kg, 1)} kg. Il se met à jour avec vos pesées (carte « Ma pesée »).
           </p>
 
@@ -353,7 +352,7 @@ export function ProfilePage() {
             <p
               role={message.type === 'error' ? 'alert' : 'status'}
               className={`rounded-md border p-3 text-sm ${
-                message.type === 'error' ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-700'
+                message.type === 'error' ? 'border-danger-200 bg-danger-50 text-danger-700' : 'border-success-200 bg-success-50 text-success-700'
               }`}
             >
               {message.text}
@@ -363,7 +362,7 @@ export function ProfilePage() {
           <button
             type="submit"
             disabled={saving}
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-3 font-medium text-white transition-colors hover:bg-blue-700 disabled:bg-blue-400"
+            className="flex w-full items-center justify-center gap-2 rounded-md btn-primary px-4 py-3 font-medium"
           >
             <Save className="h-5 w-5" aria-hidden="true" />
             {saving ? 'Enregistrement…' : 'Enregistrer les données'}

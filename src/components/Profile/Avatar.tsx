@@ -1,4 +1,4 @@
-// Avatar : photo de profil, sinon initiales sur fond vert.
+// Avatar : photo de profil, sinon initiales sur fond vert foncé (contraste AA).
 import { useState } from 'react';
 import { getInitials, IdentityLike } from '../../utils/avatar';
 
@@ -26,7 +26,7 @@ export function Avatar({ identity, className = 'h-9 w-9 text-sm' }: AvatarProps)
   return (
     <span
       aria-hidden="true"
-      className={`flex shrink-0 items-center justify-center rounded-full bg-kaizen-500 font-semibold text-white ${className}`}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-brand-700 font-semibold text-on-color ${className}`}
     >
       {getInitials(identity)}
     </span>

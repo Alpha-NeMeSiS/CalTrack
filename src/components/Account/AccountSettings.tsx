@@ -61,12 +61,12 @@ export function AccountSettings() {
     <div className="space-y-8">
       <SignOutEverywhere />
 
-      <section aria-labelledby="account-export-title" className="space-y-3 border-t border-gray-200 pt-6">
-        <h2 id="account-export-title" className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-          <Download className="w-5 h-5 text-gray-500" aria-hidden="true" />
+      <section aria-labelledby="account-export-title" className="space-y-3 border-t border-line pt-6">
+        <h2 id="account-export-title" className="flex items-center gap-2 text-lg font-semibold text-ink">
+          <Download className="w-5 h-5 text-subtle" aria-hidden="true" />
           Exporter mes données
         </h2>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted">
           Téléchargez un fichier JSON contenant votre profil, vos objectifs, vos cibles quotidiennes, votre journal
           alimentaire, vos pesées, vos aliments personnels, vos favoris et vos paramètres.
         </p>
@@ -74,7 +74,7 @@ export function AccountSettings() {
           type="button"
           onClick={handleExport}
           disabled={exporting}
-          className="inline-flex items-center gap-2 py-2 px-4 border border-gray-300 rounded-md font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="inline-flex items-center gap-2 py-2 px-4 btn-secondary rounded-md font-medium disabled:opacity-50"
         >
           <Download className="w-4 h-4" aria-hidden="true" />
           {exporting ? 'Préparation…' : 'Télécharger mes données'}
@@ -82,24 +82,24 @@ export function AccountSettings() {
         {exportMessage && (
           <p
             role={exportMessage.type === 'error' ? 'alert' : 'status'}
-            className={`text-sm ${exportMessage.type === 'error' ? 'text-red-700' : 'text-green-700'}`}
+            className={`text-sm ${exportMessage.type === 'error' ? 'text-danger-700' : 'text-success-700'}`}
           >
             {exportMessage.text}
           </p>
         )}
       </section>
 
-      <section aria-labelledby="account-delete-title" className="space-y-3 border-t border-gray-200 pt-6">
-        <h2 id="account-delete-title" className="flex items-center gap-2 text-lg font-semibold text-red-700">
+      <section aria-labelledby="account-delete-title" className="space-y-3 border-t border-line pt-6">
+        <h2 id="account-delete-title" className="flex items-center gap-2 text-lg font-semibold text-danger-700">
           <Trash2 className="w-5 h-5" aria-hidden="true" />
           Supprimer mon compte
         </h2>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted">
           La suppression est <strong>définitive</strong> : votre compte et toutes vos données (profil, objectifs,
           journal, pesées, aliments personnels) seront effacés. Pensez à exporter vos données avant.
         </p>
-        <form onSubmit={handleDelete} className="space-y-3 rounded-md border border-red-200 bg-red-50 p-4">
-          <label htmlFor="delete-confirmation" className="block text-sm text-red-800">
+        <form onSubmit={handleDelete} className="space-y-3 rounded-md border border-danger-200 bg-danger-50 p-4">
+          <label htmlFor="delete-confirmation" className="block text-sm text-danger-800">
             Pour confirmer, saisissez <span className="font-mono font-semibold">{DELETE_CONFIRMATION_WORD}</span>
           </label>
           <input
@@ -108,17 +108,17 @@ export function AccountSettings() {
             autoComplete="off"
             value={confirmation}
             onChange={(e) => setConfirmation(e.target.value)}
-            className="w-full px-3 py-2 border border-red-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="w-full px-3 py-2 border border-danger-300 rounded-md bg-surface focus:outline-none focus:ring-2 focus:ring-danger-500"
           />
           {deleteError && (
-            <p role="alert" className="text-sm text-red-700">
+            <p role="alert" className="text-sm text-danger-700">
               {deleteError}
             </p>
           )}
           <button
             type="submit"
             disabled={deleting || confirmation.trim() !== DELETE_CONFIRMATION_WORD}
-            className="w-full py-2 px-4 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white font-medium rounded-md transition-colors"
+            className="w-full py-2 px-4 btn-danger font-medium rounded-md"
           >
             {deleting ? 'Suppression…' : 'Supprimer définitivement mon compte'}
           </button>

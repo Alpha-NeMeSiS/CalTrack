@@ -5,9 +5,9 @@ import { CheckCircle2, Info, AlertTriangle, X } from 'lucide-react';
 import { useAuth } from '../../contexts/useAuth';
 
 const STYLES = {
-  success: { box: 'border-green-200 bg-green-50 text-green-800', Icon: CheckCircle2 },
-  info: { box: 'border-blue-200 bg-blue-50 text-blue-800', Icon: Info },
-  error: { box: 'border-red-200 bg-red-50 text-red-800', Icon: AlertTriangle },
+  success: { box: 'border-success-200 bg-success-50 text-success-800', Icon: CheckCircle2 },
+  info: { box: 'border-info-200 bg-info-50 text-info-800', Icon: Info },
+  error: { box: 'border-danger-200 bg-danger-50 text-danger-800', Icon: AlertTriangle },
 } as const;
 
 export function AuthNoticeBanner() {

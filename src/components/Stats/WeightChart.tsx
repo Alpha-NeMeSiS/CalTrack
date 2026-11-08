@@ -5,6 +5,7 @@
 // réduits avec le dessin.
 import { useEffect, useState } from 'react';
 import { parseLocalDate } from '../../utils/date';
+import { formatNumber } from '../../utils/format';
 import { movingAverage, sortWeights, WeightPoint } from '../../utils/weights';
 
 interface WeightChartProps {
@@ -18,8 +19,7 @@ const HEIGHT = 220;
 const PAD = { top: 12, right: 12, bottom: 24, left: 44 };
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const formatKg = (value: number) =>
-  value.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const formatKg = (value: number) => formatNumber(value, 1);
 const formatDate = (date: string) =>
   parseLocalDate(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 
@@ -46,7 +46,7 @@ export function WeightChart({ points, targetWeight }: WeightChartProps) {
 
   if (sorted.length < 2) {
     return (
-      <p className="rounded-lg bg-gray-50 p-4 text-sm text-gray-500">
+      <p className="rounded-lg bg-surface-muted p-4 text-sm text-subtle">
         Enregistrez au moins deux pesées (depuis le tableau de bord) pour voir la courbe de votre poids.
       </p>
     );
@@ -89,8 +89,8 @@ export function WeightChart({ points, targetWeight }: WeightChartProps) {
       >
         {yTicks.map((tick) => (
           <g key={tick}>
-            <line x1={PAD.left} x2={WIDTH - PAD.right} y1={y(tick)} y2={y(tick)} className="stroke-gray-200" />
-            <text x={PAD.left - 6} y={y(tick)} textAnchor="end" dominantBaseline="middle" fontSize="11" className="fill-gray-500">
+            <line x1={PAD.left} x2={WIDTH - PAD.right} y1={y(tick)} y2={y(tick)} className="stroke-line" />
+            <text x={PAD.left - 6} y={y(tick)} textAnchor="end" dominantBaseline="middle" fontSize="11" className="fill-subtle">
               {formatKg(tick)}
             </text>
           </g>
@@ -103,32 +103,32 @@ export function WeightChart({ points, targetWeight }: WeightChartProps) {
               x2={WIDTH - PAD.right}
               y1={y(targetWeight)}
               y2={y(targetWeight)}
-              className="stroke-blue-400"
+              className="stroke-info-400"
               strokeWidth="2"
               strokeDasharray="6 4"
             />
-            <text x={WIDTH - PAD.right} y={y(targetWeight) - 6} textAnchor="end" fontSize="11" className="fill-blue-600">
+            <text x={WIDTH - PAD.right} y={y(targetWeight) - 6} textAnchor="end" fontSize="11" className="fill-info-600">
               Cible {formatKg(targetWeight)} kg
             </text>
           </g>
         )}
 
-        <path d={averagePath} fill="none" className="stroke-kaizen-500" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={averagePath} fill="none" className="stroke-brand-500" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
         {sorted.map((p) => (
-          <circle key={p.date} cx={x(p.date)} cy={y(p.weight_kg)} r="3.5" className="fill-white stroke-kaizen-700" strokeWidth="1.5">
+          <circle key={p.date} cx={x(p.date)} cy={y(p.weight_kg)} r="3.5" className="fill-surface stroke-brand-700" strokeWidth="1.5">
             <title>{`${formatDate(p.date)} : ${formatKg(p.weight_kg)} kg`}</title>
           </circle>
         ))}
 
-        <text x={PAD.left} y={HEIGHT - 6} fontSize="11" className="fill-gray-500">{formatDate(first.date)}</text>
-        <text x={WIDTH - PAD.right} y={HEIGHT - 6} textAnchor="end" fontSize="11" className="fill-gray-500">{formatDate(last.date)}</text>
+        <text x={PAD.left} y={HEIGHT - 6} fontSize="11" className="fill-subtle">{formatDate(first.date)}</text>
+        <text x={WIDTH - PAD.right} y={HEIGHT - 6} textAnchor="end" fontSize="11" className="fill-subtle">{formatDate(last.date)}</text>
       </svg>
 
-      <figcaption className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
-        <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-5 bg-kaizen-500" /> Moyenne 7 jours</span>
-        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full border border-kaizen-700 bg-white" /> Pesées</span>
-        {showTarget && <span className="flex items-center gap-1.5"><span className="inline-block w-5 border-t-2 border-dashed border-blue-400" /> Poids cible</span>}
-        <span className="ml-auto font-medium text-gray-800" data-testid="weight-change">
+      <figcaption className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+        <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-5 bg-brand-500" /> Moyenne 7 jours</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full border border-brand-700 bg-surface" /> Pesées</span>
+        {showTarget && <span className="flex items-center gap-1.5"><span className="inline-block w-5 border-t-2 border-dashed border-info-400" /> Poids cible</span>}
+        <span className="ml-auto font-medium text-ink" data-testid="weight-change">
           {change > 0 ? '+' : ''}{formatKg(change)} kg depuis le {formatDate(first.date)}
         </span>
       </figcaption>
