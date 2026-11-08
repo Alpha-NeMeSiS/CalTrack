@@ -184,7 +184,7 @@ export function WeeklyTrends() {
   if (loading) {
     return (
       <div className="panel p-6">
-        <h2 className="text-xl text-ink mb-4">Tendances 7 jours</h2>
+        <h2 className="mb-4 card-title">Tendances 7 jours</h2>
         <div className="text-center py-8 text-subtle">Chargement...</div>
       </div>
     );
@@ -193,7 +193,7 @@ export function WeeklyTrends() {
   if (loadError) {
     return (
       <div className="panel p-6">
-        <h2 className="text-xl text-ink mb-4">Tendances et historique</h2>
+        <h2 className="mb-4 card-title">Tendances et historique</h2>
         <div role="alert" className="text-center py-8">
           <p className="text-danger-700 mb-4">{loadError}</p>
           <button type="button" onClick={() => loadWeekData()} className="btn-brand">
@@ -229,7 +229,7 @@ export function WeeklyTrends() {
   return (
     <div className="panel">
       <div className="p-4 sm:p-6 border-b border-line">
-        <h2 className="text-xl text-ink">Tendances et historique</h2>
+        <h2 className="card-title">Tendances et historique</h2>
       </div>
 
       <div className="p-4 sm:p-6 space-y-6">
@@ -255,7 +255,7 @@ export function WeeklyTrends() {
         )}
 
         <div>
-          <h3 className="text-sm text-ink mb-4">Graphique des calories</h3>
+          <h3 className="section-label mb-4">Graphique des calories</h3>
           <div className="bg-surface-muted p-3 sm:p-4 rounded-lg">
             <div className="flex gap-2" role="img" aria-label="Calories consommées et objectif sur les 7 derniers jours">
               {/* Axe Y : graduations positionnées sur la même échelle que les barres */}
@@ -343,17 +343,17 @@ export function WeeklyTrends() {
         </div>
 
         <div>
-          <h3 className="text-sm text-ink mb-3">Évolution du poids (90 jours)</h3>
+          <h3 className="section-label mb-3">Évolution du poids (90 jours)</h3>
           <WeightChart points={weights} targetWeight={targetWeight} />
         </div>
 
         <div>
-          <h3 className="text-sm text-ink mb-3">Composition corporelle (90 jours)</h3>
+          <h3 className="section-label mb-3">Composition corporelle (90 jours)</h3>
           <BodyCompositionChart logs={weights} />
         </div>
 
         <div>
-          <h3 id="daily-history-title" className="text-sm text-ink mb-3">Historique détaillé (30 jours)</h3>
+          <h3 id="daily-history-title" className="section-label mb-3">Historique détaillé (30 jours)</h3>
           {/* Zone défilante atteignable au clavier (flèches) et nommée pour les lecteurs d'écran */}
           <div
             role="region"

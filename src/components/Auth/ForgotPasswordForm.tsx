@@ -36,7 +36,7 @@ export function ForgotPasswordForm({ initialEmail = '', onBack }: ForgotPassword
 
   return (
     <div className="w-full max-w-md mx-auto p-8 panel">
-      <h2 className="text-2xl font-bold text-ink mb-2">Mot de passe oublié</h2>
+      <h2 className="page-title mb-2">Mot de passe oublié</h2>
 
       {sent ? (
         <div role="status" className="mt-4 p-3 bg-success-50 border border-success-200 text-success-800 rounded-md text-sm">

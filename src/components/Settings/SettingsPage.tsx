@@ -161,11 +161,11 @@ export function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <h1 className="text-2xl text-ink">Paramètres</h1>
+      <h1 className="page-title">Paramètres</h1>
 
       <form onSubmit={handleSubmit} noValidate className="space-y-6">
         <section aria-labelledby="display-title" className="space-y-5 panel p-4 sm:p-6">
-          <h2 id="display-title" className="flex items-center gap-2 text-lg text-ink">
+          <h2 id="display-title" className="flex items-center gap-2 card-title">
             <Palette className="h-5 w-5 text-subtle" aria-hidden="true" />
             Affichage
           </h2>
@@ -195,7 +195,7 @@ export function SettingsPage() {
 
         <section aria-labelledby="meals-title" className="space-y-4 panel p-4 sm:p-6">
           <div>
-            <h2 id="meals-title" className="flex items-center gap-2 text-lg text-ink">
+            <h2 id="meals-title" className="flex items-center gap-2 card-title">
               <UtensilsCrossed className="h-5 w-5 text-subtle" aria-hidden="true" />
               Repas
             </h2>

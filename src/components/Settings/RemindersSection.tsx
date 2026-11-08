@@ -126,7 +126,7 @@ export function RemindersSection({ weighInTime, logTime, onChange, onDeviceEnabl
   return (
     <section aria-labelledby="reminders-title" className="space-y-4 panel p-4 sm:p-6">
       <div>
-        <h2 id="reminders-title" className="flex items-center gap-2 text-lg text-ink">
+        <h2 id="reminders-title" className="flex items-center gap-2 card-title">
           <BellRing className="h-5 w-5 text-subtle" aria-hidden="true" />
           Rappels
         </h2>

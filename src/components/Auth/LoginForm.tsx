@@ -36,7 +36,7 @@ export function LoginForm({ onToggle }: { onToggle: () => void }) {
 
   return (
     <div className="w-full max-w-md mx-auto p-8 panel">
-      <h2 className="text-2xl font-bold text-ink mb-6">Connexion</h2>
+      <h2 className="page-title mb-6">Connexion</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (

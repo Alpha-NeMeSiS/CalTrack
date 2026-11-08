@@ -9,7 +9,7 @@ export function PasswordRecoveryScreen() {
 
   return (
     <div className="w-full max-w-md mx-auto p-8 panel">
-      <h2 className="text-2xl font-bold text-ink mb-2">Nouveau mot de passe</h2>
+      <h2 className="page-title mb-2">Nouveau mot de passe</h2>
       <p className="text-sm text-muted mb-6">
         Choisissez le nouveau mot de passe de votre compte{user?.email ? ` (${user.email})` : ''}.
       </p>

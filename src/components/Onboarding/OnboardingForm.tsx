@@ -147,7 +147,7 @@ export function OnboardingForm() {
   if (step === 1) {
     return (
       <div className="w-full max-w-2xl mx-auto p-8 panel">
-        <h2 className="text-2xl text-ink mb-6">Informations personnelles</h2>
+        <h2 className="page-title mb-6">Informations personnelles</h2>
 
         <div className="space-y-6">
           <div>
@@ -273,7 +273,7 @@ export function OnboardingForm() {
 
   return (
     <div className="w-full max-w-2xl mx-auto p-8 panel">
-      <h2 className="text-2xl text-ink mb-6">Votre objectif</h2>
+      <h2 className="page-title mb-6">Votre objectif</h2>
 
       {error && (
         <div className="mb-6 p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded-md text-sm">

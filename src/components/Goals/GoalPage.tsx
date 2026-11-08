@@ -148,11 +148,11 @@ export function GoalPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <h1 className="text-2xl text-ink">Objectif</h1>
+      <h1 className="page-title">Objectif</h1>
 
       {activeGoal && (
         <section aria-labelledby="current-goal-title" className="panel p-4 sm:p-6">
-          <h2 id="current-goal-title" className="mb-4 flex items-center gap-2 text-lg text-ink">
+          <h2 id="current-goal-title" className="mb-4 flex items-center gap-2 card-title">
             <Target className="h-5 w-5 text-brand-600" aria-hidden="true" />
             Objectif actuel
           </h2>
@@ -180,7 +180,7 @@ export function GoalPage() {
       )}
 
       <section aria-labelledby="goal-form-title" className="panel p-4 sm:p-6">
-        <h2 id="goal-form-title" className="mb-1 text-lg text-ink">
+        <h2 id="goal-form-title" className="mb-1 card-title">
           {activeGoal ? "Modifier l'objectif" : 'Définir un objectif'}
         </h2>
         <p className="mb-6 text-sm text-muted">
@@ -193,7 +193,7 @@ export function GoalPage() {
 
       {history.length > 0 && (
         <section aria-labelledby="goal-history-title" className="panel p-4 sm:p-6">
-          <h2 id="goal-history-title" className="mb-4 flex items-center gap-2 text-lg text-ink">
+          <h2 id="goal-history-title" className="mb-4 flex items-center gap-2 card-title">
             <History className="h-5 w-5 text-subtle" aria-hidden="true" />
             Historique
           </h2>

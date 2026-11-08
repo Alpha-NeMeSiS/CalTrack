@@ -45,7 +45,7 @@ export function SignupForm({ onToggle }: { onToggle: () => void }) {
   if (success) {
     return (
       <div className="w-full max-w-md mx-auto p-8 panel">
-        <h2 className="text-2xl text-ink mb-4">Compte créé !</h2>
+        <h2 className="page-title mb-4">Compte créé !</h2>
         <p className="text-muted mb-6">
           Votre compte a été créé avec succès. Si un e-mail de confirmation vous a été envoyé,
           cliquez sur le lien qu'il contient, puis connectez-vous.
@@ -62,7 +62,7 @@ export function SignupForm({ onToggle }: { onToggle: () => void }) {
 
   return (
     <div className="w-full max-w-md mx-auto p-8 panel">
-      <h2 className="text-2xl text-ink mb-6">Créer un compte</h2>
+      <h2 className="page-title mb-6">Créer un compte</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (

@@ -50,7 +50,7 @@ export function EmailChangeForm() {
 
   return (
     <section aria-labelledby="account-email-title" className="space-y-3">
-      <h2 id="account-email-title" className="flex items-center gap-2 text-lg font-semibold text-ink">
+      <h2 id="account-email-title" className="flex items-center gap-2 card-title">
         <Mail className="h-5 w-5 text-subtle" aria-hidden="true" />
         Adresse email
       </h2>

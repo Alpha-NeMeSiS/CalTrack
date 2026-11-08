@@ -510,7 +510,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
             <MealTypeSelector value={mealType} onChange={setMealType} />
 
             <div className="bg-surface-muted p-4 rounded-md">
-              <h3 className="text-sm text-ink mb-2">Valeurs nutritionnelles</h3>
+              <h3 className="section-label mb-2">Valeurs nutritionnelles</h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="text-muted">Calories :</div>
                 <div className="font-medium text-ink">{calculated.kcal} kcal</div>
@@ -813,7 +813,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
       >
         <div className="flex items-center justify-between px-8 pt-8 pb-6 border-b border-line">
           <div>
-            <h2 id="add-entry-title" className="text-xl text-ink">Ajouter un aliment</h2>
+            <h2 id="add-entry-title" className="card-title">Ajouter un aliment</h2>
             <p className="mt-1 text-sm text-subtle first-letter:uppercase">{formatEntryDate(date)}</p>
           </div>
           <button onClick={onClose} className="text-subtle hover:text-muted transition-colors" aria-label="Fermer la fenêtre">

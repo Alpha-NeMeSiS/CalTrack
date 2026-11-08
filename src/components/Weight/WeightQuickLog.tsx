@@ -125,7 +125,7 @@ export function WeightQuickLog({ userId, date, currentWeight, onSave }: WeightQu
     <section aria-labelledby="weight-quick-log-title" className="panel p-4">
       <div className="flex flex-col gap-4 p-2 sm:flex-row sm:items-end sm:justify-between sm:p-4">
         <div>
-          <h2 id="weight-quick-log-title" className="flex items-center gap-2 text-lg text-accent-700">
+          <h2 id="weight-quick-log-title" className="flex items-center gap-2 card-title">
             <Scale className="h-5 w-5" aria-hidden="true" />
             Ma pesée
           </h2>

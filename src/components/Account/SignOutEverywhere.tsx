@@ -19,7 +19,7 @@ export function SignOutEverywhere() {
 
   return (
     <section aria-labelledby="account-sessions-title" className="space-y-3">
-      <h2 id="account-sessions-title" className="flex items-center gap-2 text-lg font-semibold text-ink">
+      <h2 id="account-sessions-title" className="flex items-center gap-2 card-title">
         <MonitorSmartphone className="h-5 w-5 text-subtle" aria-hidden="true" />
         Appareils connectés
       </h2>
