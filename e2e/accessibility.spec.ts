@@ -54,6 +54,13 @@ for (const colorScheme of ['light', 'dark'] as const) {
       await expectNoViolations(page);
     });
 
+    test('à propos, depuis la connexion', async ({ page }) => {
+      await page.goto('/');
+      await page.getByRole('navigation', { name: 'Informations sur l’application' }).getByRole('button', { name: 'À propos' }).click();
+      await expect(page.getByRole('heading', { name: 'À propos', level: 1 })).toBeVisible();
+      await expectNoViolations(page);
+    });
+
     test.describe('connecté', () => {
       test.beforeEach(async ({ page }) => {
         await signIn(page);
@@ -103,6 +110,23 @@ for (const colorScheme of ['light', 'dark'] as const) {
       test('tendances', async ({ page }) => {
         await page.locator('button:visible', { hasText: 'Tendances' }).first().click();
         await expect(page.getByText('Historique détaillé (30 jours)')).toBeVisible();
+        await expectNoViolations(page);
+      });
+
+      test('à propos', async ({ page }) => {
+        // Pied de page sous le journal, lisible en entier : le bouton flottant
+        // « Ajouter un aliment » (mobile) ne le recouvre pas en bas de page
+        const footer = page.locator('footer');
+        await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
+        const fab = page.getByRole('button', { name: 'Ajouter un aliment' }).filter({ visible: true });
+        if (await fab.count()) {
+          // Dernière ligne de texte du pied de page (sans la marge du bas)
+          const [f, b] = [await footer.getByText(/^Données nutritionnelles/).boundingBox(), await fab.boundingBox()];
+          expect(f && b && f.y + f.height <= b.y, 'le bouton flottant recouvre le pied de page').toBe(true);
+        }
+        await footer.getByRole('button', { name: 'Sources' }).click();
+        await expect(page.getByRole('heading', { name: 'À propos', level: 1 })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Télécharger mes données' })).toBeVisible();
         await expectNoViolations(page);
       });
 

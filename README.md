@@ -14,6 +14,7 @@ Application web de suivi calorique construite avec **React + TypeScript + Vite**
 - Favoris et aliments récents en haut de la recherche, ajoutables en un tap ; « Mes aliments » pour les produits saisis à la main (reconnus au scan).
 - Composition corporelle saisie avec les pesées (balance impédancemètre) et courbe masse grasse / masse maigre.
 - Ajustement des calories proposé d'après la dépense réelle (repas saisis et pesées), à accepter ou non.
+- Pied de page et page « À propos » (version, avertissement santé, données enregistrées, sources), accessibles aussi sans compte.
 - Persistance des données via Supabase (tables `profiles`, `goals`, `daily_targets`, `foods`, `entries`).
 
 ## Stack technique
@@ -235,6 +236,12 @@ Onglet « Recettes » de « Ajouter un aliment » :
 - **Objectif** : automatique d'après le poids du profil (30 ml/kg, arrondi aux 100 ml, entre 1,5 et 4 L : 79 kg → 2,4 L), ou personnalisé dans Paramètres (de 0,5 à 6 L).
 - **Tendances** : tuile « Eau moyenne » dans les 7 derniers jours (moyenne des jours notés, jours à l'objectif).
 - **Stockage** : une ligne par prise d'eau dans `water_logs` ; l'objectif manuel dans `user_preferences.water_goal_ml` (vide = automatique).
+
+## Pied de page et page « À propos »
+
+- **Pied de page** sous chaque vue et sur l'écran de connexion : « CalTrack v1.0.0 · À propos · Vos données · Sources ». Une fois connecté, il cite aussi les sources nutritionnelles (Ciqual, Open Food Facts).
+- **Page « À propos »** en quatre sections : l'application (version), santé (estimations, pas un dispositif médical), vos données (ce qui est enregistré, où, qui y a accès, combien de temps ; liens vers l'export et la suppression une fois connecté) et sources (Ciqual sous Licence Ouverte 2.0, Open Food Facts sous ODbL, formules utilisées). Chaque lien du pied de page ouvre la page sur sa section.
+- **Version** : lue dans `package.json` au build (`__APP_VERSION__`, exposée par `src/utils/appInfo.ts`) ; changer `version` suffit.
 
 ## Scanner de code-barres
 
