@@ -6,6 +6,8 @@ interface AppFooterProps {
   onOpen: (section: AboutSection) => void;
   /** Ligne d'attribution des sources nutritionnelles (app connectée) */
   showAttribution?: boolean;
+  /** Marge du bas (par défaut pb-2) */
+  className?: string;
 }
 
 const LINKS: { section: AboutSection; label: string }[] = [
@@ -14,9 +16,9 @@ const LINKS: { section: AboutSection; label: string }[] = [
   { section: 'sources', label: 'Sources' },
 ];
 
-export function AppFooter({ onOpen, showAttribution = false }: AppFooterProps) {
+export function AppFooter({ onOpen, showAttribution = false, className = 'pb-2' }: AppFooterProps) {
   return (
-    <footer className="mt-10 pb-2 text-center text-xs text-subtle">
+    <footer className={`mt-10 text-center text-xs text-subtle ${className}`}>
       <nav aria-label="Informations sur l’application" className="flex flex-wrap items-center justify-center gap-x-1 gap-y-1">
         <span>CalTrack v{APP_VERSION}</span>
         {LINKS.map(({ section, label }) => (

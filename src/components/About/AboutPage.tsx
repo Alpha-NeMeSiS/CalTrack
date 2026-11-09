@@ -28,6 +28,15 @@ const SECTION_TITLES: Record<AboutSection, string> = {
 
 const sectionId = (section: AboutSection) => `about-${section}`;
 
+// La première section s'ouvre en haut de page, avec le titre et les raccourcis
+function scrollToSection(section: AboutSection) {
+  if (section === 'app') {
+    window.scrollTo?.({ top: 0, behavior: 'smooth' });
+    return;
+  }
+  document.getElementById(sectionId(section))?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+}
+
 function Section({ id, title, children, tone = 'default' }: { id: AboutSection; title: string; children: ReactNode; tone?: 'default' | 'warning' }) {
   return (
     <section
@@ -63,12 +72,8 @@ function ExternalSource({ href, children }: { href: string; children: ReactNode 
 export function AboutPage({ section, scrollKey, signedIn, onBack, onOpenAccount }: AboutPageProps) {
   // Défile jusqu'à la section demandée, y compris quand elle change sur la page
   useEffect(() => {
-    if (!section) return;
-    document.getElementById(sectionId(section))?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    if (section) scrollToSection(section);
   }, [section, scrollKey]);
-
-  const jumpTo = (target: AboutSection) =>
-    document.getElementById(sectionId(target))?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -85,7 +90,7 @@ export function AboutPage({ section, scrollKey, signedIn, onBack, onOpenAccount 
           <button
             key={key}
             type="button"
-            onClick={() => jumpTo(key)}
+            onClick={() => scrollToSection(key)}
             className="rounded-full bg-surface-sunken px-3 py-1.5 text-xs font-medium text-body hover:bg-surface-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
           >
             {SECTION_TITLES[key]}

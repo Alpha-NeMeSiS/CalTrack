@@ -88,4 +88,15 @@ describe('AboutPage', () => {
     rerender(<AboutPage signedIn={false} section="data" scrollKey={2} />);
     expect(scrolledTo).toHaveLength(count + 1);
   });
+
+  it('ouvre la première section en haut de page, titre visible', () => {
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolledTo.push(this.id);
+    };
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    render(<AboutPage signedIn={false} section="app" />);
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }));
+    expect(scrolledTo).toEqual([]);
+    scrollTo.mockRestore();
+  });
 });

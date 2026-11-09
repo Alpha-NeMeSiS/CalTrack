@@ -174,8 +174,10 @@ function AppScreens() {
           <AboutPage section={aboutSection} scrollKey={aboutRequest} signedIn onOpenAccount={() => setCurrentView('account')} />
         )}
 
+        {/* pb-8 sur mobile : le bouton flottant « Ajouter un aliment » ne recouvre pas le texte */}
         <AppFooter
           showAttribution
+          className="pb-8 sm:pb-2"
           onOpen={(section) => {
             setAboutSection(section);
             setAboutRequest((n) => n + 1);
