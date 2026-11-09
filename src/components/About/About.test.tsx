@@ -82,5 +82,10 @@ describe('AboutPage', () => {
 
     rerender(<AboutPage signedIn={false} section="data" />);
     expect(scrolledTo[scrolledTo.length - 1]).toBe('about-data');
+
+    // Même section redemandée (nouveau clic) : défilement relancé
+    const count = scrolledTo.length;
+    rerender(<AboutPage signedIn={false} section="data" scrollKey={2} />);
+    expect(scrolledTo).toHaveLength(count + 1);
   });
 });

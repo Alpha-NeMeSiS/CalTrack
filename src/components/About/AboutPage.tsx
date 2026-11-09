@@ -10,6 +10,8 @@ import { Button } from '../ui/Button';
 interface AboutPageProps {
   /** Section vers laquelle défiler */
   section?: AboutSection;
+  /** Change à chaque demande d'ouverture : relance le défilement vers la même section */
+  scrollKey?: number;
   signedIn: boolean;
   /** Écran de connexion : retour au formulaire */
   onBack?: () => void;
@@ -58,12 +60,12 @@ function ExternalSource({ href, children }: { href: string; children: ReactNode 
   );
 }
 
-export function AboutPage({ section, signedIn, onBack, onOpenAccount }: AboutPageProps) {
+export function AboutPage({ section, scrollKey, signedIn, onBack, onOpenAccount }: AboutPageProps) {
   // Défile jusqu'à la section demandée, y compris quand elle change sur la page
   useEffect(() => {
     if (!section) return;
     document.getElementById(sectionId(section))?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-  }, [section]);
+  }, [section, scrollKey]);
 
   const jumpTo = (target: AboutSection) =>
     document.getElementById(sectionId(target))?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
