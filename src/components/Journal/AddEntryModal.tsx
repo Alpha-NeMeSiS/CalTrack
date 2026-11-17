@@ -96,10 +96,21 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   const [searchFocusKey, setSearchFocusKey] = useState<number | undefined>(undefined);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const dialogRef = useRef<HTMLDivElement | null>(null);
+  const statusRef = useRef<HTMLParagraphElement | null>(null);
 
-  // Nouvel ajout : la fenêtre remonte pour montrer la confirmation (long formulaire sur mobile)
+  // Nouvel ajout : la fenêtre remonte pour montrer la confirmation (long formulaire sur mobile).
+  // Si le bouton utilisé a disparu ou s'est désactivé, le focus clavier reste dans la
+  // fenêtre, sur la confirmation, au lieu de repartir en haut de la page.
   useEffect(() => {
-    if (lastAdded) dialogRef.current?.scrollTo?.({ top: 0 });
+    if (!lastAdded) return;
+    dialogRef.current?.scrollTo?.({ top: 0 });
+    // Vérifié après les mises à jour qui suivent l'ajout (ex : retour à la liste des recettes)
+    const timer = window.setTimeout(() => {
+      const active = document.activeElement as HTMLElement | null;
+      const focusLost = !active || !dialogRef.current?.contains(active) || (active as HTMLButtonElement).disabled;
+      if (focusLost) statusRef.current?.focus();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [lastAdded]);
 
   const isSearchQuantityValid = Number.isFinite(quantity) && quantity > 0;
@@ -349,10 +360,11 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
       meal_type: manualForm.meal_type,
     });
     if (added) {
-      // Formulaire vidé pour l'aliment suivant, même repas
+      // Formulaire vidé pour l'aliment suivant, même repas ; le clavier repart du nom
       setManualForm({ ...defaultManualForm, meal_type: manualForm.meal_type });
       setManualSubmitAttempted(false);
       resetManualExtras();
+      document.getElementById('label')?.focus();
     }
   };
 
@@ -852,7 +864,12 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
             </div>
           )}
           {lastAdded && (
-            <p role="status" className="mb-4 rounded-md border border-success-200 bg-success-50 px-3 py-2 text-sm text-success-800">
+            <p
+              ref={statusRef}
+              role="status"
+              tabIndex={-1}
+              className="mb-4 rounded-md border border-success-200 bg-success-50 px-3 py-2 text-sm text-success-800 focus:outline-none"
+            >
               ✓ {lastAdded.label} ajouté
               {lastAdded.meal ? ` · ${getMealLabel(preferences, lastAdded.meal)}` : ''} · {Math.round(lastAdded.kcal)} kcal
             </p>

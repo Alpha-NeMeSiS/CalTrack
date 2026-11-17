@@ -130,6 +130,8 @@ describe('AddEntryModal', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('✓ Salade maison ajouté · Collation · 320 kcal');
     expect(screen.getByLabelText("Nom de l'aliment")).toHaveValue('');
     expect(screen.getByRole('button', { name: 'Collation' })).toHaveAttribute('aria-pressed', 'true');
+    // Clavier : prêt à saisir le nom de l'aliment suivant
+    expect(screen.getByLabelText("Nom de l'aliment")).toHaveFocus();
   });
 
   it('ajoute un aliment de la recherche et reste ouverte, prête pour le suivant', async () => {
@@ -515,6 +517,19 @@ describe('AddEntryModal', () => {
       );
       expect(await screen.findByRole('status')).toHaveTextContent('✓ Chili maison — 1 part ajouté · Dîner · 491 kcal');
       expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('garde le focus dans la fenêtre après l’ajout d’une portion (retour à la liste)', async () => {
+      tables.recipes = [makeRecipe()];
+      render(<AddEntryModal date="2025-01-10" onAdd={vi.fn().mockResolvedValue(true)} onClose={vi.fn()} />);
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole('tab', { name: 'Recettes' }));
+      await user.click(await screen.findByRole('button', { name: /^Chili maison/ }));
+      await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+
+      const status = await screen.findByRole('status');
+      await waitFor(() => expect(status).toHaveFocus());
     });
   });
 });
