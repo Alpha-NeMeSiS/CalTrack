@@ -167,6 +167,49 @@ describe('fetchOFFProduct', () => {
     });
   });
 
+  it('utilise les valeurs « préparé » quand le produit n’a que celles-là (plat à réchauffer)', async () => {
+    // Réponse réelle de l'API produit pour la PastaBox Sodebo bolognaise (17/11/2026)
+    mockFetchJson({
+      product: {
+        code: '3242272270157',
+        product_name: 'Sodebo pastabox 330g fusilli a la bolognaise',
+        serving_size: '1 portion 330 g',
+        nutrition_data_prepared: 'on',
+        nutriments: {
+          'energy-kcal_prepared_100g': 127,
+          energy_prepared_100g: 536,
+          proteins_prepared_100g: 7.5,
+          fat_prepared_100g: 2.8,
+          carbohydrates_prepared_100g: 17,
+          fiber_prepared_100g: 2,
+          'energy-kcal_unit': 'kcal',
+        },
+      },
+    });
+
+    const result = await fetchOFFProduct('3242272270157');
+    expect(result).toMatchObject({
+      status: 'found',
+      food: { kcal_per_100g: 127, protein_g: 7.5, fat_g: 2.8, carbs_g: 17, fiber_g: 2, servingGrams: 330 },
+    });
+  });
+
+  it('garde les valeurs « tel que vendu » quand elles existent, sans les mélanger aux valeurs « préparé »', async () => {
+    mockFetchJson({
+      product: {
+        code: '3000000000001',
+        product_name: 'Pâtes sèches',
+        nutriments: {
+          'energy-kcal_100g': 359, proteins_100g: 12, fat_100g: 1.5, carbohydrates_100g: 71,
+          'energy-kcal_prepared_100g': 158, proteins_prepared_100g: 5.8, fiber_prepared_100g: 1.8,
+        },
+      },
+    });
+
+    const result = await fetchOFFProduct('3000000000001');
+    expect(result).toMatchObject({ status: 'found', food: { kcal_per_100g: 359, protein_g: 12, fiber_g: 0 } });
+  });
+
   it('distingue un produit sans valeurs nutritionnelles', async () => {
     mockFetchJson({ product: { code: '1234567890128', product_name: 'Mystère', nutriments: {} } });
     expect(await fetchOFFProduct('1234567890128')).toEqual({ status: 'no_nutrition', name: 'Mystère' });
