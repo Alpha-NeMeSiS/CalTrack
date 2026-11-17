@@ -152,6 +152,26 @@ describe('AddEntryModal', () => {
     expect(screen.getByTestId('search-focus-key')).toHaveTextContent('1');
   });
 
+  it('remonte en haut de la fenêtre pour montrer la confirmation', async () => {
+    // scrollTo n'existe pas sur les éléments dans jsdom : on note les appels
+    const scrolled: Array<{ element: Element; options: unknown }> = [];
+    Element.prototype.scrollTo = function (this: Element, options?: unknown) {
+      scrolled.push({ element: this, options });
+    } as Element['scrollTo'];
+    try {
+      render(<AddEntryModal date="2025-01-10" onAdd={vi.fn().mockResolvedValue(true)} onClose={vi.fn()} />);
+      const user = await fillManualForm();
+      await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+      await screen.findByRole('status');
+
+      const dialog = screen.getByRole('dialog', { name: 'Ajouter un aliment' });
+      expect(scrolled.some(({ element, options }) => dialog.contains(element) && (options as { top?: number })?.top === 0)).toBe(true);
+    } finally {
+      // @ts-expect-error nettoyage du simulacre (absent de jsdom)
+      delete Element.prototype.scrollTo;
+    }
+  });
+
   it("efface la confirmation si l'ajout suivant échoue", async () => {
     const onAdd = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false);
     render(<AddEntryModal date="2025-01-10" onAdd={onAdd} onClose={vi.fn()} />);

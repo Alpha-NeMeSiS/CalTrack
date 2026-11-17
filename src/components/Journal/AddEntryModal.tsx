@@ -95,6 +95,12 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   const [lastMeal, setLastMeal] = useState<MealType | undefined>(undefined);
   const [searchFocusKey, setSearchFocusKey] = useState<number | undefined>(undefined);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+
+  // Nouvel ajout : la fenêtre remonte pour montrer la confirmation (long formulaire sur mobile)
+  useEffect(() => {
+    if (lastAdded) dialogRef.current?.scrollTo?.({ top: 0 });
+  }, [lastAdded]);
 
   const isSearchQuantityValid = Number.isFinite(quantity) && quantity > 0;
   const calculated = selectedFood
@@ -795,6 +801,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-entry-title"
