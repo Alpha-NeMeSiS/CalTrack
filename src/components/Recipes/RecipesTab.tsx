@@ -19,11 +19,11 @@ interface RecipesTabProps {
   personalFoods?: NormalizedFood[];
   disabled?: boolean;
   onAdd: (entry: AddEntryPayload) => Promise<boolean>;
-  /** Repas du dernier ajout dans la fenêtre (proposé en priorité, tâche 2) */
+  /** Repas du dernier ajout dans la fenêtre, proposé avant le repas habituel */
   lastMeal?: MealType;
 }
 
-export function RecipesTab({ userId, recentEntries, personalFoods, disabled, onAdd }: RecipesTabProps) {
+export function RecipesTab({ userId, recentEntries, personalFoods, disabled, onAdd, lastMeal }: RecipesTabProps) {
   const { recipes, loading, error, reload, save, remove } = useRecipes(userId);
   const [view, setView] = useState<View>({ name: 'list' });
   const [notice, setNotice] = useState<string | null>(null);
@@ -71,9 +71,14 @@ export function RecipesTab({ userId, recentEntries, personalFoods, disabled, onA
     return (
       <RecipePortion
         recipe={view.recipe}
-        defaultMeal={usualRecipeMeal(view.recipe.name, recentEntries)}
+        defaultMeal={lastMeal ?? usualRecipeMeal(view.recipe.name, recentEntries)}
         disabled={disabled}
-        onAdd={onAdd}
+        onAdd={async (entry) => {
+          // Ajouts à la suite : retour à la liste pour la recette suivante
+          const added = await onAdd(entry);
+          if (added) setView({ name: 'list' });
+          return added;
+        }}
         onBack={() => setView({ name: 'list' })}
       />
     );

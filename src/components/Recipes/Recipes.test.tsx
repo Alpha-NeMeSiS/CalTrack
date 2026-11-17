@@ -233,6 +233,39 @@ describe('RecipesTab', () => {
     expect(screen.getByRole('button', { name: /^Dahl/ })).toBeInTheDocument();
   });
 
+  it('après l’ajout d’une portion, revient à la liste ; le repas du dernier ajout est proposé', async () => {
+    vi.spyOn(recipesService, 'fetchRecipes').mockResolvedValue([makeRecipe()]);
+    const onAdd = vi.fn().mockResolvedValue(true);
+    render(
+      <RecipesTab
+        userId="user-1"
+        recentEntries={[makeEntry({ label: 'Chili maison — 1 part', meal_type: 'dinner' })]}
+        lastMeal="lunch"
+        onAdd={onAdd}
+      />
+    );
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: /^Chili maison/ }));
+    // D'habitude au dîner, mais le repas en cours de saisie est le déjeuner
+    expect(screen.getByRole('button', { name: 'Déjeuner' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+
+    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ label: 'Chili maison — 1 part', meal_type: 'lunch' }));
+    expect(await screen.findByRole('button', { name: /^Chili maison/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Retour aux recettes' })).not.toBeInTheDocument();
+  });
+
+  it('reste sur la portion si l’ajout échoue', async () => {
+    vi.spyOn(recipesService, 'fetchRecipes').mockResolvedValue([makeRecipe()]);
+    render(<RecipesTab userId="user-1" recentEntries={[]} onAdd={vi.fn().mockResolvedValue(false)} />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: /^Chili maison/ }));
+    await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+    expect(screen.getByRole('button', { name: 'Retour aux recettes' })).toBeInTheDocument();
+  });
+
   it('ouvre le choix de la quantité en touchant une recette', async () => {
     vi.spyOn(recipesService, 'fetchRecipes').mockResolvedValue([makeRecipe()]);
     render(<RecipesTab userId="user-1" recentEntries={[]} onAdd={vi.fn()} />);
