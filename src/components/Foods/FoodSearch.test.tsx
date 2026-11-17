@@ -63,6 +63,16 @@ async function wait(ms: number) {
 }
 
 describe('FoodSearch', () => {
+  it('reprend le focus quand focusKey change (aliment suivant)', () => {
+    const onSelect = vi.fn();
+    const { rerender } = render(<FoodSearch onSelect={onSelect} />);
+    const input = screen.getByRole('combobox', { name: "Recherche d'aliment" });
+    expect(input).not.toHaveFocus();
+
+    rerender(<FoodSearch onSelect={onSelect} focusKey={1} />);
+    expect(input).toHaveFocus();
+  });
+
   it('recherche dans Ciqual à partir de 2 caractères et permet de choisir un aliment', async () => {
     mockedSearchCiqual.mockResolvedValue([pomme]);
     const { user, onSelect, input } = setup();

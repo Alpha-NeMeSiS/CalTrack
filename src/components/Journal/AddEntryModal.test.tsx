@@ -27,13 +27,16 @@ vi.mock('../Foods/FoodSearch', () => ({
     idleContent,
     onCreateFood,
     personalFoods,
+    focusKey,
   }: {
     onSelect: (food: unknown) => void;
     idleContent?: React.ReactNode;
     onCreateFood?: (draft: { barcode: string; name?: string }) => void;
     personalFoods?: { name: string }[];
+    focusKey?: number;
   }) => (
     <div>
+      <p data-testid="search-focus-key">{focusKey ?? 0}</p>
       <button
         type="button"
         onClick={() =>
@@ -104,7 +107,7 @@ async function fillManualForm() {
 }
 
 describe('AddEntryModal', () => {
-  it('ajoute une saisie manuelle puis ferme la fenêtre', async () => {
+  it('ajoute une saisie manuelle et reste ouverte : formulaire vidé, repas gardé', async () => {
     const onAdd = vi.fn().mockResolvedValue(true);
     const onClose = vi.fn();
     render(<AddEntryModal date="2025-01-10" onAdd={onAdd} onClose={onClose} />);
@@ -123,7 +126,57 @@ describe('AddEntryModal', () => {
       fiber_g: 0,
       meal_type: 'snack',
     });
-    expect(onClose).toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(await screen.findByRole('status')).toHaveTextContent('✓ Salade maison ajouté · Collation · 320 kcal');
+    expect(screen.getByLabelText("Nom de l'aliment")).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Collation' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('ajoute un aliment de la recherche et reste ouverte, prête pour le suivant', async () => {
+    const onAdd = vi.fn().mockResolvedValue(true);
+    const onClose = vi.fn();
+    render(<AddEntryModal date="2025-01-10" onAdd={onAdd} onClose={onClose} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Choisir un yaourt' }));
+    await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+
+    expect(onAdd).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
+    // 125 g à 60 kcal pour 100 g, sans repas choisi
+    expect(await screen.findByRole('status')).toHaveTextContent('✓ Danone Yaourt nature ajouté · 75 kcal');
+    // Sélection retirée : un second clic n'ajoute rien
+    expect(screen.queryByLabelText('Quantité (grammes)')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ajouter' })).toBeDisabled();
+    // Le champ de recherche reprend le focus
+    expect(screen.getByTestId('search-focus-key')).toHaveTextContent('1');
+  });
+
+  it("efface la confirmation si l'ajout suivant échoue", async () => {
+    const onAdd = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    render(<AddEntryModal date="2025-01-10" onAdd={onAdd} onClose={vi.fn()} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Choisir un yaourt' }));
+    await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+    expect(await screen.findByRole('status')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Choisir un yaourt' }));
+    await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent("L'ajout a échoué");
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('efface la confirmation au changement d’onglet', async () => {
+    render(<AddEntryModal date="2025-01-10" onAdd={vi.fn().mockResolvedValue(true)} onClose={vi.fn()} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Choisir un yaourt' }));
+    await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+    expect(await screen.findByRole('status')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Saisie manuelle' }));
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it("affiche un message si l'ajout échoue et garde la fenêtre ouverte (régression)", async () => {
@@ -207,7 +260,7 @@ describe('AddEntryModal', () => {
       ];
     });
 
-    it('ajoute un aliment récent en un tap, avec sa quantité et son repas habituels', async () => {
+    it('ajoute un aliment récent en un tap, avec sa quantité et son repas habituels, sans fermer', async () => {
       const onAdd = vi.fn().mockResolvedValue(true);
       const onClose = vi.fn();
       render(<AddEntryModal date="2025-01-10" onAdd={onAdd} onClose={onClose} />);
@@ -224,7 +277,41 @@ describe('AddEntryModal', () => {
         fiber_g: 3,
         meal_type: 'breakfast',
       });
-      expect(onClose).toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(await screen.findByRole('status')).toHaveTextContent('✓ Banane ajouté · Petit-déjeuner · 107 kcal');
+    });
+
+    it('enchaîne deux ajouts rapides puis se ferme avec la croix', async () => {
+      const onAdd = vi.fn().mockResolvedValue(true);
+      const onClose = vi.fn();
+      render(<AddEntryModal date="2025-01-10" onAdd={onAdd} onClose={onClose} />);
+      const user = userEvent.setup();
+
+      const quickAdd = await screen.findByRole('button', { name: 'Ajouter « Banane » (120 g) au journal' });
+      await user.click(quickAdd);
+      await screen.findByRole('status');
+      await user.click(screen.getByRole('button', { name: 'Ajouter « Banane » (120 g) au journal' }));
+      await waitFor(() => expect(onAdd).toHaveBeenCalledTimes(2));
+      expect(onClose).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole('button', { name: 'Fermer la fenêtre' }));
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('propose le repas du dernier ajout pour l’aliment suivant', async () => {
+      render(<AddEntryModal date="2025-01-10" onAdd={vi.fn().mockResolvedValue(true)} onClose={vi.fn()} />);
+      const user = userEvent.setup();
+
+      await screen.findByRole('list', { name: 'Récents' });
+      await user.click(screen.getByRole('button', { name: 'Choisir un yaourt' }));
+      await user.click(screen.getByRole('button', { name: 'Déjeuner' }));
+      await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+      await screen.findByRole('status');
+
+      // La banane se mange d'habitude au petit-déjeuner : le repas en cours l'emporte
+      await user.click(screen.getByRole('button', { name: /^Banane/ }));
+      expect(screen.getByRole('button', { name: 'Déjeuner' })).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByRole('button', { name: 'Petit-déjeuner' })).toHaveAttribute('aria-pressed', 'false');
     });
 
     it('sélectionne un récent pour ajuster la quantité avant l’ajout', async () => {
@@ -392,7 +479,7 @@ describe('AddEntryModal', () => {
       expect(tab).toHaveFocus();
     });
 
-    it('ajoute une part de recette en un geste puis ferme la fenêtre', async () => {
+    it('ajoute une part de recette en un geste et reste ouverte', async () => {
       tables.recipes = [makeRecipe()];
       tables.entries = [entry('Chili maison — 1 part', 450, 491, 'dinner', '2025-01-08T19:00:00Z')];
       const onAdd = vi.fn().mockResolvedValue(true);
@@ -406,7 +493,8 @@ describe('AddEntryModal', () => {
       expect(onAdd).toHaveBeenCalledWith(
         expect.objectContaining({ label: 'Chili maison — 1 part', qty_grammes: 450, kcal: 491, meal_type: 'dinner' })
       );
-      await waitFor(() => expect(onClose).toHaveBeenCalled());
+      expect(await screen.findByRole('status')).toHaveTextContent('✓ Chili maison — 1 part ajouté · Dîner · 491 kcal');
+      expect(onClose).not.toHaveBeenCalled();
     });
   });
 });

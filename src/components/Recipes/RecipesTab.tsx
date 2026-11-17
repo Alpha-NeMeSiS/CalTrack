@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { Entry, Recipe } from '../../lib/supabase';
 import type { NormalizedFood } from '../../types/food';
-import type { AddEntryPayload } from '../../utils/entries';
+import type { AddEntryPayload, MealType } from '../../utils/entries';
 import { portionByServings, recipeToDraft, usualRecipeMeal } from '../../utils/recipes';
 import { RecipeEditor } from './RecipeEditor';
 import { RecipeList } from './RecipeList';
@@ -19,6 +19,8 @@ interface RecipesTabProps {
   personalFoods?: NormalizedFood[];
   disabled?: boolean;
   onAdd: (entry: AddEntryPayload) => Promise<boolean>;
+  /** Repas du dernier ajout dans la fenêtre (proposé en priorité, tâche 2) */
+  lastMeal?: MealType;
 }
 
 export function RecipesTab({ userId, recentEntries, personalFoods, disabled, onAdd }: RecipesTabProps) {
