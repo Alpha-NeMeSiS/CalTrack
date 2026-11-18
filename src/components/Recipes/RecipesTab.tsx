@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { Entry, Recipe } from '../../lib/supabase';
 import type { NormalizedFood } from '../../types/food';
-import type { AddEntryPayload } from '../../utils/entries';
+import type { AddEntryPayload, MealType } from '../../utils/entries';
 import { portionByServings, recipeToDraft, usualRecipeMeal } from '../../utils/recipes';
 import { RecipeEditor } from './RecipeEditor';
 import { RecipeList } from './RecipeList';
@@ -19,9 +19,11 @@ interface RecipesTabProps {
   personalFoods?: NormalizedFood[];
   disabled?: boolean;
   onAdd: (entry: AddEntryPayload) => Promise<boolean>;
+  /** Repas du dernier ajout dans la fenêtre, proposé avant le repas habituel */
+  lastMeal?: MealType;
 }
 
-export function RecipesTab({ userId, recentEntries, personalFoods, disabled, onAdd }: RecipesTabProps) {
+export function RecipesTab({ userId, recentEntries, personalFoods, disabled, onAdd, lastMeal }: RecipesTabProps) {
   const { recipes, loading, error, reload, save, remove } = useRecipes(userId);
   const [view, setView] = useState<View>({ name: 'list' });
   const [notice, setNotice] = useState<string | null>(null);
@@ -69,9 +71,14 @@ export function RecipesTab({ userId, recentEntries, personalFoods, disabled, onA
     return (
       <RecipePortion
         recipe={view.recipe}
-        defaultMeal={usualRecipeMeal(view.recipe.name, recentEntries)}
+        defaultMeal={lastMeal ?? usualRecipeMeal(view.recipe.name, recentEntries)}
         disabled={disabled}
-        onAdd={onAdd}
+        onAdd={async (entry) => {
+          // Ajouts à la suite : retour à la liste pour la recette suivante
+          const added = await onAdd(entry);
+          if (added) setView({ name: 'list' });
+          return added;
+        }}
         onBack={() => setView({ name: 'list' })}
       />
     );

@@ -86,6 +86,22 @@ for (const colorScheme of ['light', 'dark'] as const) {
 
         await page.getByRole('tab', { name: 'Saisie manuelle' }).click();
         await expectNoViolations(page);
+
+        // Ajouts à la suite : la fenêtre reste ouverte avec une confirmation
+        await page.getByLabel("Nom de l'aliment").fill('Salade maison');
+        await page.getByLabel('Quantité (g)').fill('250');
+        await page.getByLabel('Calories (kcal)').fill('320');
+        const dialog = page.getByRole('dialog', { name: 'Ajouter un aliment' });
+        await dialog.getByRole('button', { name: 'Ajouter', exact: true }).click();
+        await expect(dialog.getByRole('status')).toContainText('✓ Salade maison ajouté');
+        // Visible sans défiler, même après un long formulaire (mobile)
+        await expect(dialog.getByRole('status')).toBeInViewport();
+        await expect(dialog).toBeVisible();
+        await expect(page.getByLabel("Nom de l'aliment")).toHaveValue('');
+        await expectNoViolations(page);
+
+        await page.getByRole('button', { name: 'Fermer la fenêtre' }).click();
+        await expect(dialog).toBeHidden();
       });
 
       test('recettes', async ({ page }) => {

@@ -12,6 +12,7 @@ Application web de suivi calorique construite avec **React + TypeScript + Vite**
 - Recherche d'aliments : base Ciqual locale et produits du commerce Open Food Facts (via une fonction Netlify qui interroge `search.openfoodfacts.org`).
 - Scanner de code-barres : avec l'appareil photo (ou en saisissant le code), le produit est retrouvé dans Open Food Facts et ses portions proposées.
 - Favoris et aliments récents en haut de la recherche, ajoutables en un tap ; « Mes aliments » pour les produits saisis à la main (reconnus au scan).
+- Ajout de plusieurs aliments à la suite : la fenêtre « Ajouter un aliment » reste ouverte après chaque ajout (confirmation, repas gardé) et se ferme avec la croix.
 - Composition corporelle saisie avec les pesées (balance impédancemètre) et courbe masse grasse / masse maigre.
 - Ajustement des calories proposé d'après la dépense réelle (repas saisis et pesées), à accepter ou non.
 - Pied de page et page « À propos » (version, avertissement santé, données enregistrées, sources), accessibles aussi sans compte.

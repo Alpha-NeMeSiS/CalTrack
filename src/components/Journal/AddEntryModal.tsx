@@ -89,7 +89,29 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   const [libraryMessage, setLibraryMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Ajouts à la suite : la fenêtre reste ouverte, confirmation du dernier ajout
+  const [lastAdded, setLastAdded] = useState<{ label: string; kcal: number; meal?: MealType } | null>(null);
+  // Repas du dernier ajout, proposé pour l'aliment suivant
+  const [lastMeal, setLastMeal] = useState<MealType | undefined>(undefined);
+  const [searchFocusKey, setSearchFocusKey] = useState<number | undefined>(undefined);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const statusRef = useRef<HTMLParagraphElement | null>(null);
+
+  // Nouvel ajout : la fenêtre remonte pour montrer la confirmation (long formulaire sur mobile).
+  // Si le bouton utilisé a disparu ou s'est désactivé, le focus clavier reste dans la
+  // fenêtre, sur la confirmation, au lieu de repartir en haut de la page.
+  useEffect(() => {
+    if (!lastAdded) return;
+    dialogRef.current?.scrollTo?.({ top: 0 });
+    // Vérifié après les mises à jour qui suivent l'ajout (ex : retour à la liste des recettes)
+    const timer = window.setTimeout(() => {
+      const active = document.activeElement as HTMLElement | null;
+      const focusLost = !active || !dialogRef.current?.contains(active) || (active as HTMLButtonElement).disabled;
+      if (focusLost) statusRef.current?.focus();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [lastAdded]);
 
   const isSearchQuantityValid = Number.isFinite(quantity) && quantity > 0;
   const calculated = selectedFood
@@ -145,6 +167,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   const switchTab = (tab: AddEntryMode) => {
     setActiveTab(tab);
     setSubmitError(null);
+    setLastAdded(null);
     setLibraryMessage(null);
     setConfirmDeleteId(null);
     if (tab !== 'search') resetSearchState();
@@ -182,14 +205,18 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     try {
       const success = await onAdd(entry);
       if (success) {
-        onClose();
+        // La fenêtre reste ouverte pour l'aliment suivant ; la croix la ferme
+        setLastAdded({ label: entry.label ?? 'Aliment', kcal: entry.kcal, meal: entry.meal_type });
+        setLastMeal(entry.meal_type);
       } else {
         // Auparavant : aucun retour visible, le bouton revenait simplement à « Ajouter »
+        setLastAdded(null);
         setSubmitError(ADD_ERROR);
       }
       return success;
     } catch (error) {
       console.error("Erreur lors de l'ajout", error);
+      setLastAdded(null);
       setSubmitError(ADD_ERROR);
       return false;
     } finally {
@@ -205,7 +232,8 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     setSelectedFood(food);
     // Quantité habituelle, sinon portion du fabricant (ex : 1 pot de 125 g), sinon 100 g
     setQuantity(grams ?? usual?.usualQty ?? food.servingGrams ?? 100);
-    setMealType(meal ?? usual?.usualMeal);
+    // Repas du dernier ajout d'abord (on note un repas en entier), puis l'habitude
+    setMealType(lastMeal ?? meal ?? usual?.usualMeal);
     setLibraryMessage(null);
   };
 
@@ -224,13 +252,19 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
           ? `off:${selectedFood.offCode}`
           : undefined);
 
-    await submitEntry({
+    const added = await submitEntry({
       ...(id ? { food_id: id } : {}),
       label: foodLabel(selectedFood),
       qty_grammes: quantity,
       ...calculated,
       meal_type: mealType,
     });
+    if (added) {
+      // Prêt pour l'aliment suivant : sélection retirée, champ de recherche actif
+      setSelectedFood(null);
+      setQuantity(100);
+      setSearchFocusKey((key) => (key ?? 0) + 1);
+    }
   };
 
   /** Ajout en un tap : quantité et repas habituels */
@@ -256,7 +290,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   /** Produit scanné inconnu : saisie manuelle pré-remplie, enregistrée dans mes aliments */
   const handleCreateFood = (draft: { barcode: string; name?: string }) => {
     switchTab('manual');
-    setManualForm({ ...defaultManualForm, label: draft.name ?? '' });
+    setManualForm({ ...defaultManualForm, label: draft.name ?? '', meal_type: lastMeal });
     setSaveToMyFoods(true);
     setManualBarcode(draft.barcode);
     setManualFromScan(true);
@@ -318,13 +352,20 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
       }
     }
 
-    await submitEntry({
+    const added = await submitEntry({
       ...(foodId ? { food_id: foodId } : {}),
       label: manualForm.label.trim(),
       qty_grammes: manualForm.qty_grammes,
       ...manualEntryValues(),
       meal_type: manualForm.meal_type,
     });
+    if (added) {
+      // Formulaire vidé pour l'aliment suivant, même repas ; le clavier repart du nom
+      setManualForm({ ...defaultManualForm, meal_type: manualForm.meal_type });
+      setManualSubmitAttempted(false);
+      resetManualExtras();
+      document.getElementById('label')?.focus();
+    }
   };
 
   // --- Mes aliments -----------------------------------------------------------
@@ -371,6 +412,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
           <label className="field-label mb-2">Aliment</label>
           <FoodSearch
             onSelect={(food) => selectFood(food)}
+            focusKey={searchFocusKey}
             personalFoods={library.personalFoods}
             onCreateFood={handleCreateFood}
             idleContent={
@@ -771,6 +813,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-entry-title"
@@ -820,6 +863,17 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
               {submitError}
             </div>
           )}
+          {lastAdded && (
+            <p
+              ref={statusRef}
+              role="status"
+              tabIndex={-1}
+              className="mb-4 rounded-md border border-success-200 bg-success-50 px-3 py-2 text-sm text-success-800 focus:outline-none"
+            >
+              ✓ {lastAdded.label} ajouté
+              {lastAdded.meal ? ` · ${getMealLabel(preferences, lastAdded.meal)}` : ''} · {Math.round(lastAdded.kcal)} kcal
+            </p>
+          )}
           <div
             id={`add-entry-panel-${activeTab}`}
             role="tabpanel"
@@ -834,6 +888,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                 recentEntries={library.recentEntries}
                 personalFoods={library.personalFoods}
                 disabled={submitting}
+                lastMeal={lastMeal}
                 onAdd={submitEntry}
               />
             )}

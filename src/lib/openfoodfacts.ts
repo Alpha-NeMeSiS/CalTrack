@@ -20,14 +20,10 @@ const toBrand = (brands: unknown): string | undefined => {
   return typeof brands === 'string' && brands.trim() ? brands : undefined;
 };
 
-interface OFFNutriments {
-  'energy-kcal_100g'?: number | string;
-  energy_100g?: number | string;
-  proteins_100g?: number | string;
-  fat_100g?: number | string;
-  carbohydrates_100g?: number | string;
-  fiber_100g?: number | string;
-}
+// Valeurs pour 100 g « tel que vendu » (suffixe _100g) ou « préparé » (_prepared_100g :
+// plat à réchauffer, poudre à reconstituer…). Certains produits n'ont que les secondes.
+type OFFNutriments = Partial<Record<string, number | string>>;
+type NutrimentsBasis = '_100g' | '_prepared_100g';
 
 interface OFFProduct {
   code?: string;
@@ -39,13 +35,35 @@ interface OFFProduct {
   serving_size?: string;
 }
 
-function kcalFromNutriments(nutriments: OFFNutriments | undefined): number {
-  const kcal = toNumber(nutriments?.['energy-kcal_100g']);
+function kcalFromNutriments(nutriments: OFFNutriments | undefined, basis: NutrimentsBasis): number {
+  const kcal = toNumber(nutriments?.[`energy-kcal${basis}`]);
   if (kcal) {
     return kcal;
   }
-  const kJ = toNumber(nutriments?.energy_100g);
+  const kJ = toNumber(nutriments?.[`energy${basis}`]);
   return kJ ? Math.round(((kJ / 4.184) + Number.EPSILON) * 10) / 10 : 0;
+}
+
+type NutritionValues = Pick<NormalizedFood, 'kcal_per_100g' | 'protein_g' | 'fat_g' | 'carbs_g' | 'fiber_g'>;
+
+function nutritionFrom(nutriments: OFFNutriments | undefined, basis: NutrimentsBasis): NutritionValues {
+  return {
+    kcal_per_100g: kcalFromNutriments(nutriments, basis),
+    protein_g: toNumber(nutriments?.[`proteins${basis}`]),
+    fat_g: toNumber(nutriments?.[`fat${basis}`]),
+    carbs_g: toNumber(nutriments?.[`carbohydrates${basis}`]),
+    fiber_g: toNumber(nutriments?.[`fiber${basis}`]),
+  };
+}
+
+const hasValues = (values: NutritionValues) => Boolean(values.kcal_per_100g || values.protein_g || values.fat_g || values.carbs_g);
+
+/** Valeurs « tel que vendu » ; à défaut, le jeu complet « préparé » (jamais un mélange des deux) */
+function nutritionOf(nutriments: OFFNutriments | undefined): NutritionValues {
+  const asSold = nutritionFrom(nutriments, '_100g');
+  if (hasValues(asSold)) return asSold;
+  const prepared = nutritionFrom(nutriments, '_prepared_100g');
+  return hasValues(prepared) ? prepared : asSold;
 }
 
 /** Convertit un produit Open Food Facts au format commun de l'application. */
@@ -58,11 +76,7 @@ function normalizeOFFProduct(product: OFFProduct): NormalizedFood {
     imageUrl: product?.image_small_url || undefined,
     offCode: product?.code || undefined,
     extCode: undefined,
-    kcal_per_100g: kcalFromNutriments(product?.nutriments),
-    protein_g: toNumber(product?.nutriments?.proteins_100g),
-    fat_g: toNumber(product?.nutriments?.fat_100g),
-    carbs_g: toNumber(product?.nutriments?.carbohydrates_100g),
-    fiber_g: toNumber(product?.nutriments?.fiber_100g),
+    ...nutritionOf(product?.nutriments),
   };
   const servingGrams = parseServingGrams(product?.serving_size);
   if (servingGrams) {

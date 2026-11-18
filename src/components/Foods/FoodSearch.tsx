@@ -23,6 +23,8 @@ interface FoodSearchProps {
   idleContent?: ReactNode;
   /** Produit scanné inconnu : ouvre la création d'un aliment personnel */
   onCreateFood?: (draft: { barcode: string; name?: string }) => void;
+  /** Change après chaque ajout : le champ reprend le focus pour l'aliment suivant */
+  focusKey?: number;
 }
 
 const EMPTY_FOODS: NormalizedFood[] = [];
@@ -44,7 +46,7 @@ function useDebounce<T>(value: T, ms = CIQUAL_SEARCH_DEBOUNCE_MS) {
   return debounced;
 }
 
-export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent, onCreateFood }: FoodSearchProps) {
+export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent, onCreateFood, focusKey }: FoodSearchProps) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<SearchCategory>('ciqual');
   const minChars = category === 'off' ? OFF_MIN_QUERY_LENGTH : CIQUAL_MIN_QUERY_LENGTH;
@@ -56,6 +58,11 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Aliment suivant : le champ reprend le focus (rien au premier affichage)
+  useEffect(() => {
+    if (focusKey !== undefined) inputRef.current?.focus();
+  }, [focusKey]);
   const listboxId = useId();
   // Scanner de code-barres : le produit est recherché dans Open Food Facts
   const [scannerOpen, setScannerOpen] = useState(false);
