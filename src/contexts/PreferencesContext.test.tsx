@@ -3,14 +3,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PreferencesProvider } from './PreferencesContext';
 import { usePreferences } from './usePreferences';
 import { DEFAULT_PREFERENCES } from '../utils/preferences';
+import { APP_VERSION } from '../utils/appInfo';
 
 const authValue = { user: { id: 'user-1' } as { id: string } | null };
 vi.mock('./useAuth', () => ({ useAuth: () => authValue }));
 
 const fetchPreferences = vi.fn();
+const markTourCompleted = vi.fn();
+const markVersionSeen = vi.fn();
 vi.mock('../services/preferences', () => ({
   fetchPreferences: (...args: unknown[]) => fetchPreferences(...args),
   savePreferences: vi.fn(),
+  markTourCompleted: (...args: unknown[]) => markTourCompleted(...args),
+  markVersionSeen: (...args: unknown[]) => markVersionSeen(...args),
 }));
 
 function Probe() {
@@ -18,11 +23,61 @@ function Probe() {
   return <span data-testid="display">{preferences.calorieDisplay}</span>;
 }
 
+function StatusProbe() {
+  const { status, preferences, markTourCompleted: markTour, markVersionSeen: markVersion } = usePreferences();
+  return (
+    <div>
+      <span data-testid="status">{status}</span>
+      <span data-testid="tour">{preferences.tourCompletedAt ?? 'non'}</span>
+      <span data-testid="seen">{preferences.lastSeenVersion ?? 'aucune'}</span>
+      <button type="button" onClick={() => markTour()}>Visite finie</button>
+      <button type="button" onClick={() => markVersion('2.1.0')}>Version vue</button>
+    </div>
+  );
+}
+
 beforeEach(() => {
+  markTourCompleted.mockReset();
+  markVersionSeen.mockReset();
   fetchPreferences.mockReset();
   authValue.user = { id: 'user-1' };
   localStorage.clear();
   document.documentElement.classList.remove('dark');
+});
+
+describe('PreferencesProvider : état et visite', () => {
+  it('passe de « loading » à « ready » quand aucune préférence n’existe', async () => {
+    let resolve: (value: null) => void = () => {};
+    fetchPreferences.mockReturnValue(new Promise((r) => { resolve = r; }));
+    render(<PreferencesProvider><StatusProbe /></PreferencesProvider>);
+    expect(screen.getByTestId('status')).toHaveTextContent('loading');
+    resolve(null);
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('ready'));
+  });
+
+  it('passe à « error » si la lecture échoue', async () => {
+    fetchPreferences.mockRejectedValue(new Error('réseau'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<PreferencesProvider><StatusProbe /></PreferencesProvider>);
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('error'));
+  });
+
+  it('enregistre la fin de la visite avec la version de l’app, puis la version vue', async () => {
+    fetchPreferences.mockResolvedValue(null);
+    markTourCompleted.mockResolvedValue('2026-11-22T10:00:00.000Z');
+    markVersionSeen.mockResolvedValue(undefined);
+    render(<PreferencesProvider><StatusProbe /></PreferencesProvider>);
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('ready'));
+
+    screen.getByRole('button', { name: 'Visite finie' }).click();
+    await waitFor(() => expect(screen.getByTestId('tour')).toHaveTextContent('2026-11-22T10:00:00.000Z'));
+    expect(markTourCompleted).toHaveBeenCalledWith('user-1', APP_VERSION);
+    expect(screen.getByTestId('seen')).toHaveTextContent(APP_VERSION);
+
+    screen.getByRole('button', { name: 'Version vue' }).click();
+    await waitFor(() => expect(markVersionSeen).toHaveBeenCalledWith('user-1', '2.1.0'));
+    expect(screen.getByTestId('seen')).toHaveTextContent('2.1.0');
+  });
 });
 
 describe('PreferencesProvider', () => {

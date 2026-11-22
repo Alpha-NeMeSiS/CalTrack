@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchPreferences, savePreferences } from './preferences';
+import { fetchPreferences, markTourCompleted, markVersionSeen, savePreferences } from './preferences';
 import { getOperationArgs, supabaseMock } from '../test/supabaseMock';
 import { DEFAULT_PREFERENCES } from '../utils/preferences';
 
@@ -31,6 +31,32 @@ describe('services/preferences', () => {
     expect(row).toMatchObject({ user_id: 'user-1', calorie_display: 'remaining' });
     expect(options).toEqual({ onConflict: 'user_id' });
     expect(saved.calorieDisplay).toBe('remaining');
+  });
+
+  it('marque la visite vue et la version vue en une seule écriture, sans toucher au reste', async () => {
+    supabaseMock.setHandler(() => ({ data: null, error: null }));
+    const at = await markTourCompleted('user-1', '2.1.0', new Date('2026-11-17T10:00:00Z'));
+
+    const [call] = supabaseMock.callsFor('user_preferences', 'upsert');
+    const [row, options] = getOperationArgs(call, 'upsert') as [Record<string, unknown>, unknown];
+    expect(row).toEqual({ user_id: 'user-1', tour_completed_at: '2026-11-17T10:00:00.000Z', last_seen_version: '2.1.0' });
+    expect(options).toEqual({ onConflict: 'user_id' });
+    expect(at).toBe('2026-11-17T10:00:00.000Z');
+  });
+
+  it('marque une version vue sans toucher au reste', async () => {
+    supabaseMock.setHandler(() => ({ data: null, error: null }));
+    await markVersionSeen('user-1', '2.1.0');
+
+    const [call] = supabaseMock.callsFor('user_preferences', 'upsert');
+    const [row, options] = getOperationArgs(call, 'upsert') as [Record<string, unknown>, unknown];
+    expect(row).toEqual({ user_id: 'user-1', last_seen_version: '2.1.0' });
+    expect(options).toEqual({ onConflict: 'user_id' });
+  });
+
+  it("remonte l'erreur d'une écriture de version vue", async () => {
+    supabaseMock.setHandler(() => ({ data: null, error: new Error('RLS') }));
+    await expect(markVersionSeen('user-1', '2.1.0')).rejects.toThrow('RLS');
   });
 
   it("remonte l'erreur d'enregistrement", async () => {
