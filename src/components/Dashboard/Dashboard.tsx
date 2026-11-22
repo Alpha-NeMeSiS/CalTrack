@@ -56,6 +56,8 @@ export function Dashboard({
   const [actionError, setActionError] = useState<string | null>(null);
   // Journal : modification d'une entrée et copie de la veille
   const [editing, setEditing] = useState<{ id: string; quantity: string; meal: MealType | '' } | null>(null);
+  // Suppression confirmée dans la ligne (plus de fenêtre du navigateur)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [copying, setCopying] = useState(false);
@@ -177,12 +179,8 @@ export function Dashboard({
   };
 
   // Supprime une entrée puis recharge les données
-  const handleDeleteEntry = async (entryId: string, label?: string) => {
-    const confirmed = window.confirm(
-      label ? `Supprimer « ${label} » du journal ?` : 'Supprimer cet aliment du journal ?'
-    );
-    if (!confirmed) return false;
-
+  const handleDeleteEntry = async (entryId: string) => {
+    setConfirmDeleteId(null);
     setActionError(null);
     try {
       const { error } = await supabase.from('entries').delete().eq('id', entryId);
@@ -477,24 +475,45 @@ export function Dashboard({
                         </div>
                       </div>
 
-                      <div className="flex shrink-0 gap-3 text-sm font-medium">
-                        <button
-                          type="button"
-                          onClick={() => startEditing(entry)}
-                          aria-label={`Modifier ${entry.label || 'cet aliment'}`}
-                          className="text-muted hover:text-ink"
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteEntry(entry.id, entry.label)}
-                          aria-label={`Supprimer ${entry.label || 'cet aliment'}`}
-                          className="text-danger-600 hover:text-danger-700"
-                        >
-                          Supprimer
-                        </button>
-                      </div>
+                      {confirmDeleteId === entry.id ? (
+                        <div className="flex shrink-0 flex-wrap justify-end gap-2" role="group" aria-label="Confirmer la suppression">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteEntry(entry.id)}
+                            aria-label={`Confirmer la suppression de « ${entry.label || 'cet aliment'} »`}
+                            className="rounded-md btn-danger px-3 py-1.5 text-sm font-medium"
+                          >
+                            Confirmer
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(null)}
+                            aria-label={`Annuler la suppression de « ${entry.label || 'cet aliment'} »`}
+                            className="rounded-md btn-secondary px-3 py-1.5 text-sm"
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex shrink-0 gap-3 text-sm font-medium">
+                          <button
+                            type="button"
+                            onClick={() => startEditing(entry)}
+                            aria-label={`Modifier ${entry.label || 'cet aliment'}`}
+                            className="text-muted hover:text-ink"
+                          >
+                            Modifier
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(entry.id)}
+                            aria-label={`Supprimer ${entry.label || 'cet aliment'}`}
+                            className="text-danger-600 hover:text-danger-700"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {editing?.id === entry.id && (

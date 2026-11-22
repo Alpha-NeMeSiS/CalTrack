@@ -112,6 +112,19 @@ for (const colorScheme of ['light', 'dark'] as const) {
         await expect(page.getByRole('heading', { name: 'Eau' })).toBeVisible();
         await expectNoViolations(page);
 
+        // Suppression : confirmation dans la ligne, au style de l'app (pas de fenêtre du navigateur)
+        let nativeDialog = false;
+        page.on('dialog', (dialog) => {
+          nativeDialog = true;
+          void dialog.dismiss();
+        });
+        const firstDelete = page.getByRole('button', { name: /^Supprimer / }).first();
+        await firstDelete.click();
+        await expect(page.getByRole('button', { name: /^Confirmer la suppression de/ })).toBeVisible();
+        await expectNoViolations(page);
+        await page.getByRole('button', { name: /^Annuler la suppression de/ }).click();
+        expect(nativeDialog).toBe(false);
+
         // Carte Eau : quantité libre
         await page.getByRole('button', { name: 'Autre…' }).click();
         await expect(page.getByLabel('Quantité (ml)')).toBeVisible();

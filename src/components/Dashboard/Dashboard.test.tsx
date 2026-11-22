@@ -322,18 +322,22 @@ describe('Dashboard', () => {
       setEntries([makeEntry({ id: 'entry-42' })]);
     });
 
-    it('demande une confirmation et ne supprime rien si on annule', async () => {
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    it('demande une confirmation dans la ligne (pas de fenêtre du navigateur) et ne supprime rien si on annule', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm');
       render(<Dashboard activeDate="2025-01-10" />);
+      const user = userEvent.setup();
 
-      await userEvent.setup().click(await screen.findByRole('button', { name: 'Supprimer Poulet rôti' }));
+      await user.click(await screen.findByRole('button', { name: 'Supprimer Poulet rôti' }));
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: 'Confirmer la suppression de « Poulet rôti »' })).toBeInTheDocument();
 
-      expect(confirmSpy).toHaveBeenCalledWith('Supprimer « Poulet rôti » du journal ?');
+      await user.click(screen.getByRole('button', { name: 'Annuler la suppression de « Poulet rôti »' }));
+      expect(screen.queryByRole('button', { name: 'Confirmer la suppression de « Poulet rôti »' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Supprimer Poulet rôti' })).toBeInTheDocument();
       expect(supabaseMock.callsFor('entries', 'delete')).toHaveLength(0);
     });
 
     it("supprime l'entrée après confirmation, sans écran de chargement complet (régression)", async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
       render(<Dashboard activeDate="2025-01-10" />);
       await screen.findByText('Journal du jour');
 
@@ -341,7 +345,9 @@ describe('Dashboard', () => {
       const pendingReload = deferred<Goal[]>();
       mockedFetchUserGoals.mockReturnValueOnce(pendingReload.promise);
 
-      await userEvent.setup().click(screen.getByRole('button', { name: 'Supprimer Poulet rôti' }));
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: 'Supprimer Poulet rôti' }));
+      await user.click(screen.getByRole('button', { name: 'Confirmer la suppression de « Poulet rôti »' }));
 
       await waitFor(() => expect(supabaseMock.callsFor('entries', 'delete')).toHaveLength(1));
       const [deleteCall] = supabaseMock.callsFor('entries', 'delete');
@@ -359,7 +365,6 @@ describe('Dashboard', () => {
     });
 
     it('affiche une erreur si la suppression échoue', async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
       vi.spyOn(console, 'error').mockImplementation(() => {});
       supabaseMock.setHandler((call) => {
         if (hasOperation(call, 'delete')) return { data: null, error: new Error('refusé') };
@@ -368,7 +373,9 @@ describe('Dashboard', () => {
       });
       render(<Dashboard activeDate="2025-01-10" />);
 
-      await userEvent.setup().click(await screen.findByRole('button', { name: 'Supprimer Poulet rôti' }));
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole('button', { name: 'Supprimer Poulet rôti' }));
+      await user.click(screen.getByRole('button', { name: 'Confirmer la suppression de « Poulet rôti »' }));
 
       expect(await screen.findByRole('alert')).toHaveTextContent('La suppression a échoué');
     });

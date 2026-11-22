@@ -13,6 +13,14 @@ export interface ReleaseNote {
 
 export const RELEASES: readonly ReleaseNote[] = [
   {
+    version: '2.1.1',
+    date: '2026-11-22',
+    items: [
+      'Supprimer une ligne du journal se confirme maintenant directement dans la ligne.',
+      'Notifications de rappel : le logo CalTrack s’affiche correctement sur Android.',
+    ],
+  },
+  {
     version: '2.1.0',
     date: '2026-11-22',
     items: [
