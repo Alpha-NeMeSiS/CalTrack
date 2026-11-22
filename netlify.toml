@@ -1,3 +1,10 @@
+# Offre gratuite : chaque déploiement en production coûte des crédits. La
+# production ne se construit qu'au changement de version de package.json
+# (voir backend/netlify/ignore-build.sh) ; les prévisualisations de PR, gratuites,
+# se construisent toujours.
+[build]
+  ignore = "bash backend/netlify/ignore-build.sh"
+
 [functions]
   directory = "backend/netlify/functions"
 
