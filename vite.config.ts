@@ -17,9 +17,9 @@ export default defineConfig({
   // Configuration des tests (Vitest) — https://vitest.dev/config/
   test: {
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}', 'backend/netlify/**/*.test.ts', 'backend/supabase/functions/**/*.test.ts'],
-    // Valeurs factices : src/lib/supabase.ts lève une erreur si elles manquent.
+    setupFiles: ['./frontend/test/setup.ts'],
+    include: ['frontend/**/*.test.{ts,tsx}', 'backend/netlify/**/*.test.ts', 'backend/supabase/functions/**/*.test.ts'],
+    // Valeurs factices : frontend/shared/supabase.ts lève une erreur si elles manquent.
     // Les tests ne contactent jamais Supabase (le client est mocké).
     env: {
       VITE_SUPABASE_URL: 'http://localhost:54321',
@@ -28,8 +28,8 @@ export default defineConfig({
     restoreMocks: true,
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.{ts,tsx}', 'backend/netlify/functions/**/*.ts'],
-      exclude: ['**/*.test.{ts,tsx}', 'src/test/**', 'src/main.tsx', 'src/vite-env.d.ts'],
+      include: ['frontend/**/*.{ts,tsx}', 'backend/netlify/functions/**/*.ts'],
+      exclude: ['**/*.test.{ts,tsx}', 'frontend/test/**', 'frontend/app/main.tsx', 'frontend/vite-env.d.ts'],
     },
   },
 });

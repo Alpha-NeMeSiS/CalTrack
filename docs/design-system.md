@@ -60,7 +60,7 @@ La journée **en cours** est en vert de la marque : anneau `stroke-brand-600`, p
 
 ## Règles de contraste
 
-Les paires ci-dessous atteignent 4,5:1 (texte) ou 3:1 (icônes) dans les deux thèmes ; elles sont vérifiées par `src/test/paletteContrast.test.ts`.
+Les paires ci-dessous atteignent 4,5:1 (texte) ou 3:1 (icônes) dans les deux thèmes ; elles sont vérifiées par `frontend/test/paletteContrast.test.ts`.
 
 - **Texte d'état sur fond teinté** : nuance `-700` sur `-50` ou `-100` (`text-danger-700` sur `bg-danger-50`). Pour `warning` : `-800`.
 - **Texte blanc** (`text-on-color`) : seulement sur `primary-700` / `brand-700` et plus, `danger-600` et plus.
@@ -75,7 +75,7 @@ Les paires ci-dessous atteignent 4,5:1 (texte) ou 3:1 (icônes) dans les deux th
 ## Typographie et surfaces
 
 - **Police** : Inter partout. Bangers (`font-display`) est réservée au logo « CalTrack » (en-tête, écrans de connexion).
-- **Titres** (classes de `src/index.css`) :
+- **Titres** (classes de `frontend/app/index.css`) :
 
 | Classe | Style | Usage |
 | --- | --- | --- |
@@ -90,7 +90,7 @@ Les paires ci-dessous atteignent 4,5:1 (texte) ou 3:1 (icônes) dans les deux th
 
 ## Composants
 
-Les composants React sont dans [`src/components/ui/`](../src/components/ui). Ils s'appuient sur les classes de `src/index.css` (couche `components`), qu'on peut aussi utiliser directement.
+Les composants React sont dans [`frontend/shared/ui/`](../frontend/shared/ui). Ils s'appuient sur les classes de `frontend/app/index.css` (couche `components`), qu'on peut aussi utiliser directement.
 
 ### Button
 
@@ -136,7 +136,7 @@ Relie automatiquement le libellé, l'aide et l'erreur au champ (`htmlFor`, `aria
 
 ## Nombres
 
-Toujours passer par [`src/utils/format.ts`](../src/utils/format.ts), jamais par `toFixed()` qui affiche « 1.5 » :
+Toujours passer par [`frontend/shared/format.ts`](../frontend/shared/format.ts), jamais par `toFixed()` qui affiche « 1.5 » :
 
 | Fonction | Exemple |
 | --- | --- |
@@ -150,8 +150,8 @@ Toujours passer par [`src/utils/format.ts`](../src/utils/format.ts), jamais par 
 
 | Vérification | Commande | Ce qu'elle bloque |
 | --- | --- | --- |
-| `src/test/designTokens.test.ts` | `npm test` | Une teinte brute (`text-gray-500`, `bg-white`, `bg-red-50`…), un ancien nom (`kaizen`, `shonen`), une classe retirée (`card-glass`, `ring-primary-500`, `text-primary-600`…) ou la police du logo hors du logo, dans `src/` |
-| `src/test/paletteContrast.test.ts` | `npm test` | Une modification de palette qui ferait passer une paire de couleurs sous le seuil AA |
+| `frontend/test/designTokens.test.ts` | `npm test` | Une teinte brute (`text-gray-500`, `bg-white`, `bg-red-50`…), un ancien nom (`kaizen`, `shonen`), une classe retirée (`card-glass`, `ring-primary-500`, `text-primary-600`…) ou la police du logo hors du logo, dans `frontend/` |
+| `frontend/test/paletteContrast.test.ts` | `npm test` | Une modification de palette qui ferait passer une paire de couleurs sous le seuil AA |
 | `e2e/accessibility.spec.ts` | `npm run test:a11y` | Tout défaut WCAG 2.2 A/AA détecté par axe (contraste, libellés, rôles, clavier) sur les écrans principaux, mobile et ordinateur, clair et sombre |
 
 Le contrôle d'accessibilité tourne sur le build de production avec un Supabase simulé (`e2e/fixtures/supabase.ts`) : aucune clé ni connexion n'est nécessaire. En local, il faut Chromium (`npx playwright install chromium`). Les exceptions assumées sont listées en tête du test, chacune limitée à une règle et un élément, avec sa justification.

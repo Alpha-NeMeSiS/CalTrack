@@ -6,7 +6,7 @@ Application web de suivi calorique construite avec **React + TypeScript + Vite**
 
 Version actuelle : **2.2.0** (V2 : nouvelle direction artistique, scanner de code-barres, recettes, eau, pesées… ; 2.1 : visite guidée, Guide, fenêtre « Quoi de neuf ? » ; 2.2 : estimation d'un produit scanné sans valeurs). Le détail des évolutions est dans [CHANGELOG.md](CHANGELOG.md).
 
-Pour une nouvelle version, mettre à jour `package.json` (`npm version minor --no-git-tag-version` pour une nouvelle fonctionnalité, `patch` pour un correctif, `major` pour une refonte) ajouter une entrée au CHANGELOG, et écrire les notes pour l'utilisateur dans `src/data/releases.ts` (affichées par la fenêtre « Quoi de neuf ? » ; un test refuse une version sans notes). La version affichée dans l'app en découle automatiquement.
+Pour une nouvelle version, mettre à jour `package.json` (`npm version minor --no-git-tag-version` pour une nouvelle fonctionnalité, `patch` pour un correctif, `major` pour une refonte) ajouter une entrée au CHANGELOG, et écrire les notes pour l'utilisateur dans `frontend/features/whats-new/releaseNotes.ts` (affichées par la fenêtre « Quoi de neuf ? » ; un test refuse une version sans notes). La version affichée dans l'app en découle automatiquement.
 
 ## Fonctionnalités
 
@@ -90,11 +90,10 @@ Les tests utilisent **Vitest** (environnement `jsdom`) et **Testing Library**. I
 
 | Dossier | Ce qui est testé |
 | --- | --- |
-| `src/utils/` | Calculs nutritionnels, dates locales, logique des objectifs, validation des formulaires |
-| `src/contexts/` | Session et chargement du profil (`AuthContext`) |
-| `src/lib/` | Recherche Ciqual, Open Food Facts (fetch mocké), progression temporelle |
-| `src/services/` | Accès Supabase des objectifs et cibles quotidiennes |
-| `src/components/` | Composants React (Dashboard, AddEntryModal, FoodSearch, LoginForm, MacroCard, CalorieRing) |
+| `frontend/features/<fonctionnalité>/` | Écrans React, règles métier (`*.ts`) et accès à la base (`*.service.ts`, client Supabase simulé) |
+| `frontend/app/` | Démarrage de l'app, navigation, session (`AuthContext`) et préférences |
+| `frontend/shared/` | Composants de base (`ui/`), dates, format des nombres, progression temporelle |
+| `frontend/test/` | Garde-fous du design system, contrastes de la palette, service worker |
 | `backend/netlify/tests/` | Fonctions Netlify `off-search` et `off-product` (proxy Open Food Facts) |
 
 ### Accessibilité
@@ -103,7 +102,7 @@ Les tests utilisent **Vitest** (environnement `jsdom`) et **Testing Library**. I
 
 Les couleurs, composants et règles d'interface sont décrits dans [`docs/design-system.md`](docs/design-system.md).
 
-Outils partagés dans `src/test/` :
+Outils partagés dans `frontend/test/` :
 
 - `setup.ts` : initialisation (matchers `jest-dom`, nettoyage après chaque test) ;
 - `supabaseMock.ts` : faux client Supabase qui enregistre les requêtes et renvoie les résultats choisis par le test ;
@@ -187,7 +186,9 @@ La CI (job « Base de données ») fait la même chose à chaque push et pull re
 
 ## Structure simplifiée
 
-Le code est séparé en deux : **`src/`** tourne dans le navigateur (l'app React), **`backend/`** tourne sur un serveur (base de données Supabase et fonctions Netlify).
+Le code est séparé en deux : **`frontend/`** tourne dans le navigateur (l'app React), **`backend/`** tourne sur un serveur (base de données Supabase et fonctions Netlify).
+
+Dans `frontend/features/`, **une fonctionnalité = un dossier** : on y trouve ses écrans (`*.tsx`), ses règles métier sans React ni réseau (`*.ts`), ses accès à la base (`*.service.ts`) et leurs tests à côté (`*.test.ts(x)`). Exemple pour l'eau : `WaterCard.tsx` (la carte), `water.ts` (objectif de 30 ml par kg), `water.service.ts` (lecture et écriture dans `water_logs`), et côté base `backend/supabase/migrations/…_water_logs.sql`.
 
 ```text
 backend/           # Tout ce qui tourne côté serveur
@@ -199,14 +200,31 @@ backend/           # Tout ce qui tourne côté serveur
   netlify/
     functions/     # Fonctions Netlify (proxy Open Food Facts : recherche, code-barres)
     tests/         # Tests des fonctions Netlify
-src/               # L'app React (navigateur)
-  components/      # UI par domaine (Auth, Dashboard, Journal, Goals, Profile, Account, etc.)
-    ui/            # Composants de base du design system (Button, Card, Badge, Field)
-  contexts/        # Contexte d'authentification (AuthContext) et hook useAuth
-  lib/             # Clients/abstractions (supabase, APIs nutrition)
-  services/        # Accès Supabase (objectifs, cibles quotidiennes)
-  utils/           # Calculs métier, dates locales, logique des objectifs (fonctions pures)
-  test/            # Outils partagés pour les tests
+frontend/          # Tout ce qui tourne dans le navigateur (l'app React)
+  app/             # Démarrage (main.tsx, App.tsx), navigation, version, styles globaux
+    contexts/      # Session (AuthContext, useAuth) et préférences (PreferencesContext)
+    layout/        # En-tête, menu de l'avatar, navigation, pied de page
+  features/        # Une fonctionnalité = un dossier
+    journal/       # Tableau de bord, ajout d'aliment, statut du jour, entrées
+    foods/         # Recherche, scanner, mes aliments, favoris, Ciqual, Open Food Facts, produits similaires
+    recipes/       # Recettes
+    water/         # Eau
+    weight/        # Pesées et composition corporelle
+    goals/         # Objectif, calculs caloriques (métabolisme, macros), validation des formulaires
+    stats/         # Tendances, analyses, ajustement des calories
+    auth/          # Connexion, inscription, mot de passe oublié
+    profile/       # Mon profil, photo
+    account/       # Compte et sécurité (export, suppression, déconnexion partout)
+    settings/      # Paramètres, préférences d'affichage, thème
+    reminders/     # Rappels (notifications push)
+    onboarding/    # Création du profil à l'inscription
+    tour/  guide/  about/  whats-new/   # Visite guidée, Guide, À propos, « Quoi de neuf ? »
+  shared/          # Commun à toutes les fonctionnalités
+    ui/            # Composants de base du design system (Button, Card, Badge, Field, InfoPage)
+    assets/        # Logos
+    supabase.ts    # Client Supabase et types des tables
+    date.ts, format.ts, text.ts, timeProgress.ts
+  test/            # Outils partagés pour les tests (setup, faux Supabase, données, garde-fous)
 e2e/               # Contrôle d'accessibilité (Playwright + axe, Supabase simulé)
 docs/
   design-system.md # Couleurs par rôle, composants, règles de contraste
@@ -226,13 +244,13 @@ docs/
 
 ### Emails (SMTP et modèles en français)
 
-Les emails d'inscription, de mot de passe oublié et de changement d'adresse sont envoyés par Supabase Auth. Le service d'envoi intégré de Supabase n'envoie qu'aux membres de l'organisation Supabase et seulement quelques emails par heure : pour les autres utilisateurs, il faut brancher un SMTP (Resend, Brevo…). Les modèles en français sont dans `backend/supabase/templates/` ; la marche à suivre (SMTP, limites d'envoi, sujets, tests) est dans [docs/emails.md](docs/emails.md). Les erreurs de Supabase Auth sont affichées en français (`src/utils/authErrors.ts`).
+Les emails d'inscription, de mot de passe oublié et de changement d'adresse sont envoyés par Supabase Auth. Le service d'envoi intégré de Supabase n'envoie qu'aux membres de l'organisation Supabase et seulement quelques emails par heure : pour les autres utilisateurs, il faut brancher un SMTP (Resend, Brevo…). Les modèles en français sont dans `backend/supabase/templates/` ; la marche à suivre (SMTP, limites d'envoi, sujets, tests) est dans [docs/emails.md](docs/emails.md). Les erreurs de Supabase Auth sont affichées en français (`frontend/features/auth/authErrors.ts`).
 
 ## Composition corporelle et ajustement des calories
 
 - **Composition avec la pesée** : la carte « Ma pesée » a une section « Composition (facultatif) » (masse grasse, muscles, os, eau, graisse viscérale), enregistrée dans `weight_logs`. Une mesure laissée vide ne remplace pas celle déjà saisie ce jour-là. Pour la pesée la plus récente, les valeurs mettent aussi à jour le profil (et donc le métabolisme de base et la cible du jour).
 - **Tendances → Composition corporelle** : masse grasse et masse maigre de chaque pesée avec composition (`compositionPoints`, même estimation de la masse maigre que le profil), avec leur évolution sur 90 jours.
-- **Ajustement des calories** (`src/utils/calorieAdjustment.ts`) : à partir de la dépense réelle estimée sur 28 jours (`estimateExpenditure`), la cible qui garde le déficit ou le surplus de l'objectif est recalculée. Si elle s'écarte de plus de 100 kcal/j de la cible actuelle, Tendances propose de corriger : par pas de 300 kcal au plus, jamais sous le plancher de sécurité, au plus une fois par semaine. « Appliquer » enregistre `goals.calorie_adjustment_kcal` (ajouté aux calories calculées, protéines et lipides inchangés) et recalcule la cible du jour ; « Pas maintenant » masque la proposition 7 jours sur cet appareil. L'onglet Objectif affiche l'ajustement en cours et permet de l'annuler ; un nouvel objectif repart sans ajustement.
+- **Ajustement des calories** (`frontend/features/stats/calorieAdjustment.ts`) : à partir de la dépense réelle estimée sur 28 jours (`estimateExpenditure`), la cible qui garde le déficit ou le surplus de l'objectif est recalculée. Si elle s'écarte de plus de 100 kcal/j de la cible actuelle, Tendances propose de corriger : par pas de 300 kcal au plus, jamais sous le plancher de sécurité, au plus une fois par semaine. « Appliquer » enregistre `goals.calorie_adjustment_kcal` (ajouté aux calories calculées, protéines et lipides inchangés) et recalcule la cible du jour ; « Pas maintenant » masque la proposition 7 jours sur cet appareil. L'onglet Objectif affiche l'ajustement en cours et permet de l'annuler ; un nouvel objectif repart sans ajustement.
 
 ## Favoris, récents et mes aliments
 
@@ -261,14 +279,14 @@ Onglet « Recettes » de « Ajouter un aliment » :
 
 - **Pied de page** sous chaque vue et sur l'écran de connexion : « CalTrack v2.2.0 · Guide · À propos · Vos données · Sources ». Une fois connecté, il cite aussi les sources nutritionnelles (Ciqual, Open Food Facts).
 - **Page « À propos »** en quatre sections : l'application (version), santé (estimations, pas un dispositif médical), vos données (ce qui est enregistré, où, qui y a accès, combien de temps ; liens vers l'export et la suppression une fois connecté) et sources (Ciqual sous Licence Ouverte 2.0, Open Food Facts sous ODbL, formules utilisées). Chaque lien du pied de page ouvre la page sur sa section.
-- **Version** : lue dans `package.json` au build (`__APP_VERSION__`, exposée par `src/utils/appInfo.ts`) ; changer `version` suffit.
+- **Version** : lue dans `package.json` au build (`__APP_VERSION__`, exposée par `frontend/app/appInfo.ts`) ; changer `version` suffit.
 
 ## Visite guidée, Guide et « Quoi de neuf ? »
 
 - **Visite guidée** : 5 bulles au premier passage sur le journal (calories, ajout d'aliment, eau, pesée, navigation), passables, au clavier (Échap, Tab gardé dans la bulle). Les cibles sont repérées par `data-tour` ; la visite ne démarre pas sans objectif. Elle est mémorisée par compte (`user_preferences.tour_completed_at`) et se relance depuis le Guide (« Revoir la visite », sans rien enregistrer).
 - **Page « Guide »** : 8 sections (premiers pas, repas, eau, pesée, objectif, tendances, réglages, installation sur le téléphone), depuis le pied de page, le menu de l'avatar et l'écran de connexion.
 - **« Quoi de neuf ? »** : au lancement, quand la version de l'app est plus récente que `user_preferences.last_seen_version` ; versions manquées regroupées ; « C'est noté », la croix ou Échap l'enregistrent. Jamais en même temps que la visite : la fin de la visite marque aussi la version actuelle comme vue. L'historique se rouvre depuis « À propos » (« Voir les nouveautés »).
-- **Notes de version** : `src/data/releases.ts` (textes pour l'utilisateur) ; un test refuse une version de `package.json` sans notes.
+- **Notes de version** : `frontend/features/whats-new/releaseNotes.ts` (textes pour l'utilisateur) ; un test refuse une version de `package.json` sans notes.
 
 ## Scanner de code-barres
 
@@ -282,7 +300,7 @@ Le code peut aussi être saisi à la main (caméra refusée, code abîmé, ordin
 
 ### Produit sans valeurs : produits similaires
 
-Quand le produit est dans Open Food Facts sans valeurs nutritionnelles, CalTrack cherche les produits proches (`src/lib/similarProducts.ts`) :
+Quand le produit est dans Open Food Facts sans valeurs nutritionnelles, CalTrack cherche les produits proches (`frontend/features/foods/similarProducts.ts`) :
 
 1. **Mots du nom** : sans marque, quantités, mots vides ni pluriel (« Sodebo pastabox 330g fusilli a la bolognaise » → `pastabox fusilli bolognaise`).
 2. **Deux recherches** en parallèle via `/api/off/search?size=30` : `brands:"<marque>" <mots>` puis `<mots>` (une recherche en échec est ignorée si l'autre répond).

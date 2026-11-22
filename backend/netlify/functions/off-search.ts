@@ -5,7 +5,7 @@
 // l'ancien endpoint cgi/search.pl est très limité en nombre de requêtes et répond
 // presque systématiquement 503 depuis les IP partagées des fonctions Netlify.
 //
-// La réponse garde la forme attendue par le client (src/lib/openfoodfacts.ts) :
+// La réponse garde la forme attendue par le client (frontend/features/foods/openfoodfacts.ts) :
 // { products: [{ code, product_name, product_name_fr, brands, image_small_url, nutriments }] }
 
 const OFF_SEARCH_ENDPOINT = 'https://search.openfoodfacts.org/search';

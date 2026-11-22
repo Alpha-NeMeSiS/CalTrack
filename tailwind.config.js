@@ -3,9 +3,9 @@ import { cssVariables, palettes, tailwindColors } from './theme.palette.js';
 
 /** @type {import('tailwindcss').Config} */
 export default {
-  // Thème sombre : classe « dark » posée sur <html> (voir src/utils/theme.ts)
+  // Thème sombre : classe « dark » posée sur <html> (voir frontend/features/settings/theme.ts)
   darkMode: 'class',
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  content: ['./index.html', './frontend/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       // Couleurs par rôle, en clair et en sombre (voir theme.palette.js)

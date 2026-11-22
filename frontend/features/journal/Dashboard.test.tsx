@@ -1,0 +1,383 @@
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Dashboard } from './Dashboard';
+import { NAVIGATE_EVENT } from '../../app/navigation';
+import { supabaseMock, hasOperation, getOperationArgs } from '../../test/supabaseMock';
+import { makeDailyTarget, makeEntry, makeGoal, makeProfile } from '../../test/fixtures';
+import { ensureDailyTargetForDate, fetchUserGoals } from '../goals/goals.service';
+import type { Entry, Goal } from '../../shared/supabase';
+
+const profile = makeProfile();
+// Objets stables entre les rendus, comme le state du vrai AuthProvider
+// (un nouvel objet à chaque rendu relancerait le chargement en boucle)
+const authValue = { user: { id: 'user-1' }, profile, refreshProfile: vi.fn() };
+
+vi.mock('../../app/contexts/useAuth', () => ({
+  useAuth: () => authValue,
+}));
+
+vi.mock('../../shared/supabase', async () => {
+  const { fakeSupabase } = await import('../../test/supabaseMock');
+  return { supabase: fakeSupabase };
+});
+
+vi.mock('../goals/goals.service', () => ({
+  fetchUserGoals: vi.fn(),
+  ensureDailyTargetForDate: vi.fn(),
+}));
+
+const mockedFetchUserGoals = vi.mocked(fetchUserGoals);
+const mockedEnsureDailyTarget = vi.mocked(ensureDailyTargetForDate);
+
+function setEntries(entries: Entry[]) {
+  supabaseMock.setHandler((call) =>
+    call.table === 'entries' && hasOperation(call, 'select')
+      ? { data: entries, error: null }
+      : { data: null, error: null }
+  );
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+}
+
+beforeEach(() => {
+  supabaseMock.reset();
+  mockedFetchUserGoals.mockReset();
+  mockedEnsureDailyTarget.mockReset();
+});
+
+describe('Dashboard : visite guidée', () => {
+  // jsdom ne calcule pas la mise en page : chaque élément reçoit une taille non nulle
+  const realRect = Element.prototype.getBoundingClientRect;
+  beforeEach(() => {
+    Element.prototype.getBoundingClientRect = () =>
+      ({ top: 100, left: 10, width: 200, height: 80, right: 210, bottom: 180, x: 10, y: 100, toJSON: () => ({}) }) as DOMRect;
+    window.scrollBy = vi.fn() as unknown as typeof window.scrollBy;
+  });
+  afterEach(() => {
+    Element.prototype.getBoundingClientRect = realRect;
+  });
+
+  it('affiche la visite une fois le journal chargé', async () => {
+    mockedFetchUserGoals.mockResolvedValue([makeGoal({ type: 'maintain', end_date: null })]);
+    mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget({ date: '2025-03-15' }));
+    setEntries([]);
+    render(<Dashboard activeDate="2025-03-15" tourActive onTourFinish={vi.fn()} />);
+
+    expect(await screen.findByRole('dialog', { name: 'Votre journée en un coup d’œil' })).toBeInTheDocument();
+    // Journal sans pesée possible ici (pas de profil complet ?) : au moins calories, ajout et eau
+    expect(screen.getByRole('dialog')).toHaveTextContent(/Étape 1 sur [3-5]/);
+  });
+
+  it('ne démarre pas sans objectif (écran « Définir un objectif ») et ne la marque pas vue', async () => {
+    mockedFetchUserGoals.mockResolvedValue([]);
+    mockedEnsureDailyTarget.mockResolvedValue(null);
+    setEntries([]);
+    const onTourFinish = vi.fn();
+    render(<Dashboard activeDate="2025-03-15" tourActive onTourFinish={onTourFinish} />);
+
+    expect(await screen.findByRole('button', { name: 'Définir un objectif' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onTourFinish).not.toHaveBeenCalled();
+  });
+});
+
+describe('Dashboard', () => {
+  it("affiche le suivi d'une journée couverte par un objectif de maintien (régression)", async () => {
+    const goal = makeGoal({ type: 'maintain', end_date: null });
+    mockedFetchUserGoals.mockResolvedValue([goal]);
+    mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget({ date: '2025-03-15' }));
+    setEntries([makeEntry({ date: '2025-03-15' })]);
+
+    render(<Dashboard activeDate="2025-03-15" />);
+
+    expect(await screen.findByText('Journal du jour')).toBeInTheDocument();
+    expect(screen.getByText('Poulet rôti')).toBeInTheDocument();
+    expect(screen.getByText('150g · 248 kcal')).toBeInTheDocument();
+    expect(screen.queryByText('Aucun objectif défini pour cette date')).not.toBeInTheDocument();
+
+    // La cible est résolue avec le profil et l'objectif en vigueur à cette date
+    expect(mockedEnsureDailyTarget).toHaveBeenCalledWith('user-1', '2025-03-15', profile, goal);
+  });
+
+  it('place les calories et le journal avant la progression de l’objectif', async () => {
+    const goal = makeGoal({ type: 'loss', target_weight_kg: 74, start_weight_kg: 82, duration_weeks: 12, start_date: '2025-01-01' });
+    mockedFetchUserGoals.mockResolvedValue([goal]);
+    mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget());
+    setEntries([makeEntry()]);
+
+    render(<Dashboard activeDate="2025-01-10" />);
+
+    const journal = await screen.findByText('Journal du jour');
+    const calories = screen.getByText('Protéines');
+    const goalCard = screen.getByText("Progression de l'objectif");
+    const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(calories, journal)).toBe(true);
+    expect(follows(journal, goalCard)).toBe(true);
+  });
+
+  it('propose un bouton « Ajouter » flottant (mobile) qui ouvre la fenêtre d’ajout', async () => {
+    mockedFetchUserGoals.mockResolvedValue([makeGoal()]);
+    mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget());
+    setEntries([]);
+
+    render(<Dashboard activeDate="2025-01-10" />);
+    await screen.findByText('Journal du jour');
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Ajouter un aliment' }));
+
+    expect(screen.getByRole('dialog', { name: 'Ajouter un aliment' })).toBeInTheDocument();
+    // Le bouton flottant disparaît tant que la fenêtre est ouverte
+    expect(screen.queryByRole('button', { name: 'Ajouter un aliment' })).not.toBeInTheDocument();
+  });
+
+  it("utilise l'objectif en vigueur pour un jour passé, pas l'objectif actif (régression)", async () => {
+    // Objectif A jusqu'au 1er mars, puis objectif B (actif) depuis le 1er mars
+    const oldGoal = makeGoal({ id: 'goal-old', is_active: false, start_date: '2025-01-01', created_at: '2025-01-01T12:00:00Z' });
+    const newGoal = makeGoal({ id: 'goal-new', is_active: true, start_date: '2025-03-01', created_at: '2025-03-01T12:00:00Z' });
+    mockedFetchUserGoals.mockResolvedValue([newGoal, oldGoal]);
+    mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget({ date: '2025-02-10', goal_id: 'goal-old' }));
+    setEntries([]);
+
+    render(<Dashboard activeDate="2025-02-10" />);
+
+    expect(await screen.findByText('Journal du jour')).toBeInTheDocument();
+    expect(mockedEnsureDailyTarget).toHaveBeenCalledWith('user-1', '2025-02-10', profile, oldGoal);
+  });
+
+  it("invite à définir un objectif quand aucun ne s'applique, en gardant le choix de la date (régression)", async () => {
+    mockedFetchUserGoals.mockResolvedValue([]);
+    mockedEnsureDailyTarget.mockResolvedValue(null);
+    setEntries([]);
+    const onActiveDateChange = vi.fn();
+
+    render(<Dashboard activeDate="2025-03-15" onActiveDateChange={onActiveDateChange} />);
+
+    expect(await screen.findByText('Aucun objectif défini pour cette date')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Définir un objectif' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ajouter' })).not.toBeInTheDocument();
+
+    // Le sélecteur de date reste disponible : on peut revenir à une autre journée
+    const dateInput = screen.getByLabelText('Date affichée');
+    fireEvent.change(dateInput, { target: { value: '2025-03-14' } });
+    expect(onActiveDateChange).toHaveBeenCalledWith('2025-03-14');
+    await waitFor(() =>
+      expect(mockedEnsureDailyTarget).toHaveBeenCalledWith('user-1', '2025-03-14', profile, null)
+    );
+  });
+
+  it("signale un objectif terminé et permet d'en définir un nouveau (onglet Objectif)", async () => {
+    const endedGoal = makeGoal({ type: 'loss', start_date: '2025-01-01', end_date: '2025-03-26', deficit_or_surplus_pct: 20 });
+    mockedFetchUserGoals.mockResolvedValue([endedGoal]);
+    mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget({ date: '2025-04-10', calories_kcal: 2400 }));
+    setEntries([]);
+    const listener = vi.fn();
+    window.addEventListener(NAVIGATE_EVENT, listener);
+
+    render(<Dashboard activeDate="2025-04-10" />);
+
+    const banner = await screen.findByText(/Objectif terminé le 26 mars 2025/);
+    expect(banner.closest('[role="status"]')).toHaveTextContent('suivies en maintien (2400 kcal)');
+    // Le suivi reste possible (plus de blocage « Aucun objectif »)
+    expect(screen.getByText('Journal du jour')).toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Définir un nouvel objectif' }));
+    expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual({ view: 'goal' });
+    window.removeEventListener(NAVIGATE_EVENT, listener);
+  });
+
+  it("« Définir un objectif » ouvre l'onglet Objectif", async () => {
+    mockedFetchUserGoals.mockResolvedValue([]);
+    mockedEnsureDailyTarget.mockResolvedValue(null);
+    setEntries([]);
+    const listener = vi.fn();
+    window.addEventListener(NAVIGATE_EVENT, listener);
+
+    render(<Dashboard activeDate="2025-03-15" />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Définir un objectif' }));
+
+    expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual({ view: 'goal' });
+    window.removeEventListener(NAVIGATE_EVENT, listener);
+  });
+
+  it('ignore un champ date vidé', async () => {
+    mockedFetchUserGoals.mockResolvedValue([makeGoal()]);
+    mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget());
+    setEntries([]);
+    const onActiveDateChange = vi.fn();
+
+    render(<Dashboard activeDate="2025-01-10" onActiveDateChange={onActiveDateChange} />);
+    await screen.findByText('Journal du jour');
+
+    fireEvent.change(screen.getByLabelText('Date affichée'), { target: { value: '' } });
+
+    expect(onActiveDateChange).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Date affichée')).toHaveValue('2025-01-10');
+  });
+
+  it("n'affiche pas les données d'une date précédente arrivées en retard (régression)", async () => {
+    const slowGoals = deferred<Goal[]>();
+    const goalA = makeGoal({ id: 'goal-a' });
+    mockedFetchUserGoals.mockReturnValueOnce(slowGoals.promise).mockResolvedValue([goalA]);
+    mockedEnsureDailyTarget.mockImplementation(async (_userId, date) =>
+      makeDailyTarget({ date, calories_kcal: date === '2025-01-09' ? 1111 : 2222 })
+    );
+    setEntries([]);
+
+    const { rerender } = render(<Dashboard activeDate="2025-01-09" />);
+    // L'utilisateur change de date avant la fin du premier chargement
+    rerender(<Dashboard activeDate="2025-01-10" />);
+    expect(await screen.findByText('/ 2222')).toBeInTheDocument();
+
+    // La réponse du 9 janvier arrive après coup : elle doit être ignorée
+    await act(async () => {
+      slowGoals.resolve([goalA]);
+    });
+    expect(screen.getByText('/ 2222')).toBeInTheDocument();
+    expect(screen.queryByText('/ 1111')).not.toBeInTheDocument();
+  });
+
+  it('affiche une erreur avec un bouton Réessayer si le chargement échoue', async () => {
+    mockedFetchUserGoals.mockRejectedValueOnce(new Error('réseau'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    setEntries([]);
+
+    render(<Dashboard activeDate="2025-03-15" />);
+
+    expect(await screen.findByText('Impossible de charger les données de cette journée.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Date affichée')).toBeInTheDocument();
+
+    mockedFetchUserGoals.mockResolvedValue([makeGoal()]);
+    mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget());
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Réessayer' }));
+
+    expect(await screen.findByText('Journal du jour')).toBeInTheDocument();
+  });
+
+  describe('journal', () => {
+    beforeEach(() => {
+      mockedFetchUserGoals.mockResolvedValue([makeGoal()]);
+      mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget());
+    });
+
+    it('regroupe les aliments par repas avec le total de calories', async () => {
+      setEntries([
+        makeEntry({ id: 'a', label: 'Café', meal_type: 'breakfast', kcal: 5 }),
+        makeEntry({ id: 'b', label: 'Poulet rôti', meal_type: 'lunch', kcal: 247.5 }),
+      ]);
+      render(<Dashboard activeDate="2025-01-10" />);
+
+      const lunch = await screen.findByRole('region', { name: 'Déjeuner' });
+      expect(lunch).toHaveTextContent('Poulet rôti');
+      expect(lunch).toHaveTextContent('248 kcal');
+      expect(screen.getByRole('region', { name: 'Petit-déjeuner' })).toHaveTextContent('Café');
+    });
+
+    it('modifie la quantité d’une entrée (nutriments recalculés)', async () => {
+      setEntries([makeEntry({ id: 'e1', qty_grammes: 150, kcal: 247.5, protein_g: 46.5, fat_g: 5.4, carbs_g: 0, fiber_g: 0 })]);
+      render(<Dashboard activeDate="2025-01-10" />);
+      const user = userEvent.setup();
+
+      await user.click(await screen.findByRole('button', { name: 'Modifier Poulet rôti' }));
+      const form = within(screen.getByRole('form', { name: 'Modifier Poulet rôti' }));
+      const qty = form.getByLabelText('Quantité (g)');
+      await user.clear(qty);
+      await user.type(qty, '200');
+      await user.selectOptions(form.getByLabelText('Repas'), 'dinner');
+      await user.click(form.getByRole('button', { name: 'Enregistrer' }));
+
+      await waitFor(() => expect(supabaseMock.callsFor('entries', 'update')).toHaveLength(1));
+      const [updateCall] = supabaseMock.callsFor('entries', 'update');
+      expect(getOperationArgs(updateCall, 'update')?.[0]).toMatchObject({ qty_grammes: 200, kcal: 330, protein_g: 62, meal_type: 'dinner' });
+    });
+
+    it('copie les repas de la veille', async () => {
+      supabaseMock.setHandler((call) => {
+        if (call.table !== 'entries') return { data: null, error: null };
+        const dateFilter = call.operations.find((op) => op.method === 'eq' && op.args[0] === 'date')?.args[1];
+        if (hasOperation(call, 'select') && dateFilter === '2025-01-09') {
+          return { data: [makeEntry({ id: 'y1', date: '2025-01-09' }), makeEntry({ id: 'y2', date: '2025-01-09' })], error: null };
+        }
+        return { data: [], error: null };
+      });
+      render(<Dashboard activeDate="2025-01-10" />);
+
+      await userEvent.setup().click(await screen.findByRole('button', { name: 'Copier les repas de la veille' }));
+
+      expect(await screen.findByText('2 aliments copiés depuis la veille.')).toBeInTheDocument();
+      expect(supabaseMock.callsFor('entries', 'insert')).toHaveLength(1);
+    });
+  });
+
+  describe('suppression', () => {
+    beforeEach(() => {
+      mockedFetchUserGoals.mockResolvedValue([makeGoal()]);
+      mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget());
+      setEntries([makeEntry({ id: 'entry-42' })]);
+    });
+
+    it('demande une confirmation dans la ligne (pas de fenêtre du navigateur) et ne supprime rien si on annule', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm');
+      render(<Dashboard activeDate="2025-01-10" />);
+      const user = userEvent.setup();
+
+      await user.click(await screen.findByRole('button', { name: 'Supprimer Poulet rôti' }));
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: 'Confirmer la suppression de « Poulet rôti »' })).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Annuler la suppression de « Poulet rôti »' }));
+      expect(screen.queryByRole('button', { name: 'Confirmer la suppression de « Poulet rôti »' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Supprimer Poulet rôti' })).toBeInTheDocument();
+      expect(supabaseMock.callsFor('entries', 'delete')).toHaveLength(0);
+    });
+
+    it("supprime l'entrée après confirmation, sans écran de chargement complet (régression)", async () => {
+      render(<Dashboard activeDate="2025-01-10" />);
+      await screen.findByText('Journal du jour');
+
+      // Le rechargement après suppression reste en attente pendant les vérifications
+      const pendingReload = deferred<Goal[]>();
+      mockedFetchUserGoals.mockReturnValueOnce(pendingReload.promise);
+
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: 'Supprimer Poulet rôti' }));
+      await user.click(screen.getByRole('button', { name: 'Confirmer la suppression de « Poulet rôti »' }));
+
+      await waitFor(() => expect(supabaseMock.callsFor('entries', 'delete')).toHaveLength(1));
+      const [deleteCall] = supabaseMock.callsFor('entries', 'delete');
+      expect(getOperationArgs(deleteCall, 'eq')).toEqual(['id', 'entry-42']);
+
+      // Pendant le rechargement en arrière-plan, la page reste affichée
+      await waitFor(() => expect(mockedFetchUserGoals).toHaveBeenCalledTimes(2));
+      expect(screen.getByText('Journal du jour')).toBeInTheDocument();
+      expect(screen.queryByText('Chargement...')).not.toBeInTheDocument();
+
+      await act(async () => {
+        pendingReload.resolve([makeGoal()]);
+      });
+      expect(screen.getByText('Journal du jour')).toBeInTheDocument();
+    });
+
+    it('affiche une erreur si la suppression échoue', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      supabaseMock.setHandler((call) => {
+        if (hasOperation(call, 'delete')) return { data: null, error: new Error('refusé') };
+        if (call.table === 'entries') return { data: [makeEntry({ id: 'entry-42' })], error: null };
+        return { data: null, error: null };
+      });
+      render(<Dashboard activeDate="2025-01-10" />);
+
+      const user = userEvent.setup();
+      await user.click(await screen.findByRole('button', { name: 'Supprimer Poulet rôti' }));
+      await user.click(screen.getByRole('button', { name: 'Confirmer la suppression de « Poulet rôti »' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('La suppression a échoué');
+    });
+  });
+});
