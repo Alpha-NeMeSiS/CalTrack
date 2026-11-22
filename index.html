@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#19b887" />
     <script>
       // Thème appliqué avant l'affichage (évite un flash clair en mode sombre).
-      // Même logique que src/utils/theme.ts.
+      // Même logique que frontend/features/settings/theme.ts.
       (function () {
         try {
           var pref = localStorage.getItem('caltrack-theme') || 'system';
@@ -32,6 +32,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/frontend/app/main.tsx"></script>
   </body>
 </html>

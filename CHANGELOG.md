@@ -14,6 +14,7 @@ La version affichée dans l'app (pied de page, page « À propos ») est lue dan
 ### Technique
 
 - Code serveur regroupé dans `backend/` : `backend/supabase/` (migrations, tests de la base, Edge Function, modèles d'emails) et `backend/netlify/` (proxy Open Food Facts). Aucun changement pour l'utilisateur.
+- App React déplacée de `src/` vers `frontend/`, rangée par fonctionnalité : `frontend/app/` (démarrage, navigation, contexts, mise en page), `frontend/features/<fonctionnalité>/` (écrans, règles métier `*.ts`, accès à la base `*.service.ts`, tests), `frontend/shared/` (composants de base, client Supabase, dates, format). Notes de version : `frontend/features/whats-new/releaseNotes.ts`. Aucun changement pour l'utilisateur.
 
 ## [2.2.0] — 22 novembre 2026
 

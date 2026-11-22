@@ -4,7 +4,7 @@
 // `text-muted`, `border-line`, `bg-primary-600`…), jamais une teinte brute
 // (`bg-white`, `text-gray-500`, `bg-blue-600`) : changer le thème ou corriger
 // un contraste se fait ici, à un seul endroit. Le guide est dans
-// docs/design-system.md ; un test (src/test/designTokens.test.ts) refuse les
+// docs/design-system.md ; un test (frontend/test/designTokens.test.ts) refuse les
 // teintes brutes dans le code.
 //
 // Chaque couleur passe par une variable CSS (« --c-surface ») dont la valeur

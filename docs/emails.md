@@ -12,7 +12,7 @@ dans le dépôt.
 
 1. L’application demande l’email à Supabase Auth, par exemple
    `resetPasswordForEmail()` pour « Mot de passe oublié » (voir
-   `src/contexts/AuthContext.tsx`).
+   `frontend/app/contexts/AuthContext.tsx`).
 2. Supabase envoie l’email à partir du **modèle** correspondant. Le bouton pointe
    vers `https://<projet>.supabase.co/auth/v1/verify?token=…&redirect_to=…`.
 3. En cliquant, Supabase vérifie le jeton (valable une fois, 1 h par défaut) puis
@@ -21,7 +21,7 @@ dans le dépôt.
    l’URL.
 4. L’application lit l’URL : pour un lien « mot de passe oublié », elle affiche
    l’écran « Nouveau mot de passe » ; pour une confirmation, elle affiche un
-   bandeau de succès ou d’erreur (`src/utils/authRedirect.ts`).
+   bandeau de succès ou d’erreur (`frontend/features/auth/authRedirect.ts`).
 
 | Email                         | Envoyé quand                                                   | Modèle Supabase      |
 | ----------------------------- | -------------------------------------------------------------- | -------------------- |

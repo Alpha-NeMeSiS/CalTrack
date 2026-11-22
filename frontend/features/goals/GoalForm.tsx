@@ -1,0 +1,349 @@
+// Formulaire d'objectif (type, activité, poids cible, durée, protéines) avec
+// aperçu des calories et macros avant validation.
+// Enregistrer crée un nouvel objectif qui démarre aujourd'hui (l'ancien est
+// désactivé) et met à jour la cible du jour.
+import { useState } from 'react';
+import { Save } from 'lucide-react';
+import type { Goal } from '../../shared/supabase';
+import { useAuth } from '../../app/contexts/useAuth';
+import { calculateBMR, calculateTDEE, calculateOptimalDeficitOrSurplus } from './calculations';
+import { getTodayDate } from '../../shared/date';
+import { formatNumber } from '../../shared/format';
+import { activateNewGoal } from './goals.service';
+import { validateGoalInput } from './validation';
+import { chooseBmrMethod, DEFAULT_PROTEIN_G_PER_KG } from './goals';
+import { GoalTargetsPreview } from './GoalTargetsPreview';
+
+const PROTEIN_OPTIONS = [
+  { value: 1.6, label: '1,6 g/kg — modéré' },
+  { value: 1.8, label: '1,8 g/kg' },
+  { value: 2.0, label: '2,0 g/kg — recommandé (défaut)' },
+  { value: 2.2, label: '2,2 g/kg — sportif / sèche' },
+];
+
+interface GoalFormProps {
+  /** Objectif actif (pré-remplit le formulaire), ou null */
+  activeGoal: Goal | null;
+  /** Appelé après l'enregistrement d'un nouvel objectif */
+  onSaved: () => void | Promise<void>;
+}
+
+/** Valeurs du formulaire à partir de l'objectif actif */
+function initialGoalData(goal: Goal | null) {
+  return {
+    goal_type: (goal?.type ?? 'maintain') as 'loss' | 'maintain' | 'gain',
+    activity_level: goal ? Number(goal.activity_level) : 1.55,
+    // Un objectif de maintien est enregistré avec 0 % : proposer 15 % par défaut
+    // si l'utilisateur repasse en perte ou en prise
+    deficit_or_surplus_pct: Number(goal?.deficit_or_surplus_pct) || 15,
+    target_weight_kg: (goal?.target_weight_kg ? Number(goal.target_weight_kg) : undefined) as number | undefined,
+    duration_weeks: (goal?.duration_weeks ? Number(goal.duration_weeks) : undefined) as number | undefined,
+    protein_g_per_kg: Number(goal?.protein_g_per_kg) || DEFAULT_PROTEIN_G_PER_KG,
+  };
+}
+
+export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
+  const { user, profile } = useAuth();
+  const [goalData, setGoalData] = useState(() => initialGoalData(activeGoal));
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSaveGoal = async () => {
+    if (!user || !profile) return;
+
+    setError('');
+    setSuccess('');
+
+    const input = {
+      type: goalData.goal_type,
+      activity_level: goalData.activity_level,
+      deficit_or_surplus_pct: goalData.deficit_or_surplus_pct,
+      target_weight_kg: goalData.target_weight_kg,
+      duration_weeks: goalData.duration_weeks,
+      protein_g_per_kg: goalData.protein_g_per_kg,
+    };
+
+    const validationErrors = validateGoalInput(input, profile.poids_kg);
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join(' '));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Crée le nouvel objectif, désactive l'ancien et met à jour (upsert) la cible du jour
+      await activateNewGoal(user.id, profile, input, getTodayDate());
+      setSuccess('Objectif enregistré : il s\'applique dès aujourd\'hui.');
+      await onSaved();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "L'objectif n'a pas pu être enregistré.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+      <div className="space-y-6">
+        <div>
+          <label htmlFor="activity_level" className="field-label mb-2">Niveau d'activité</label>
+          <select
+            id="activity_level"
+            value={goalData.activity_level}
+            onChange={(e) => setGoalData({ ...goalData, activity_level: Number(e.target.value) })}
+            className="w-full px-3 py-2 field-input"
+          >
+            <option value={1.2}>Sédentaire (peu ou pas d'exercice)</option>
+            <option value={1.375}>Légèrement actif (1-3 jours/semaine)</option>
+            <option value={1.55}>Modérément actif (3-5 jours/semaine)</option>
+            <option value={1.725}>Très actif (6-7 jours/semaine)</option>
+            <option value={1.9}>Extrêmement actif (2x par jour)</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="field-label mb-2">Type d'objectif</label>
+          <div className="grid grid-cols-3 gap-4">
+            <button
+              type="button"
+              aria-pressed={goalData.goal_type === 'loss'}
+              onClick={() => setGoalData({ ...goalData, goal_type: 'loss' })}
+              className={`py-3 px-4 border-2 rounded-md font-medium transition-colors ${
+                goalData.goal_type === 'loss'
+                  ? 'border-primary-600 bg-primary-50 text-primary-700'
+                  : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
+              }`}
+            >
+              Perte
+            </button>
+            <button
+              type="button"
+              aria-pressed={goalData.goal_type === 'maintain'}
+              onClick={() => setGoalData({ ...goalData, goal_type: 'maintain' })}
+              className={`py-3 px-4 border-2 rounded-md font-medium transition-colors ${
+                goalData.goal_type === 'maintain'
+                  ? 'border-primary-600 bg-primary-50 text-primary-700'
+                  : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
+              }`}
+            >
+              Maintien
+            </button>
+            <button
+              type="button"
+              aria-pressed={goalData.goal_type === 'gain'}
+              onClick={() => setGoalData({ ...goalData, goal_type: 'gain' })}
+              className={`py-3 px-4 border-2 rounded-md font-medium transition-colors ${
+                goalData.goal_type === 'gain'
+                  ? 'border-primary-600 bg-primary-50 text-primary-700'
+                  : 'border-line-strong bg-surface text-body hover:border-line-emphasis'
+              }`}
+            >
+              Prise
+            </button>
+          </div>
+        </div>
+
+        {goalData.goal_type === 'maintain' && (
+          <div className="bg-primary-50 p-4 rounded-md border border-primary-200">
+            <label htmlFor="duration_maintain" className="block text-xs font-medium text-primary-900 mb-1">
+              Durée du maintien en semaines (optionnel)
+            </label>
+            <input
+              type="number"
+              id="duration_maintain"
+              value={goalData.duration_weeks || ''}
+              onChange={(e) =>
+                setGoalData({ ...goalData, duration_weeks: e.target.value ? Number(e.target.value) : undefined })
+              }
+              min="1"
+              max="260"
+              step="1"
+              placeholder="Ex: 12"
+              className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-600"
+            />
+            <p className="mt-1 text-xs text-primary-700">
+              Laissez vide pour un objectif de maintien sans limite de temps
+            </p>
+          </div>
+        )}
+
+        {goalData.goal_type !== 'maintain' && (
+          <>
+            <div className="bg-primary-50 p-4 rounded-md border border-primary-200">
+              <h3 className="text-sm text-primary-900 mb-2">Objectif de poids et durée (optionnel)</h3>
+              <p className="text-xs text-primary-700 mb-3">
+                Définissez un poids cible et une durée pour un calcul automatique du déficit/surplus optimal
+              </p>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="target_weight" className="block text-xs font-medium text-primary-900 mb-1">
+                    Poids cible (kg)
+                  </label>
+                  <input
+                    type="number"
+                    id="target_weight"
+                    value={goalData.target_weight_kg || ''}
+                    onChange={(e) => {
+                      const value = e.target.value ? Number(e.target.value) : undefined;
+                      setGoalData({ ...goalData, target_weight_kg: value });
+
+                      if (value && goalData.duration_weeks && profile) {
+                        const bmr = calculateBMR(profile, chooseBmrMethod(profile));
+                        const tdee = calculateTDEE(bmr, goalData.activity_level);
+                        const optimal = calculateOptimalDeficitOrSurplus(
+                          profile.poids_kg,
+                          value,
+                          goalData.duration_weeks,
+                          tdee,
+                          goalData.goal_type as 'loss' | 'gain'
+                        );
+                        setGoalData((prev) => ({ ...prev, deficit_or_surplus_pct: optimal }));
+                      }
+                    }}
+                    min="30"
+                    max="300"
+                    step="0.1"
+                    placeholder="Ex: 70"
+                    className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-600"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="duration" className="block text-xs font-medium text-primary-900 mb-1">
+                    Durée (semaines)
+                  </label>
+                  <input
+                    type="number"
+                    id="duration"
+                    value={goalData.duration_weeks || ''}
+                    onChange={(e) => {
+                      const value = e.target.value ? Number(e.target.value) : undefined;
+                      setGoalData({ ...goalData, duration_weeks: value });
+
+                      if (value && goalData.target_weight_kg && profile) {
+                        const bmr = calculateBMR(profile, chooseBmrMethod(profile));
+                        const tdee = calculateTDEE(bmr, goalData.activity_level);
+                        const optimal = calculateOptimalDeficitOrSurplus(
+                          profile.poids_kg,
+                          goalData.target_weight_kg,
+                          value,
+                          tdee,
+                          goalData.goal_type as 'loss' | 'gain'
+                        );
+                        setGoalData((prev) => ({ ...prev, deficit_or_surplus_pct: optimal }));
+                      }
+                    }}
+                    min="1"
+                    max="260"
+                    placeholder="Ex: 20"
+                    className="w-full px-3 py-2 border border-primary-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-600"
+                  />
+                </div>
+              </div>
+
+              {goalData.target_weight_kg && goalData.duration_weeks && profile && (
+                <div className="mt-3 text-xs text-primary-700">
+                  Changement : {formatNumber(Math.abs(goalData.target_weight_kg - profile.poids_kg), 1)} kg sur {goalData.duration_weeks} semaines
+                  ({formatNumber(Math.abs(goalData.target_weight_kg - profile.poids_kg) / goalData.duration_weeks, 2)} kg/sem)
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="deficit" className="field-label mb-1">
+                {goalData.goal_type === 'loss' ? 'Déficit calorique (%)' : 'Surplus calorique (%)'}
+              </label>
+              <input
+                type="number"
+                id="deficit"
+                value={goalData.deficit_or_surplus_pct}
+                onChange={(e) => setGoalData({ ...goalData, deficit_or_surplus_pct: Number(e.target.value) })}
+                min="5"
+                max="30"
+                step="5"
+                className="w-full px-3 py-2 field-input"
+              />
+              <p className="mt-1 text-xs text-subtle">
+                {goalData.target_weight_kg && goalData.duration_weeks
+                  ? 'Calculé automatiquement'
+                  : goalData.goal_type === 'loss'
+                  ? 'Recommandé : 10-20%'
+                  : 'Recommandé : 5-15%'}
+              </p>
+            </div>
+          </>
+        )}
+
+        <div>
+          <label htmlFor="protein_g_per_kg" className="field-label mb-1">
+            Protéines
+          </label>
+          <select
+            id="protein_g_per_kg"
+            value={goalData.protein_g_per_kg}
+            onChange={(e) => setGoalData({ ...goalData, protein_g_per_kg: Number(e.target.value) })}
+            className="w-full px-3 py-2 field-input"
+          >
+            {PROTEIN_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-subtle">
+            Par kg de poids de référence (votre poids, plafonné à un IMC de 25).
+          </p>
+        </div>
+
+        {profile && (
+          <GoalTargetsPreview
+            profile={profile}
+            goal={{
+              type: goalData.goal_type,
+              activity_level: goalData.activity_level,
+              deficit_or_surplus_pct: goalData.deficit_or_surplus_pct,
+              target_weight_kg: goalData.target_weight_kg,
+              duration_weeks: goalData.duration_weeks,
+              protein_g_per_kg: goalData.protein_g_per_kg,
+            }}
+            onApplyDuration={(weeks) => {
+              const next = { ...goalData, duration_weeks: weeks };
+              if (goalData.target_weight_kg && goalData.goal_type !== 'maintain') {
+                const tdee = calculateTDEE(calculateBMR(profile, chooseBmrMethod(profile)), goalData.activity_level);
+                next.deficit_or_surplus_pct = calculateOptimalDeficitOrSurplus(
+                  profile.poids_kg, goalData.target_weight_kg, weeks, tdee, goalData.goal_type
+                );
+              }
+              setGoalData(next);
+            }}
+          />
+        )}
+
+        {activeGoal && (
+          <p className="text-xs text-subtle">
+            Enregistrer crée un nouvel objectif qui démarre aujourd'hui : la progression repart de votre poids actuel.
+          </p>
+        )}
+
+        {success && (
+          <p role="status" className="p-3 bg-success-50 border border-success-200 text-success-700 rounded-md text-sm">
+            {success}
+          </p>
+        )}
+        {error && (
+          <p role="alert" className="p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded-md text-sm">
+            {error}
+          </p>
+        )}
+
+        <button
+          type="button"
+          onClick={handleSaveGoal}
+          disabled={loading}
+          className="flex items-center justify-center gap-2 w-full py-3 px-4 btn-primary font-medium rounded-md"
+        >
+          <Save className="w-5 h-5" />
+          {loading ? 'Enregistrement...' : 'Enregistrer l\'objectif'}
+        </button>
+      </div>
+  );
+}
