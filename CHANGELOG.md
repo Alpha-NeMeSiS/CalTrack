@@ -9,6 +9,19 @@ Toutes les évolutions notables de CalTrack. Les numéros suivent le
 
 La version affichée dans l'app (pied de page, page « À propos ») est lue dans `package.json`.
 
+## [2.1.0] — 22 novembre 2026
+
+### Nouveautés
+
+- **Visite guidée** : 5 bulles au premier passage sur le journal (calories, ajout d'aliment, eau, pesée, navigation), une seule fois par compte, à relancer depuis le Guide.
+- **Page « Guide »** : le fonctionnement de l'app pas à pas, accessible depuis le pied de page, le menu de l'avatar et l'écran de connexion.
+- **Fenêtre « Quoi de neuf ? »** au lancement après chaque mise à jour, une fois par version et par compte (versions manquées regroupées) ; à revoir depuis « À propos ».
+
+### Technique
+
+- Colonnes `user_preferences.tour_completed_at` et `last_seen_version`.
+- Notes de version pour l'utilisateur dans `src/data/releases.ts`, vérifiées par un test (impossible de publier une version sans notes).
+
 ## [2.0.0] — 22 novembre 2026
 
 La V2 : nouvelle direction artistique, scanner de code-barres, et de nombreuses fonctionnalités.
