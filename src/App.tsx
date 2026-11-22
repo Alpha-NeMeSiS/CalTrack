@@ -19,10 +19,26 @@ import { ProfilePage } from './components/Profile/ProfilePage';
 import { AccountPage } from './components/Account/AccountPage';
 import { SettingsPage } from './components/Settings/SettingsPage';
 import { AboutPage } from './components/About/AboutPage';
+import { GuidePage } from './components/Guide/GuidePage';
 import { AppFooter } from './components/Layout/AppFooter';
 import { PreferencesProvider } from './contexts/PreferencesContext';
+import { usePreferences } from './contexts/usePreferences';
+import { WhatsNewDialog } from './components/WhatsNew/WhatsNewDialog';
+import { RELEASES } from './data/releases';
+import { APP_VERSION } from './utils/appInfo';
+import { isNewerVersion, unseenReleases } from './utils/releases';
 import { getTodayDate } from './utils/date';
-import { AboutSection, AppView, isAboutSection, isAppView, NAVIGATE_EVENT, NavigateEventDetail } from './utils/navigation';
+import {
+  AboutSection,
+  AppView,
+  GuideSection,
+  InfoPageName,
+  isAboutSection,
+  isAppView,
+  isGuideSection,
+  NAVIGATE_EVENT,
+  NavigateEventDetail,
+} from './utils/navigation';
 
 function AppScreens() {
   // Récupère l'état d'authentification et le profil utilisateur
@@ -36,8 +52,69 @@ function AppScreens() {
   const [aboutSection, setAboutSection] = useState<AboutSection | undefined>(undefined);
   // Chaque demande d'ouverture relance le défilement, même vers la même section
   const [aboutRequest, setAboutRequest] = useState(0);
-  const [guestAbout, setGuestAbout] = useState<AboutSection | null>(null);
+  const [guideSection, setGuideSection] = useState<GuideSection | undefined>(undefined);
+  const [guideRequest, setGuideRequest] = useState(0);
+  // Sans compte : page d'information ouverte depuis le pied de page (ou aucune)
+  const [guestInfo, setGuestInfo] = useState<{ page: InfoPageName; section?: AboutSection } | null>(null);
   const [dashboardDate, setDashboardDate] = useState<string>(() => getTodayDate());
+
+  // Au lancement : visite guidée si elle n'a pas été vue, sinon « Quoi de neuf ? »
+  // après une mise à jour. Jamais les deux dans la même session.
+  const { preferences, status: preferencesStatus, markTourCompleted, markVersionSeen } = usePreferences();
+  const [tourRequest, setTourRequest] = useState<'auto' | 'manual' | null>(null);
+  const [autoTourThisSession, setAutoTourThisSession] = useState(false);
+  const [whatsNewClosed, setWhatsNewClosed] = useState(false);
+  const startupReady = Boolean(user && profile) && preferencesStatus === 'ready';
+
+  // Nouvelle session (autre compte) : on repart de zéro
+  useEffect(() => {
+    setTourRequest(null);
+    setAutoTourThisSession(false);
+    setWhatsNewClosed(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!startupReady || autoTourThisSession || preferences.tourCompletedAt !== null) return;
+    setAutoTourThisSession(true);
+    setTourRequest('auto');
+  }, [startupReady, autoTourThisSession, preferences.tourCompletedAt]);
+
+  const handleTourFinish = () => {
+    const mode = tourRequest;
+    setTourRequest(null);
+    // Visite automatique : enregistrée (visite + version actuelle) ; un échec ne bloque rien
+    if (mode === 'auto') markTourCompleted().catch((error) => console.error('Visite non enregistrée :', error));
+  };
+
+  const showWhatsNew =
+    startupReady &&
+    !autoTourThisSession &&
+    tourRequest === null &&
+    !whatsNewClosed &&
+    preferences.tourCompletedAt !== null &&
+    isNewerVersion(APP_VERSION, preferences.lastSeenVersion);
+
+  // « Revoir la visite » (Guide) : retour au journal, visite relancée sans rien enregistrer
+  const startTourReplay = () => {
+    setCurrentView('dashboard');
+    setTourRequest('manual');
+  };
+
+  const openInfoPage = (page: InfoPageName, section?: AboutSection) => {
+    if (page === 'guide') {
+      setGuideSection(undefined);
+      setGuideRequest((n) => n + 1);
+    } else {
+      setAboutSection(section);
+      setAboutRequest((n) => n + 1);
+    }
+    setCurrentView(page);
+  };
+
+  const closeWhatsNew = () => {
+    setWhatsNewClosed(true);
+    markVersionSeen(APP_VERSION).catch((error) => console.error('Version vue non enregistrée :', error));
+  };
 
   // Changement de vue demandé par un composant (menu du compte, bandeau d'objectif…)
   useEffect(() => {
@@ -49,6 +126,10 @@ function AppScreens() {
         setAboutSection(isAboutSection(detail.section) ? detail.section : undefined);
         setAboutRequest((n) => n + 1);
       }
+      if (detail.view === 'guide') {
+        setGuideSection(isGuideSection(detail.section) ? detail.section : undefined);
+        setGuideRequest((n) => n + 1);
+      }
     };
     window.addEventListener(NAVIGATE_EVENT, handleNavigate);
     return () => window.removeEventListener(NAVIGATE_EVENT, handleNavigate);
@@ -57,9 +138,9 @@ function AppScreens() {
   // Nouvelle vue : revenir en haut de page (sauf « À propos » ouverte sur une
   // section : la page défile elle-même jusqu'à la section)
   useEffect(() => {
-    if (currentView === 'about' && aboutSection) return;
+    if ((currentView === 'about' && aboutSection) || (currentView === 'guide' && guideSection)) return;
     window.scrollTo?.({ top: 0 });
-    // aboutSection lu au changement de vue seulement
+    // aboutSection et guideSection lus au changement de vue seulement
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView]);
 
@@ -88,11 +169,16 @@ function AppScreens() {
   // Si l'utilisateur n'est pas connecté, afficher le formulaire de connexion / inscription
   // (ou la page « À propos », ouverte depuis le pied de page)
   if (!user) {
-    if (guestAbout) {
+    const openGuestInfo = (page: InfoPageName, section?: AboutSection) => setGuestInfo({ page, section });
+    if (guestInfo) {
       return (
         <div className="min-h-screen bg-canvas px-4 py-6 sm:py-10">
-          <AboutPage section={guestAbout} signedIn={false} onBack={() => setGuestAbout(null)} />
-          <AppFooter onOpen={setGuestAbout} />
+          {guestInfo.page === 'guide' ? (
+            <GuidePage signedIn={false} onBack={() => setGuestInfo(null)} />
+          ) : (
+            <AboutPage section={guestInfo.section} signedIn={false} onBack={() => setGuestInfo(null)} />
+          )}
+          <AppFooter onOpen={openGuestInfo} />
         </div>
       );
     }
@@ -104,7 +190,7 @@ function AppScreens() {
         ) : (
           <SignupForm onToggle={() => setAuthMode('login')} />
         )}
-        <AppFooter onOpen={setGuestAbout} />
+        <AppFooter onOpen={openGuestInfo} />
       </div>
     );
   }
@@ -163,7 +249,12 @@ function AppScreens() {
       {/* pb-28 sur mobile : place pour la barre d'onglets fixée en bas et le bouton « Ajouter » */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-28 sm:py-8">
         {currentView === 'dashboard' && (
-          <Dashboard activeDate={dashboardDate} onActiveDateChange={setDashboardDate} />
+          <Dashboard
+            activeDate={dashboardDate}
+            onActiveDateChange={setDashboardDate}
+            tourActive={tourRequest !== null}
+            onTourFinish={handleTourFinish}
+          />
         )}
         {currentView === 'trends' && <WeeklyTrends />}
         {currentView === 'goal' && <GoalPage />}
@@ -173,18 +264,21 @@ function AppScreens() {
         {currentView === 'about' && (
           <AboutPage section={aboutSection} scrollKey={aboutRequest} signedIn onOpenAccount={() => setCurrentView('account')} />
         )}
+        {currentView === 'guide' && (
+          <GuidePage section={guideSection} scrollKey={guideRequest} signedIn onReplayTour={startTourReplay} />
+        )}
 
         {/* pb-8 sur mobile : le bouton flottant « Ajouter un aliment » ne recouvre pas le texte */}
         <AppFooter
           showAttribution
           className="pb-8 sm:pb-2"
-          onOpen={(section) => {
-            setAboutSection(section);
-            setAboutRequest((n) => n + 1);
-            setCurrentView('about');
-          }}
+          onOpen={openInfoPage}
         />
       </main>
+
+      {showWhatsNew && (
+        <WhatsNewDialog releases={unseenReleases(RELEASES, preferences.lastSeenVersion)} onClose={closeWhatsNew} />
+      )}
     </div>
   );
 }

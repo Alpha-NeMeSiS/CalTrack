@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 // Supabase simulé pour les tests de bout en bout : toutes les requêtes vers
 // https://fake.supabase.co sont interceptées par Playwright et reçoivent des
 // données de démonstration. Aucun appel réseau réel, aucune clé nécessaire.
@@ -209,7 +210,30 @@ const session = {
   user: { id: USER_ID, email: profile.email, aud: 'authenticated', role: 'authenticated' },
 };
 
-function rowsFor(table: string, params: URLSearchParams): unknown[] {
+// Version de l'app (package.json) : par défaut, la visite et les nouveautés sont déjà vues,
+// pour que les tests existants ne soient pas gênés par la visite ou « Quoi de neuf ? »
+const APP_VERSION: string = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version;
+
+export interface MockOptions {
+  /** false : visite guidée pas encore vue */
+  tourSeen?: boolean;
+  /** Dernière version vue (null = aucune) ; par défaut, la version actuelle */
+  lastSeenVersion?: string | null;
+}
+
+function preferencesRow(options: MockOptions) {
+  return {
+    user_id: USER_ID,
+    theme: 'system',
+    calorie_display: 'consumed',
+    macro_display: 'grams',
+    hidden_meals: [],
+    tour_completed_at: options.tourSeen === false ? null : '2026-11-01T08:00:00Z',
+    last_seen_version: options.lastSeenVersion === undefined ? APP_VERSION : options.lastSeenVersion,
+  };
+}
+
+function rowsFor(table: string, params: URLSearchParams, options: MockOptions = {}): unknown[] {
   const dateFilter = params.get('date');
   const exactDate = dateFilter?.startsWith('eq.') ? dateFilter.slice(3) : null;
   switch (table) {
@@ -227,13 +251,22 @@ function rowsFor(table: string, params: URLSearchParams): unknown[] {
       return recipes;
     case 'water_logs':
       return waterLogs.filter((log) => inDateRange(log.date, params.getAll('date')));
+    case 'user_preferences':
+      return [preferencesRow(options)];
     default:
       return [];
   }
 }
 
+/** Écritures reçues (table et corps), pour vérifier ce que l'app enregistre */
+export interface MockWrite {
+  table: string;
+  body: Record<string, unknown>;
+}
+
 /** Intercepte Supabase (auth, base, stockage) et la recherche d'aliments */
-export async function mockSupabase(page: Page) {
+export async function mockSupabase(page: Page, options: MockOptions = {}) {
+  const writes: MockWrite[] = [];
   await page.route(`${SUPABASE_URL}/**`, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -257,15 +290,17 @@ export async function mockSupabase(page: Page) {
         // corps vide
       }
       const row = Array.isArray(body) ? body[0] : body;
+      writes.push({ table, body: (row ?? {}) as Record<string, unknown> });
       return reply(wantsObject ? { id: 'new', ...row } : [{ id: 'new', ...row }], 201);
     }
-    const rows = rowsFor(table, url.searchParams);
+    const rows = rowsFor(table, url.searchParams, options);
     return reply(wantsObject ? (rows[0] ?? null) : rows);
   });
 
   await page.route('**/api/off/search**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(searchResults) })
   );
+  return { writes };
 }
 
 /** Ouvre une session simulée (à appeler avant page.goto) */

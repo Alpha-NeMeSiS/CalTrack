@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Dashboard } from './Dashboard';
 import { NAVIGATE_EVENT } from '../../utils/navigation';
 import { supabaseMock, hasOperation, getOperationArgs } from '../../test/supabaseMock';
@@ -50,6 +50,42 @@ beforeEach(() => {
   supabaseMock.reset();
   mockedFetchUserGoals.mockReset();
   mockedEnsureDailyTarget.mockReset();
+});
+
+describe('Dashboard : visite guidée', () => {
+  // jsdom ne calcule pas la mise en page : chaque élément reçoit une taille non nulle
+  const realRect = Element.prototype.getBoundingClientRect;
+  beforeEach(() => {
+    Element.prototype.getBoundingClientRect = () =>
+      ({ top: 100, left: 10, width: 200, height: 80, right: 210, bottom: 180, x: 10, y: 100, toJSON: () => ({}) }) as DOMRect;
+    window.scrollBy = vi.fn() as unknown as typeof window.scrollBy;
+  });
+  afterEach(() => {
+    Element.prototype.getBoundingClientRect = realRect;
+  });
+
+  it('affiche la visite une fois le journal chargé', async () => {
+    mockedFetchUserGoals.mockResolvedValue([makeGoal({ type: 'maintain', end_date: null })]);
+    mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget({ date: '2025-03-15' }));
+    setEntries([]);
+    render(<Dashboard activeDate="2025-03-15" tourActive onTourFinish={vi.fn()} />);
+
+    expect(await screen.findByRole('dialog', { name: 'Votre journée en un coup d’œil' })).toBeInTheDocument();
+    // Journal sans pesée possible ici (pas de profil complet ?) : au moins calories, ajout et eau
+    expect(screen.getByRole('dialog')).toHaveTextContent(/Étape 1 sur [3-5]/);
+  });
+
+  it('ne démarre pas sans objectif (écran « Définir un objectif ») et ne la marque pas vue', async () => {
+    mockedFetchUserGoals.mockResolvedValue([]);
+    mockedEnsureDailyTarget.mockResolvedValue(null);
+    setEntries([]);
+    const onTourFinish = vi.fn();
+    render(<Dashboard activeDate="2025-03-15" tourActive onTourFinish={onTourFinish} />);
+
+    expect(await screen.findByRole('button', { name: 'Définir un objectif' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onTourFinish).not.toHaveBeenCalled();
+  });
 });
 
 describe('Dashboard', () => {

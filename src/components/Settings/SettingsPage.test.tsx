@@ -22,7 +22,7 @@ vi.mock('../../lib/push', () => ({
 
 function renderPage(preferences: UserPreferences = DEFAULT_PREFERENCES) {
   return render(
-    <PreferencesContext.Provider value={{ preferences, savePreferences }}>
+    <PreferencesContext.Provider value={{ preferences, savePreferences, status: 'ready', markTourCompleted: vi.fn(), markVersionSeen: vi.fn() }}>
       <SettingsPage />
     </PreferencesContext.Provider>
   );
@@ -161,7 +161,13 @@ describe('SettingsPage', () => {
     // Les rappels viennent d'être enregistrés (activation des notifications)
     rerender(
       <PreferencesContext.Provider
-        value={{ preferences: { ...DEFAULT_PREFERENCES, reminderWeighInTime: '08:00', reminderLogTime: '20:30' }, savePreferences }}
+        value={{
+          preferences: { ...DEFAULT_PREFERENCES, reminderWeighInTime: '08:00', reminderLogTime: '20:30' },
+          savePreferences,
+          status: 'ready',
+          markTourCompleted: vi.fn(),
+          markVersionSeen: vi.fn(),
+        }}
       >
         <SettingsPage />
       </PreferencesContext.Provider>

@@ -26,6 +26,10 @@ export interface UserPreferences {
   timezone: string;
   /** Objectif d'eau manuel (ml), null = automatique d'après le poids */
   waterGoalMl: number | null;
+  /** Fin de la visite guidée (ISO), null = pas encore vue */
+  tourCompletedAt: string | null;
+  /** Dernière version dont les nouveautés ont été vues, null = aucune */
+  lastSeenVersion: string | null;
 }
 
 /** Heures proposées quand un rappel est activé */
@@ -61,6 +65,8 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   reminderLogTime: null,
   timezone: 'Europe/Paris',
   waterGoalMl: null,
+  tourCompletedAt: null,
+  lastSeenVersion: null,
 };
 
 /** Ligne de la table user_preferences */
@@ -78,6 +84,9 @@ export interface UserPreferencesRow {
   reminder_log_time?: string | null;
   timezone?: string;
   water_goal_ml?: number | null;
+  // Écrits seulement par markTourCompleted / markVersionSeen, jamais par preferencesToRow
+  tour_completed_at?: string | null;
+  last_seen_version?: string | null;
   updated_at?: string;
 }
 
@@ -100,6 +109,8 @@ export function preferencesFromRow(row: Partial<UserPreferencesRow> | null | und
     reminderLogTime: normalizeTime(row.reminder_log_time),
     timezone: row.timezone || DEFAULT_PREFERENCES.timezone,
     waterGoalMl: row.water_goal_ml ?? null,
+    tourCompletedAt: row.tour_completed_at ?? null,
+    lastSeenVersion: row.last_seen_version ?? null,
   };
 }
 

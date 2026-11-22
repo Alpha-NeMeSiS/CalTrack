@@ -38,6 +38,8 @@ describe('préférences', () => {
       reminderLogTime: null,
       timezone: 'America/Toronto',
       waterGoalMl: 2500,
+      tourCompletedAt: null,
+      lastSeenVersion: null,
     });
     expect(getMealLabel(prefs, 'snack')).toBe('Collation du matin');
     expect(getMealLabel(prefs, 'lunch')).toBe('Déjeuner');
@@ -57,6 +59,8 @@ describe('préférences', () => {
         reminderLogTime: '25:00', // invalide → désactivé
         timezone: 'Europe/Paris',
         waterGoalMl: null,
+        tourCompletedAt: null,
+        lastSeenVersion: null,
       },
       new Date('2026-11-08T10:00:00Z')
     );
@@ -105,3 +109,24 @@ describe('préférences', () => {
   });
 });
 
+
+describe('visite guidée et version vue', () => {
+  it('lit tour_completed_at et last_seen_version', () => {
+    const prefs = preferencesFromRow({ tour_completed_at: '2026-11-17T10:00:00Z', last_seen_version: '2.0.0' });
+    expect(prefs.tourCompletedAt).toBe('2026-11-17T10:00:00Z');
+    expect(prefs.lastSeenVersion).toBe('2.0.0');
+  });
+
+  it('les laisse vides par défaut', () => {
+    const prefs = preferencesFromRow({});
+    expect(prefs.tourCompletedAt).toBeNull();
+    expect(prefs.lastSeenVersion).toBeNull();
+    expect(DEFAULT_PREFERENCES.tourCompletedAt).toBeNull();
+  });
+
+  it('ne les écrit jamais depuis les Paramètres (seuls les services dédiés le font)', () => {
+    const row = preferencesToRow('u', { ...DEFAULT_PREFERENCES, tourCompletedAt: 'x', lastSeenVersion: '2.0.0' });
+    expect('tour_completed_at' in row).toBe(false);
+    expect('last_seen_version' in row).toBe(false);
+  });
+});

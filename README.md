@@ -4,9 +4,9 @@ Application web de suivi calorique construite avec **React + TypeScript + Vite**
 
 ## Version
 
-Version actuelle : **2.0.0** (V2 : nouvelle direction artistique, scanner de code-barres, recettes, eau, pesées…). Le détail des évolutions est dans [CHANGELOG.md](CHANGELOG.md).
+Version actuelle : **2.1.0** (V2 : nouvelle direction artistique, scanner de code-barres, recettes, eau, pesées… ; 2.1 : visite guidée, Guide, fenêtre « Quoi de neuf ? »). Le détail des évolutions est dans [CHANGELOG.md](CHANGELOG.md).
 
-Pour une nouvelle version, mettre à jour `package.json` (`npm version minor --no-git-tag-version` pour une nouvelle fonctionnalité, `patch` pour un correctif, `major` pour une refonte) et ajouter une entrée au CHANGELOG. La version affichée dans l'app en découle automatiquement.
+Pour une nouvelle version, mettre à jour `package.json` (`npm version minor --no-git-tag-version` pour une nouvelle fonctionnalité, `patch` pour un correctif, `major` pour une refonte) ajouter une entrée au CHANGELOG, et écrire les notes pour l'utilisateur dans `src/data/releases.ts` (affichées par la fenêtre « Quoi de neuf ? » ; un test refuse une version sans notes). La version affichée dans l'app en découle automatiquement.
 
 ## Fonctionnalités
 
@@ -22,6 +22,7 @@ Pour une nouvelle version, mettre à jour `package.json` (`npm version minor --n
 - Composition corporelle saisie avec les pesées (balance impédancemètre) et courbe masse grasse / masse maigre.
 - Ajustement des calories proposé d'après la dépense réelle (repas saisis et pesées), à accepter ou non.
 - Pied de page et page « À propos » (version, avertissement santé, données enregistrées, sources), accessibles aussi sans compte.
+- Visite guidée au premier lancement, page « Guide » et fenêtre « Quoi de neuf ? » à chaque mise à jour.
 - Persistance des données via Supabase (tables `profiles`, `goals`, `daily_targets`, `foods`, `entries`).
 
 ## Stack technique
@@ -144,6 +145,9 @@ Les migrations SQL se trouvent dans `supabase/migrations/`. Elles sont **aligné
 | `20261108162648` | Mesures détaillées facultatives du profil : taux d'eau, graisse viscérale, masse musculaire, masse osseuse (avec bornes) |
 | `20261108170840` | Bibliothèque d'aliments : code-barres des aliments personnels (unique par utilisateur) et table `favorite_foods` (valeurs pour 100 g, quantité habituelle, RLS) |
 | `20261108172544` | Composition corporelle facultative dans `weight_logs` (masse grasse, muscles, os, eau, graisse viscérale) et ajustement des calories accepté sur l'objectif (`goals.calorie_adjustment_kcal`, `calorie_adjustment_at`) |
+| `20261108225422` | Recettes (`recipes`, `recipe_ingredients`) et fonction `save_recipe` |
+| `20261108232714` | Suivi de l'eau (`water_logs`) et objectif manuel (`user_preferences.water_goal_ml`) |
+| `20261122192854` | Visite guidée et « Quoi de neuf ? » : `user_preferences.tour_completed_at` et `last_seen_version` |
 
 Rejouer toutes les migrations sur une base vierge donne un schéma identique à la production (vérifié par empreinte des colonnes, contraintes, index, politiques RLS et buckets).
 
@@ -161,6 +165,9 @@ Rejouer toutes les migrations sur une base vierge donne un schéma identique à 
 | `04_weigh_in.sql` | Une pesée remise à jour garde la composition du jour |
 | `05_delete_account.sql` | `delete_my_account()` efface tout le compte connecté et rien d'autre |
 | `06_reminders.sql` | Rappels push dus à l'heure locale, une fois par jour, pas si l'action est faite ; réservés à la tâche planifiée |
+| `07_recipes.sql` | Recettes et ingrédients isolés par compte, enregistrement en une opération |
+| `08_water.sql` | Prises d'eau isolées par compte, quantités et objectif bornés |
+| `09_tour_and_version.sql` | Visite guidée et version vue : vides par défaut, modifiables seulement sur son compte |
 
 Outils (`supabase/tests/helpers.sql`) : `test.create_user('nom')`, `test.login(test.uid('nom'))` puis `SET ROLE authenticated` pour agir comme l'API, `test.ok(condition, 'message')`, `test.raises($$ SQL $$, 'SQLSTATE', 'message')`.
 
@@ -246,9 +253,16 @@ Onglet « Recettes » de « Ajouter un aliment » :
 
 ## Pied de page et page « À propos »
 
-- **Pied de page** sous chaque vue et sur l'écran de connexion : « CalTrack v2.0.0 · À propos · Vos données · Sources ». Une fois connecté, il cite aussi les sources nutritionnelles (Ciqual, Open Food Facts).
+- **Pied de page** sous chaque vue et sur l'écran de connexion : « CalTrack v2.1.0 · Guide · À propos · Vos données · Sources ». Une fois connecté, il cite aussi les sources nutritionnelles (Ciqual, Open Food Facts).
 - **Page « À propos »** en quatre sections : l'application (version), santé (estimations, pas un dispositif médical), vos données (ce qui est enregistré, où, qui y a accès, combien de temps ; liens vers l'export et la suppression une fois connecté) et sources (Ciqual sous Licence Ouverte 2.0, Open Food Facts sous ODbL, formules utilisées). Chaque lien du pied de page ouvre la page sur sa section.
 - **Version** : lue dans `package.json` au build (`__APP_VERSION__`, exposée par `src/utils/appInfo.ts`) ; changer `version` suffit.
+
+## Visite guidée, Guide et « Quoi de neuf ? »
+
+- **Visite guidée** : 5 bulles au premier passage sur le journal (calories, ajout d'aliment, eau, pesée, navigation), passables, au clavier (Échap, Tab gardé dans la bulle). Les cibles sont repérées par `data-tour` ; la visite ne démarre pas sans objectif. Elle est mémorisée par compte (`user_preferences.tour_completed_at`) et se relance depuis le Guide (« Revoir la visite », sans rien enregistrer).
+- **Page « Guide »** : 8 sections (premiers pas, repas, eau, pesée, objectif, tendances, réglages, installation sur le téléphone), depuis le pied de page, le menu de l'avatar et l'écran de connexion.
+- **« Quoi de neuf ? »** : au lancement, quand la version de l'app est plus récente que `user_preferences.last_seen_version` ; versions manquées regroupées ; « C'est noté », la croix ou Échap l'enregistrent. Jamais en même temps que la visite : la fin de la visite marque aussi la version actuelle comme vue. L'historique se rouvre depuis « À propos » (« Voir les nouveautés »).
+- **Notes de version** : `src/data/releases.ts` (textes pour l'utilisateur) ; un test refuse une version de `package.json` sans notes.
 
 ## Scanner de code-barres
 

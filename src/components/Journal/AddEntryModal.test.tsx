@@ -262,6 +262,9 @@ describe('AddEntryModal', () => {
         value={{
           preferences: { ...DEFAULT_PREFERENCES, mealLabels: { snack: 'Goûter' }, hiddenMeals: ['dinner'] },
           savePreferences: vi.fn(),
+          status: 'ready',
+          markTourCompleted: vi.fn(),
+          markVersionSeen: vi.fn(),
         }}
       >
         <AddEntryModal date="2025-01-10" onAdd={vi.fn()} onClose={vi.fn()} />

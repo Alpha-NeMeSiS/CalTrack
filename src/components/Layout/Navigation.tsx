@@ -24,7 +24,7 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
   return (
     <>
       {/* Ordinateur / tablette : onglets en haut */}
-      <nav aria-label="Navigation principale" className="hidden sm:block border-b border-line bg-surface">
+      <nav aria-label="Navigation principale" data-tour="nav" className="hidden sm:block border-b border-line bg-surface">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8">
             {tabs.map((tab) => {
@@ -54,6 +54,7 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
 
       {/* Mobile : barre d'onglets fixée en bas, toujours accessible au pouce */}
       <nav
+        data-tour="nav"
         aria-label="Navigation principale"
         className="sm:hidden fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur pb-[env(safe-area-inset-bottom)]"
       >
