@@ -9,6 +9,12 @@ Toutes les évolutions notables de CalTrack. Les numéros suivent le
 
 La version affichée dans l'app (pied de page, page « À propos ») est lue dans `package.json`.
 
+## [Non publié]
+
+### Technique
+
+- Code serveur regroupé dans `backend/` : `backend/supabase/` (migrations, tests de la base, Edge Function, modèles d'emails) et `backend/netlify/` (proxy Open Food Facts). Aucun changement pour l'utilisateur.
+
 ## [2.2.0] — 22 novembre 2026
 
 ### Nouveautés

@@ -90,7 +90,7 @@ Si un utilisateur demande plusieurs liens d’affilée, l’application affiche
 
 ## Étape 4 — Coller les modèles en français
 
-Les modèles sont dans [`supabase/templates/`](../supabase/templates). Pour
+Les modèles sont dans [`backend/supabase/templates/`](../backend/supabase/templates). Pour
 chacun : **Authentication → Emails → Templates**, choisir le modèle, remplacer
 le sujet, puis coller tout le contenu du fichier HTML dans *Message body*
 (onglet *Source*).
@@ -111,7 +111,7 @@ Les modèles utilisent les variables de Supabase : `{{ .ConfirmationURL }}`
 Ne les traduisez pas. Le logo est chargé depuis
 `https://caltrack-ap.netlify.app/icons/icon-192.png`.
 
-Pour modifier un modèle : éditez le fichier dans `supabase/templates/`, ouvrez-le
+Pour modifier un modèle : éditez le fichier dans `backend/supabase/templates/`, ouvrez-le
 dans un navigateur pour vérifier le rendu, puis recollez-le dans Supabase (les
 deux doivent rester identiques).
 

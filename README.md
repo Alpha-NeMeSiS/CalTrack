@@ -63,13 +63,13 @@ npm run dev
 
 Par défaut, Vite démarre sur `http://localhost:5173`.
 
-> **Recherche Open Food Facts en local** : elle passe par la fonction Netlify `netlify/functions/off-search.ts` (route `/api/off/search`, voir `netlify.toml`), qui interroge le service de recherche `search.openfoodfacts.org` (l'ancien `cgi/search.pl` est trop limité en débit et répond souvent 503). Avec `npm run dev` seul, cette route n'existe pas et la recherche « Produits supermarché » affiche « Service OFF indisponible ». Pour la tester en local, lancer le projet avec la [Netlify CLI](https://docs.netlify.com/cli/get-started/) :
+> **Recherche Open Food Facts en local** : elle passe par la fonction Netlify `backend/netlify/functions/off-search.ts` (route `/api/off/search`, voir `netlify.toml`), qui interroge le service de recherche `search.openfoodfacts.org` (l'ancien `cgi/search.pl` est trop limité en débit et répond souvent 503). Avec `npm run dev` seul, cette route n'existe pas et la recherche « Produits supermarché » affiche « Service OFF indisponible ». Pour la tester en local, lancer le projet avec la [Netlify CLI](https://docs.netlify.com/cli/get-started/) :
 >
 > ```bash
 > npx netlify dev
 > ```
 >
-> La recherche Ciqual (« Aliments génériques ») fonctionne dans les deux cas. Le scanner de code-barres passe de même par `netlify/functions/off-product.ts` (route `/api/off/product`).
+> La recherche Ciqual (« Aliments génériques ») fonctionne dans les deux cas. Le scanner de code-barres passe de même par `backend/netlify/functions/off-product.ts` (route `/api/off/product`).
 
 ## Scripts disponibles
 
@@ -95,7 +95,7 @@ Les tests utilisent **Vitest** (environnement `jsdom`) et **Testing Library**. I
 | `src/lib/` | Recherche Ciqual, Open Food Facts (fetch mocké), progression temporelle |
 | `src/services/` | Accès Supabase des objectifs et cibles quotidiennes |
 | `src/components/` | Composants React (Dashboard, AddEntryModal, FoodSearch, LoginForm, MacroCard, CalorieRing) |
-| `netlify/tests/` | Fonctions Netlify `off-search` et `off-product` (proxy Open Food Facts) |
+| `backend/netlify/tests/` | Fonctions Netlify `off-search` et `off-product` (proxy Open Food Facts) |
 
 ### Accessibilité
 
@@ -124,7 +124,7 @@ supabaseMock.setHandler((call) =>
 
 ## Base de données
 
-Les migrations SQL se trouvent dans `supabase/migrations/`. Elles sont **alignées sur l'historique de la base de production** (mêmes versions et mêmes noms) : `supabase migration list` doit afficher les mêmes migrations en local et à distance.
+Les migrations SQL se trouvent dans `backend/supabase/migrations/`. Elles sont **alignées sur l'historique de la base de production** (mêmes versions et mêmes noms) : `supabase migration list --workdir backend` doit afficher les mêmes migrations en local et à distance (avec la CLI Supabase, `--workdir backend` indique où se trouve le dossier `supabase/`).
 
 | Version | Rôle |
 | --- | --- |
@@ -156,7 +156,7 @@ Rejouer toutes les migrations sur une base vierge donne un schéma identique à 
 
 ### Tests de la base de données
 
-`scripts/test-db.sh` (`npm run test:db`) crée une base vierge, y installe un environnement Supabase minimal (`supabase/tests/setup.sql` : rôles `anon` / `authenticated` / `service_role`, `auth.users`, `auth.uid()` lisant l'utilisateur « connecté », droits par défaut), rejoue **toutes les migrations dans l'ordre**, puis exécute les tests SQL de `supabase/tests/` (chacun dans une transaction annulée) :
+`scripts/test-db.sh` (`npm run test:db`) crée une base vierge, y installe un environnement Supabase minimal (`backend/supabase/tests/setup.sql` : rôles `anon` / `authenticated` / `service_role`, `auth.users`, `auth.uid()` lisant l'utilisateur « connecté », droits par défaut), rejoue **toutes les migrations dans l'ordre**, puis exécute les tests SQL de `backend/supabase/tests/` (chacun dans une transaction annulée) :
 
 | Fichier | Ce qui est vérifié |
 | --- | --- |
@@ -171,7 +171,7 @@ Rejouer toutes les migrations sur une base vierge donne un schéma identique à 
 | `09_tour_and_version.sql` | Visite guidée et version vue : vides par défaut, modifiables seulement sur son compte |
 | `10_foods_values_estimated.sql` | Valeurs estimées : `false` par défaut, modifiables seulement sur ses aliments |
 
-Outils (`supabase/tests/helpers.sql`) : `test.create_user('nom')`, `test.login(test.uid('nom'))` puis `SET ROLE authenticated` pour agir comme l'API, `test.ok(condition, 'message')`, `test.raises($$ SQL $$, 'SQLSTATE', 'message')`.
+Outils (`backend/supabase/tests/helpers.sql`) : `test.create_user('nom')`, `test.login(test.uid('nom'))` puis `SET ROLE authenticated` pour agir comme l'API, `test.ok(condition, 'message')`, `test.raises($$ SQL $$, 'SQLSTATE', 'message')`.
 
 En local, il faut un Postgres accessible (variables `PGHOST`, `PGUSER`, `PGPASSWORD`…) et un rôle qui peut créer des bases et des rôles. Par exemple avec Docker :
 
@@ -187,11 +187,19 @@ La CI (job « Base de données ») fait la même chose à chaque push et pull re
 
 ## Structure simplifiée
 
+Le code est séparé en deux : **`src/`** tourne dans le navigateur (l'app React), **`backend/`** tourne sur un serveur (base de données Supabase et fonctions Netlify).
+
 ```text
-netlify/
-  functions/       # Fonctions Netlify (proxy Open Food Facts : recherche, code-barres)
-  tests/           # Tests des fonctions Netlify
-src/
+backend/           # Tout ce qui tourne côté serveur
+  supabase/
+    functions/     # Edge Functions (rappels push)
+    migrations/    # Schéma SQL versionné (tables, RLS, fonctions SQL)
+    templates/     # Modèles d'emails Supabase Auth en français
+    tests/         # Tests de la base (npm run test:db)
+  netlify/
+    functions/     # Fonctions Netlify (proxy Open Food Facts : recherche, code-barres)
+    tests/         # Tests des fonctions Netlify
+src/               # L'app React (navigateur)
   components/      # UI par domaine (Auth, Dashboard, Journal, Goals, Profile, Account, etc.)
     ui/            # Composants de base du design system (Button, Card, Badge, Field)
   contexts/        # Contexte d'authentification (AuthContext) et hook useAuth
@@ -200,10 +208,6 @@ src/
   utils/           # Calculs métier, dates locales, logique des objectifs (fonctions pures)
   test/            # Outils partagés pour les tests
 e2e/               # Contrôle d'accessibilité (Playwright + axe, Supabase simulé)
-supabase/
-  functions/       # Edge Functions (rappels push)
-  migrations/      # Schéma SQL versionné
-  templates/       # Modèles d'emails Supabase Auth en français
 docs/
   design-system.md # Couleurs par rôle, composants, règles de contraste
   emails.md        # Configurer l'envoi des emails (SMTP, modèles)
@@ -222,7 +226,7 @@ docs/
 
 ### Emails (SMTP et modèles en français)
 
-Les emails d'inscription, de mot de passe oublié et de changement d'adresse sont envoyés par Supabase Auth. Le service d'envoi intégré de Supabase n'envoie qu'aux membres de l'organisation Supabase et seulement quelques emails par heure : pour les autres utilisateurs, il faut brancher un SMTP (Resend, Brevo…). Les modèles en français sont dans `supabase/templates/` ; la marche à suivre (SMTP, limites d'envoi, sujets, tests) est dans [docs/emails.md](docs/emails.md). Les erreurs de Supabase Auth sont affichées en français (`src/utils/authErrors.ts`).
+Les emails d'inscription, de mot de passe oublié et de changement d'adresse sont envoyés par Supabase Auth. Le service d'envoi intégré de Supabase n'envoie qu'aux membres de l'organisation Supabase et seulement quelques emails par heure : pour les autres utilisateurs, il faut brancher un SMTP (Resend, Brevo…). Les modèles en français sont dans `backend/supabase/templates/` ; la marche à suivre (SMTP, limites d'envoi, sujets, tests) est dans [docs/emails.md](docs/emails.md). Les erreurs de Supabase Auth sont affichées en français (`src/utils/authErrors.ts`).
 
 ## Composition corporelle et ajustement des calories
 
@@ -302,7 +306,7 @@ Fonctionnement :
 2. Toutes les 15 minutes, `pg_cron` appelle l'Edge Function avec un secret partagé (Vault). Elle récupère les rappels dus (`claim_due_reminders`, selon le fuseau horaire de l'utilisateur, un envoi par jour au maximum), chiffre et envoie les notifications, et supprime les abonnements expirés.
 3. Le service worker (`public/sw.js`) affiche la notification ; un clic ouvre l'application.
 
-Les clés VAPID sont générées par l'Edge Function à son premier appel et stockées dans Supabase Vault : aucune clé n'est dans le dépôt. Code de l'Edge Function : `supabase/functions/send-reminders/` (déployée avec `verify_jwt = false`, elle vérifie elle-même le secret de la tâche planifiée ou la session de l'utilisateur).
+Les clés VAPID sont générées par l'Edge Function à son premier appel et stockées dans Supabase Vault : aucune clé n'est dans le dépôt. Code de l'Edge Function : `backend/supabase/functions/send-reminders/` (déployée avec `verify_jwt = false`, elle vérifie elle-même le secret de la tâche planifiée ou la session de l'utilisateur).
 
 ## Notes
 

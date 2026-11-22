@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Tests de la base de données : rejoue toutes les migrations sur une base
-# vierge, puis exécute les tests SQL de supabase/tests/.
+# vierge, puis exécute les tests SQL de backend/supabase/tests/.
 #
 # Connexion via les variables standard de Postgres (PGHOST, PGPORT, PGUSER,
 # PGPASSWORD). Le rôle doit pouvoir créer une base et des rôles.
@@ -13,8 +13,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DB="${TEST_DB:-caltrack_test}"
-MIGRATIONS="$ROOT/supabase/migrations"
-TESTS="$ROOT/supabase/tests"
+MIGRATIONS="$ROOT/backend/supabase/migrations"
+TESTS="$ROOT/backend/supabase/tests"
 
 case "$DB" in
   *test*) ;;

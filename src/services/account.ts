@@ -1,6 +1,6 @@
 // Données du compte (RGPD) : export de toutes les données de l'utilisateur.
 // La suppression du compte passe par AuthContext.deleteAccount (fonction SQL
-// delete_my_account, voir supabase/migrations).
+// delete_my_account, voir backend/supabase/migrations).
 import { supabase } from '../lib/supabase';
 
 /** Taille de page : Supabase limite le nombre de lignes renvoyées par requête. */
