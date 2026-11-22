@@ -1,13 +1,19 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FoodSearch } from './FoodSearch';
 import { searchCiqual } from '../../lib/ciqual';
 import { fetchOFFProduct, searchOFF } from '../../lib/openfoodfacts';
+import { estimateFromSimilar, findSimilarProducts, SimilarEstimate } from '../../lib/similarProducts';
 import type { NormalizedFood } from '../../types/food';
 
 vi.mock('../../lib/ciqual', () => ({ searchCiqual: vi.fn() }));
 vi.mock('../../lib/openfoodfacts', () => ({ searchOFF: vi.fn(), fetchOFFProduct: vi.fn() }));
+// Produits similaires : seule la recherche réseau est simulée, les textes restent réels
+vi.mock('../../lib/similarProducts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/similarProducts')>()),
+  findSimilarProducts: vi.fn(),
+}));
 // Le scanner (caméra) est testé à part : ici, un bouton simule la lecture d'un code
 vi.mock('./BarcodeScanner', () => ({
   BarcodeScanner: ({ onDetected, onCancel }: { onDetected: (code: string) => void; onCancel: () => void }) => (
@@ -25,6 +31,7 @@ vi.mock('./BarcodeScanner', () => ({
 const mockedSearchCiqual = vi.mocked(searchCiqual);
 const mockedSearchOFF = vi.mocked(searchOFF);
 const mockedFetchOFFProduct = vi.mocked(fetchOFFProduct);
+const mockedFindSimilar = vi.mocked(findSimilarProducts);
 
 const pomme: NormalizedFood = {
   source: 'ciqual',
@@ -43,6 +50,8 @@ beforeEach(() => {
   mockedSearchCiqual.mockReset();
   mockedSearchOFF.mockReset();
   mockedFetchOFFProduct.mockReset();
+  mockedFindSimilar.mockReset();
+  mockedFindSimilar.mockResolvedValue(null);
 });
 
 afterEach(() => {
@@ -275,6 +284,156 @@ describe('FoodSearch', () => {
       await user.click(await screen.findByRole('button', { name: 'Créer cet aliment' }));
 
       expect(onCreateFood).toHaveBeenCalledWith({ barcode: '3017620422003', name: 'Mystère' });
+    });
+  });
+
+  describe('produit scanné sans valeurs : produits similaires', () => {
+    const pastaBox: NormalizedFood = {
+      source: 'off',
+      name: 'Pasta Box fusilli à la bolognaise',
+      brand: 'Sodebo',
+      offCode: '3242272252054',
+      kcal_per_100g: 123,
+      protein_g: 6.7,
+      fat_g: 3,
+      carbs_g: 16,
+      fiber_g: 0,
+    };
+    const estimate = estimateFromSimilar([{ food: pastaBox, score: 1.25, sameBrand: true }])!;
+
+    function emptyProduct() {
+      mockedFetchOFFProduct.mockResolvedValue({
+        status: 'no_nutrition',
+        code: '3017620422003',
+        name: 'Mystère',
+        brand: 'Marque',
+        servingGrams: 330,
+      });
+    }
+
+    async function scan(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByRole('button', { name: 'Scanner un code-barres' }));
+      await user.click(screen.getByRole('button', { name: 'Simuler la lecture' }));
+    }
+
+    function deferred() {
+      let resolve!: (value: SimilarEstimate | null) => void;
+      const promise = new Promise<SimilarEstimate | null>((done) => {
+        resolve = done;
+      });
+      return { promise, resolve };
+    }
+
+    it('cherche des produits similaires puis affiche l’estimation', async () => {
+      emptyProduct();
+      const pending = deferred();
+      mockedFindSimilar.mockReturnValue(pending.promise);
+      const { user } = setup({ onCreateFood: vi.fn() });
+
+      await scan(user);
+
+      expect(await screen.findByText('Recherche de produits similaires…')).toBeInTheDocument();
+      expect(mockedFindSimilar).toHaveBeenCalledWith(
+        { code: '3017620422003', name: 'Mystère', brand: 'Marque' },
+        expect.any(AbortSignal)
+      );
+      expect(screen.queryByRole('button', { name: 'Créer cet aliment' })).not.toBeInTheDocument();
+
+      await act(async () => pending.resolve(estimate));
+
+      expect(screen.getByRole('region', { name: 'Estimation pour 100 g' })).toBeInTheDocument();
+      expect(screen.queryByText('Recherche de produits similaires…')).not.toBeInTheDocument();
+    });
+
+    it('pré-remplit la création avec l’estimation', async () => {
+      emptyProduct();
+      mockedFindSimilar.mockResolvedValue(estimate);
+      const onCreateFood = vi.fn();
+      const { user } = setup({ onCreateFood });
+
+      await scan(user);
+      await user.click(await screen.findByRole('button', { name: 'Utiliser l’estimation' }));
+
+      expect(onCreateFood).toHaveBeenCalledWith({
+        barcode: '3017620422003',
+        name: 'Mystère',
+        servingGrams: 330,
+        estimate: {
+          values: { kcal_per_100g: 123, protein_g: 6.7, fat_g: 3, carbs_g: 16, fiber_g: 0 },
+          source: '1 produit proche : Pasta Box fusilli à la bolognaise (Sodebo)',
+        },
+      });
+    });
+
+    it('ouvre la saisie de l’étiquette sans estimation', async () => {
+      emptyProduct();
+      mockedFindSimilar.mockResolvedValue(estimate);
+      const onCreateFood = vi.fn();
+      const { user } = setup({ onCreateFood });
+
+      await scan(user);
+      await user.click(await screen.findByRole('button', { name: 'Saisir l’étiquette' }));
+
+      expect(onCreateFood).toHaveBeenCalledWith({ barcode: '3017620422003', name: 'Mystère', servingGrams: 330 });
+    });
+
+    it.each([
+      ['aucun produit similaire', () => mockedFindSimilar.mockResolvedValue(null)],
+      ['une panne de la recherche', () => mockedFindSimilar.mockRejectedValue(new Error('503'))],
+    ])('propose la saisie de l’étiquette après %s', async (_case, arrange) => {
+      emptyProduct();
+      arrange();
+      const onCreateFood = vi.fn();
+      const { user } = setup({ onCreateFood });
+
+      await scan(user);
+
+      expect(
+        await screen.findByText(/Aucun produit similaire trouvé : créez-le avec les valeurs de l’étiquette\./)
+      ).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Créer cet aliment' }));
+      expect(onCreateFood).toHaveBeenCalledWith({ barcode: '3017620422003', name: 'Mystère', servingGrams: 330 });
+    });
+
+    it('ignore une estimation arrivée après un nouveau scan', async () => {
+      emptyProduct();
+      const pending = deferred();
+      mockedFindSimilar.mockReturnValue(pending.promise);
+      const { user, onSelect } = setup({ onCreateFood: vi.fn() });
+
+      await scan(user);
+      await screen.findByText('Recherche de produits similaires…');
+
+      mockedFetchOFFProduct.mockResolvedValue({ status: 'found', food: pastaBox });
+      await scan(user);
+      await vi.waitFor(() => expect(onSelect).toHaveBeenCalledWith(pastaBox));
+
+      await act(async () => pending.resolve(estimate));
+      expect(screen.queryByRole('region', { name: 'Estimation pour 100 g' })).not.toBeInTheDocument();
+      expect(screen.queryByText('Recherche de produits similaires…')).not.toBeInTheDocument();
+    });
+
+    it('signale un aliment personnel aux valeurs estimées dans les résultats', async () => {
+      mockedSearchCiqual.mockResolvedValue([]);
+      const estimated: NormalizedFood = {
+        source: 'custom',
+        name: 'PastaBox bolognaise',
+        foodId: 'f1',
+        barcode: '3242272270157',
+        estimated: true,
+        kcal_per_100g: 123,
+        protein_g: 6.7,
+        fat_g: 3,
+        carbs_g: 16,
+        fiber_g: 0,
+      };
+      const { user, input } = setup({ personalFoods: [estimated] });
+
+      await user.type(input, 'pasta');
+      await wait(400);
+
+      const option = await screen.findByRole('option', { name: /PastaBox bolognaise/ });
+      expect(within(option).getByText('Estimé')).toBeInTheDocument();
     });
   });
 });
