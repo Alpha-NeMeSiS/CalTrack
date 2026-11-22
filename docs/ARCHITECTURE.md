@@ -22,7 +22,7 @@ Navigateur : l'app React (frontend/)
 - **Il n'y a pas de serveur d'API classique.** L'app parle directement à la base avec `supabase-js`.
 - **La sécurité est faite par Postgres** : chaque table a des règles RLS (*Row Level Security*) qui limitent chaque utilisateur à ses propres lignes (`user_id = auth.uid()`). Les tests de `backend/supabase/tests/` le vérifient.
 - **Les fonctions Netlify** ne servent qu'à appeler Open Food Facts depuis un serveur. Le navigateur ne peut pas l'appeler directement, à cause des règles CORS et des limites de débit.
-- **Le site** est servi par Netlify, qui construit l'app avec `npm run build` à la racine du dépôt et publie `dist/`.
+- **Le site** est servi par Netlify, qui construit l'app avec `npm run build` à la racine du dépôt et publie `dist/`. Sur l'offre gratuite, la production ne se déploie qu'au changement de version (voir « Déploiement » dans le [README](../README.md)).
 
 ## Les dossiers
 

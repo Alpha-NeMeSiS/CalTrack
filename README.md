@@ -8,6 +8,20 @@ Version actuelle : **2.2.0** (V2 : nouvelle direction artistique, scanner de cod
 
 Pour une nouvelle version, mettre à jour `package.json` (`npm version minor --no-git-tag-version` pour une nouvelle fonctionnalité, `patch` pour un correctif, `major` pour une refonte) ajouter une entrée au CHANGELOG, et écrire les notes pour l'utilisateur dans `frontend/features/whats-new/releaseNotes.ts` (affichées par la fenêtre « Quoi de neuf ? » ; un test refuse une version sans notes). La version affichée dans l'app en découle automatiquement.
 
+## Déploiement (Netlify)
+
+Le site est construit et publié par Netlify à chaque fusion dans `main`. Il est sur l'**offre gratuite**, qui donne 300 crédits par mois, et **chaque déploiement en production en coûte 15**. Pour ne pas les épuiser, la production **ne se déploie qu'au changement de version** (`version` de `package.json`, voir « Version » ci-dessus). C'est la règle « ignore » de `netlify.toml` (`backend/netlify/ignore-build.sh`) :
+
+| Situation | Construction en production |
+| --- | --- |
+| Fusion avec une nouvelle version (ex. 2.2.0 → 2.2.1) | oui |
+| Fusion sans changement de version (refactorisation, docs…) | non : elle partira avec la prochaine version |
+| Titre de PR contenant `[deploy]` | oui (déploiement forcé, sans changer de version) |
+| « Trigger deploy » dans Netlify (même commit que le dernier déploiement) | oui |
+| Prévisualisation de PR | toujours (gratuite) |
+
+Quand les crédits sont épuisés, Netlify ne publie plus rien jusqu'au mois suivant, et le site peut même être mis en pause. La consommation se suit dans Netlify, rubrique Team, puis Billing / Usage.
+
 ## Fonctionnalités
 
 - Authentification (inscription / connexion).

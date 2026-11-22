@@ -13,6 +13,7 @@ La version affichée dans l'app (pied de page, page « À propos ») est lue dan
 
 ### Technique
 
+- Netlify : la production ne se construit qu'au changement de version de `package.json`, ou avec `[deploy]` dans le titre de la PR. C'est la règle `ignore` de `netlify.toml` (`backend/netlify/ignore-build.sh`, testée). Les prévisualisations de PR, gratuites, se construisent toujours. Objectif : économiser les crédits de l'offre gratuite (15 par déploiement en production).
 - Code serveur regroupé dans `backend/` : `backend/supabase/` (migrations, tests de la base, Edge Function, modèles d'emails) et `backend/netlify/` (proxy Open Food Facts). Aucun changement pour l'utilisateur.
 - App React déplacée de `src/` vers `frontend/`, rangée par fonctionnalité : `frontend/app/` (démarrage, navigation, contexts, mise en page), `frontend/features/<fonctionnalité>/` (écrans, règles métier `*.ts`, accès à la base `*.service.ts`, tests), `frontend/shared/` (composants de base, client Supabase, dates, format). Notes de version : `frontend/features/whats-new/releaseNotes.ts`. Aucun changement pour l'utilisateur.
 - Documentation de l'architecture : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (vue d'ensemble, dossiers, « où trouver quoi », trajet d'une donnée, ajouter une fonctionnalité).
