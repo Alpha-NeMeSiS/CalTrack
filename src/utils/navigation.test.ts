@@ -23,7 +23,7 @@ describe('navigation', () => {
 });
 
 describe('appInfo', () => {
-  it('lit la version de package.json', () => {
-    expect(APP_VERSION).toBe('1.0.0');
+  it('lit la version de package.json : V2', () => {
+    expect(APP_VERSION).toBe('2.0.0');
   });
 });

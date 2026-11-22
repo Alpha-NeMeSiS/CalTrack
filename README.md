@@ -2,6 +2,12 @@
 
 Application web de suivi calorique construite avec **React + TypeScript + Vite**, connectée à **Supabase** pour l'authentification, le profil utilisateur et le stockage des données nutritionnelles.
 
+## Version
+
+Version actuelle : **2.0.0** (V2 : nouvelle direction artistique, scanner de code-barres, recettes, eau, pesées…). Le détail des évolutions est dans [CHANGELOG.md](CHANGELOG.md).
+
+Pour une nouvelle version, mettre à jour `package.json` (`npm version minor --no-git-tag-version` pour une nouvelle fonctionnalité, `patch` pour un correctif, `major` pour une refonte) et ajouter une entrée au CHANGELOG. La version affichée dans l'app en découle automatiquement.
+
 ## Fonctionnalités
 
 - Authentification (inscription / connexion).
@@ -240,7 +246,7 @@ Onglet « Recettes » de « Ajouter un aliment » :
 
 ## Pied de page et page « À propos »
 
-- **Pied de page** sous chaque vue et sur l'écran de connexion : « CalTrack v1.0.0 · À propos · Vos données · Sources ». Une fois connecté, il cite aussi les sources nutritionnelles (Ciqual, Open Food Facts).
+- **Pied de page** sous chaque vue et sur l'écran de connexion : « CalTrack v2.0.0 · À propos · Vos données · Sources ». Une fois connecté, il cite aussi les sources nutritionnelles (Ciqual, Open Food Facts).
 - **Page « À propos »** en quatre sections : l'application (version), santé (estimations, pas un dispositif médical), vos données (ce qui est enregistré, où, qui y a accès, combien de temps ; liens vers l'export et la suppression une fois connecté) et sources (Ciqual sous Licence Ouverte 2.0, Open Food Facts sous ODbL, formules utilisées). Chaque lien du pied de page ouvre la page sur sa section.
 - **Version** : lue dans `package.json` au build (`__APP_VERSION__`, exposée par `src/utils/appInfo.ts`) ; changer `version` suffit.
 
