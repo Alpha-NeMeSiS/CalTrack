@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { isAboutSection, isAppView, NAVIGATE_EVENT, navigateTo, NavigateEventDetail } from './navigation';
+import { isAboutSection, isAppView, isGuideSection, NAVIGATE_EVENT, navigateTo, NavigateEventDetail } from './navigation';
 import { APP_VERSION } from './appInfo';
 
 describe('navigation', () => {
@@ -8,6 +8,12 @@ describe('navigation', () => {
     expect(isAppView('inconnue')).toBe(false);
     expect(isAboutSection('sources')).toBe(true);
     expect(isAboutSection('x')).toBe(false);
+  });
+
+  it('connaît la page « Guide » et ses sections', () => {
+    expect(isAppView('guide')).toBe(true);
+    expect(isGuideSection('install')).toBe(true);
+    expect(isGuideSection('app')).toBe(false);
   });
 
   it('transmet la section demandée', () => {

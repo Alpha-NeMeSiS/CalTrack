@@ -26,6 +26,7 @@ describe('AccountMenu', () => {
       'Mon profil',
       'Compte et sécurité',
       'Paramètres',
+      'Guide',
       'Se déconnecter',
     ]);
     // Le focus va sur la première option
@@ -49,6 +50,15 @@ describe('AccountMenu', () => {
     expect(onNavigate).toHaveBeenLastCalledWith('settings');
   });
 
+  it('ouvre le Guide, juste avant « Se déconnecter »', async () => {
+    const { button, user, onNavigate } = setup();
+    await user.click(button);
+    const items = screen.getAllByRole('menuitem').map((item) => item.textContent?.trim());
+    expect(items.slice(-2)).toEqual(['Guide', 'Se déconnecter']);
+    await user.click(screen.getByRole('menuitem', { name: 'Guide' }));
+    expect(onNavigate).toHaveBeenLastCalledWith('guide');
+  });
+
   it('déconnecte depuis le menu', async () => {
     const { button, user, onSignOut } = setup();
     await user.click(button);
@@ -66,6 +76,8 @@ describe('AccountMenu', () => {
     expect(screen.getByRole('menuitem', { name: 'Compte et sécurité' })).toHaveFocus();
     await user.keyboard('{ArrowUp}{ArrowUp}');
     expect(screen.getByRole('menuitem', { name: 'Se déconnecter' })).toHaveFocus();
+    await user.keyboard('{ArrowUp}');
+    expect(screen.getByRole('menuitem', { name: 'Guide' })).toHaveFocus();
 
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();

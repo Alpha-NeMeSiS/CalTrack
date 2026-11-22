@@ -45,4 +45,14 @@ describe('App (écran de connexion)', () => {
     await user.click(screen.getByRole('button', { name: 'Retour à la connexion' }));
     expect(screen.getByRole('button', { name: 'Se connecter' })).toBeInTheDocument();
   });
+
+  it('ouvre le Guide depuis le pied de page, sans « Revoir la visite »', async () => {
+    render(<App />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Guide' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Guide' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Revoir la visite' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Retour à la connexion' }));
+    expect(screen.getByRole('button', { name: 'Se connecter' })).toBeInTheDocument();
+  });
 });

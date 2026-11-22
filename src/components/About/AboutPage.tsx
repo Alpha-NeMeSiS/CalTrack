@@ -1,8 +1,10 @@
 // Page « À propos » : présentation, avertissement santé, données enregistrées
 // et sources (attribution exigée par les licences Ciqual et Open Food Facts).
 // Accessible connecté ou depuis l'écran de connexion.
-import { ReactNode } from 'react';
-import { ExternalLink } from 'lucide-react';
+import { ReactNode, useState } from 'react';
+import { ExternalLink, Sparkles } from 'lucide-react';
+import { RELEASES } from '../../data/releases';
+import { WhatsNewDialog } from '../WhatsNew/WhatsNewDialog';
 import { APP_VERSION } from '../../utils/appInfo';
 import type { AboutSection } from '../../utils/navigation';
 import { Button } from '../ui/Button';
@@ -36,6 +38,8 @@ function ExternalSource({ href, children }: { href: string; children: ReactNode 
 }
 
 export function AboutPage({ section, scrollKey, signedIn, onBack, onOpenAccount }: AboutPageProps) {
+  // Historique des nouveautés (n'enregistre rien)
+  const [showReleases, setShowReleases] = useState(false);
   const sections: InfoSectionDef<AboutSection>[] = [
     {
       id: 'app',
@@ -44,6 +48,12 @@ export function AboutPage({ section, scrollKey, signedIn, onBack, onOpenAccount 
         <>
           <p className="text-sm text-body">Suivi calorique personnalisé : journal, objectifs, pesées, eau et recettes.</p>
           <p className="text-xs text-subtle">Version {APP_VERSION} · projet personnel</p>
+          <div className="pt-1">
+            <Button variant="secondary" size="sm" onClick={() => setShowReleases(true)}>
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+              Voir les nouveautés
+            </Button>
+          </div>
         </>
       ),
     },
@@ -115,6 +125,11 @@ export function AboutPage({ section, scrollKey, signedIn, onBack, onOpenAccount 
   ];
 
   return (
-    <InfoPage title="À propos" idPrefix="about" sections={sections} section={section} scrollKey={scrollKey} onBack={onBack} />
+    <>
+      <InfoPage title="À propos" idPrefix="about" sections={sections} section={section} scrollKey={scrollKey} onBack={onBack} />
+      {showReleases && (
+        <WhatsNewDialog releases={[...RELEASES]} subtitle="Historique des mises à jour" onClose={() => setShowReleases(false)} />
+      )}
+    </>
   );
 }

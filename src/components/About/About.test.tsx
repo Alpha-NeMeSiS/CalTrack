@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AboutPage } from './AboutPage';
 import { AppFooter } from '../Layout/AppFooter';
 import { APP_VERSION } from '../../utils/appInfo';
+import { RELEASES } from '../../data/releases';
 
 describe('AppFooter', () => {
   it('affiche la version et ouvre chaque section', async () => {
@@ -12,11 +13,13 @@ describe('AppFooter', () => {
     expect(screen.getByText(`CalTrack v${APP_VERSION}`)).toBeInTheDocument();
 
     const nav = screen.getByRole('navigation', { name: 'Informations sur l’application' });
+    expect(within(nav).getAllByRole('button').map((b) => b.textContent)).toEqual(['Guide', 'À propos', 'Vos données', 'Sources']);
     const user = userEvent.setup();
+    await user.click(within(nav).getByRole('button', { name: 'Guide' }));
     await user.click(within(nav).getByRole('button', { name: 'À propos' }));
     await user.click(within(nav).getByRole('button', { name: 'Vos données' }));
     await user.click(within(nav).getByRole('button', { name: 'Sources' }));
-    expect(onOpen.mock.calls).toEqual([['app'], ['data'], ['sources']]);
+    expect(onOpen.mock.calls).toEqual([['guide'], ['about', 'app'], ['about', 'data'], ['about', 'sources']]);
   });
 
   it('cite les sources nutritionnelles sur demande', () => {
@@ -65,6 +68,17 @@ describe('AboutPage', () => {
     await user.click(screen.getByRole('button', { name: 'Télécharger mes données' }));
     await user.click(screen.getByRole('button', { name: 'Supprimer mon compte' }));
     expect(onOpenAccount).toHaveBeenCalledTimes(2);
+  });
+
+  it('rouvre toutes les nouveautés, connecté ou non, sans rien enregistrer', async () => {
+    render(<AboutPage signedIn={false} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Voir les nouveautés' }));
+    const dialog = screen.getByRole('dialog', { name: 'Quoi de neuf ?' });
+    expect(dialog).toHaveTextContent('Historique des mises à jour');
+    for (const release of RELEASES) expect(dialog).toHaveTextContent(`Version ${release.version}`);
+    await user.click(screen.getByRole('button', { name: 'C’est noté' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('revient à la connexion', async () => {

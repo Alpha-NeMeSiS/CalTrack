@@ -93,6 +93,26 @@ describe('App : visite guidée et « Quoi de neuf ? » au lancement', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('« Revoir la visite » depuis le Guide relance la visite sur le journal, sans rien enregistrer', async () => {
+    setPrefs({ tourCompletedAt: '2026-11-01T08:00:00Z', lastSeenVersion: APP_VERSION });
+    render(<App />);
+    const user = userEvent.setup();
+    await screen.findByText('Journal simulé');
+
+    for (let round = 0; round < 2; round++) {
+      await user.click(screen.getByRole('button', { name: /Menu du compte/ }));
+      await user.click(screen.getByRole('menuitem', { name: 'Guide' }));
+      expect(screen.getByRole('heading', { level: 1, name: 'Guide' })).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Revoir la visite' }));
+      // Relancée à chaque fois (Review Focus 5)
+      expect(await screen.findByText('Visite en cours')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Passer la visite' }));
+      expect(await screen.findByText('Journal simulé')).toBeInTheDocument();
+    }
+    expect(prefsValue.current.markTourCompleted).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog', { name: 'Quoi de neuf ?' })).not.toBeInTheDocument();
+  });
+
   it.each(['loading', 'error'] as const)('rien tant que les préférences sont « %s »', async (status) => {
     setPrefs({ status, tourCompletedAt: null, lastSeenVersion: null });
     render(<App />);

@@ -7,7 +7,7 @@
 // Accessibilité : motif « menu bouton » (aria-haspopup, flèches, Échap, Tab).
 import { CSSProperties, KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, LogOut, Settings, ShieldCheck, User } from 'lucide-react';
+import { ChevronDown, HelpCircle, LogOut, Settings, ShieldCheck, User } from 'lucide-react';
 import type { AppView } from '../../utils/navigation';
 import { getDisplayName, IdentityLike } from '../../utils/avatar';
 import { Avatar } from '../Profile/Avatar';
@@ -15,7 +15,7 @@ import { Avatar } from '../Profile/Avatar';
 interface AccountMenuProps {
   /** Identité affichée : photo, prénom et nom (facultatifs), email */
   identity: IdentityLike & { profile_picture_url?: string | null };
-  onNavigate: (view: Extract<AppView, 'profile' | 'account' | 'settings'>) => void;
+  onNavigate: (view: Extract<AppView, 'profile' | 'account' | 'settings' | 'guide'>) => void;
   onSignOut: () => void;
 }
 
@@ -150,6 +150,10 @@ export function AccountMenu({ identity, onNavigate, onSignOut }: AccountMenuProp
               <button type="button" role="menuitem" className={itemClass} onClick={() => choose(() => onNavigate('settings'))}>
                 <Settings className="h-4 w-4 text-subtle" aria-hidden="true" />
                 Paramètres
+              </button>
+              <button type="button" role="menuitem" className={itemClass} onClick={() => choose(() => onNavigate('guide'))}>
+                <HelpCircle className="h-4 w-4 text-subtle" aria-hidden="true" />
+                Guide
               </button>
               <div className="my-1 border-t border-line-subtle" role="none" />
               <button type="button" role="menuitem" className={itemClass} onClick={() => choose(onSignOut)}>
