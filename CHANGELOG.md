@@ -9,6 +9,14 @@ Toutes les évolutions notables de CalTrack. Les numéros suivent le
 
 La version affichée dans l'app (pied de page, page « À propos ») est lue dans `package.json`.
 
+## [2.1.1] — 22 novembre 2026
+
+### Corrections
+
+- **Journal** : la suppression d'une ligne se confirme dans la ligne (« Confirmer » / « Annuler »), au style de l'app, au lieu de la fenêtre du navigateur.
+- **Accessibilité** : les boutons de confirmation de suppression (journal, « Mes aliments ») affichent « Confirmer », le début de leur nom pour les lecteurs d'écran (WCAG 2.5.3).
+- **Notifications de rappel** : icône de badge dédiée (logo blanc sur fond transparent) ; Android affichait un carré blanc à la place du logo.
+
 ## [2.1.0] — 22 novembre 2026
 
 ### Nouveautés

@@ -765,7 +765,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                     aria-label={`Confirmer la suppression de « ${food.name} »`}
                     className="rounded-md btn-danger px-3 py-1.5 text-sm font-medium"
                   >
-                    Supprimer
+                    Confirmer
                   </button>
                   <button
                     type="button"
