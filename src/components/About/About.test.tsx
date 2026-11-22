@@ -3,12 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AboutPage } from './AboutPage';
 import { AppFooter } from '../Layout/AppFooter';
+import { APP_VERSION } from '../../utils/appInfo';
 
 describe('AppFooter', () => {
   it('affiche la version et ouvre chaque section', async () => {
     const onOpen = vi.fn();
     render(<AppFooter onOpen={onOpen} />);
-    expect(screen.getByText(/CalTrack v1\.0\.0/)).toBeInTheDocument();
+    expect(screen.getByText(`CalTrack v${APP_VERSION}`)).toBeInTheDocument();
 
     const nav = screen.getByRole('navigation', { name: 'Informations sur l’application' });
     const user = userEvent.setup();
@@ -41,7 +42,7 @@ describe('AboutPage', () => {
     for (const title of ['CalTrack', 'Santé', 'Vos données', 'Sources']) {
       expect(screen.getByRole('heading', { level: 2, name: title })).toBeInTheDocument();
     }
-    expect(screen.getByText('Version 1.0.0 · projet personnel')).toBeInTheDocument();
+    expect(screen.getByText(`Version ${APP_VERSION} · projet personnel`)).toBeInTheDocument();
     expect(screen.getByText(/pas un dispositif médical/)).toBeInTheDocument();
     expect(screen.getByText(/serveurs à Paris/)).toBeInTheDocument();
 

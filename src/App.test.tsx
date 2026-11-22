@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import App from './App';
+import { APP_VERSION } from './utils/appInfo';
 
 // Session simulée : personne n'est connecté (écran de connexion)
 vi.mock('./contexts/AuthContext', () => ({ AuthProvider: ({ children }: { children: ReactNode }) => <>{children}</> }));
@@ -32,7 +33,7 @@ describe('App (écran de connexion)', () => {
   it('affiche le pied de page et ouvre « À propos », puis revient à la connexion', async () => {
     render(<App />);
     expect(screen.getByRole('button', { name: 'Se connecter' })).toBeInTheDocument();
-    expect(screen.getByText(/CalTrack v1\.0\.0/)).toBeInTheDocument();
+    expect(screen.getByText(`CalTrack v${APP_VERSION}`)).toBeInTheDocument();
 
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Sources' }));
