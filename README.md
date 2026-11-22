@@ -186,6 +186,8 @@ La CI (job « Base de données ») fait la même chose à chaque push et pull re
 
 ## Structure simplifiée
 
+Le détail (schéma, « où trouver quoi », trajet d'une donnée, ajouter une fonctionnalité) est dans [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 Le code est séparé en deux : **`frontend/`** tourne dans le navigateur (l'app React), **`backend/`** tourne sur un serveur (base de données Supabase et fonctions Netlify).
 
 Dans `frontend/features/`, **une fonctionnalité = un dossier** : on y trouve ses écrans (`*.tsx`), ses règles métier sans React ni réseau (`*.ts`), ses accès à la base (`*.service.ts`) et leurs tests à côté (`*.test.ts(x)`). Exemple pour l'eau : `WaterCard.tsx` (la carte), `water.ts` (objectif de 30 ml par kg), `water.service.ts` (lecture et écriture dans `water_logs`), et côté base `backend/supabase/migrations/…_water_logs.sql`.
@@ -227,6 +229,7 @@ frontend/          # Tout ce qui tourne dans le navigateur (l'app React)
   test/            # Outils partagés pour les tests (setup, faux Supabase, données, garde-fous)
 e2e/               # Contrôle d'accessibilité (Playwright + axe, Supabase simulé)
 docs/
+  ARCHITECTURE.md  # Comment le code est organisé et où trouver quoi
   design-system.md # Couleurs par rôle, composants, règles de contraste
   emails.md        # Configurer l'envoi des emails (SMTP, modèles)
 ```
