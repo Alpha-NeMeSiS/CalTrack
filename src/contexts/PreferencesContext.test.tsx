@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import { useEffect } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PreferencesProvider } from './PreferencesContext';
 import { usePreferences } from './usePreferences';
@@ -53,6 +54,27 @@ describe('PreferencesProvider : état et visite', () => {
     expect(screen.getByTestId('status')).toHaveTextContent('loading');
     resolve(null);
     await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('ready'));
+  });
+
+  it('n’annonce jamais « ready » avec les préférences d’un autre compte (connexion en cours)', async () => {
+    // Un composant enfant lit l'état dans son effet, avant celui du fournisseur
+    const seen: string[] = [];
+    function EffectProbe() {
+      const { status, preferences } = usePreferences();
+      useEffect(() => {
+        seen.push(`${authValue.user?.id ?? 'aucun'}:${status}:${preferences.tourCompletedAt ?? 'non'}`);
+      });
+      return null;
+    }
+    authValue.user = null;
+    fetchPreferences.mockResolvedValue({ ...DEFAULT_PREFERENCES, tourCompletedAt: '2026-11-01T08:00:00Z' });
+    const { rerender } = render(<PreferencesProvider><EffectProbe /></PreferencesProvider>);
+
+    authValue.user = { id: 'user-1' };
+    rerender(<PreferencesProvider><EffectProbe /></PreferencesProvider>);
+    await waitFor(() => expect(seen).toContain('user-1:ready:2026-11-01T08:00:00Z'));
+    // Jamais « prêt » avec les valeurs par défaut (visite non vue) pour ce compte
+    expect(seen).not.toContain('user-1:ready:non');
   });
 
   it('passe à « error » si la lecture échoue', async () => {

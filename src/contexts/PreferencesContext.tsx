@@ -19,31 +19,36 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   // Sans préférences enregistrées, le thème est celui choisi sur cet appareil
   const deviceDefaults = (): UserPreferences => ({ ...DEFAULT_PREFERENCES, theme: readStoredTheme() });
   const [preferences, setPreferences] = useState<UserPreferences>(deviceDefaults);
-  // « ready » une fois la lecture terminée, qu'une ligne existe ou non
-  const [status, setStatus] = useState<PreferencesStatus>(userId ? 'loading' : 'ready');
+  // Compte dont la lecture est terminée (ligne existante ou non) et son issue.
+  // L'état est calculé à chaque rendu : au moment où un compte se connecte, il vaut
+  // « loading » tout de suite, jamais « ready » avec les valeurs d'un autre compte.
+  const [loaded, setLoaded] = useState<{ userId: string; failed: boolean } | null>(null);
+  const status: PreferencesStatus = !userId
+    ? 'ready'
+    : loaded?.userId !== userId
+      ? 'loading'
+      : loaded.failed
+        ? 'error'
+        : 'ready';
 
   useEffect(() => {
     let active = true;
     setPreferences(deviceDefaults());
-    if (!userId) {
-      setStatus('ready');
-      return;
-    }
-    setStatus('loading');
+    if (!userId) return;
     fetchPreferences(userId)
-      .then((loaded) => {
+      .then((saved) => {
         if (!active) return;
-        if (loaded) {
-          setPreferences(loaded);
+        if (saved) {
+          setPreferences(saved);
           // Le thème du compte s'applique aussi sur cet appareil
-          applyTheme(loaded.theme);
+          applyTheme(saved.theme);
         }
-        setStatus('ready');
+        setLoaded({ userId, failed: false });
       })
       .catch((error) => {
         // Non bloquant : l'application reste utilisable avec l'affichage par défaut
         console.error('Error loading preferences:', error);
-        if (active) setStatus('error');
+        if (active) setLoaded({ userId, failed: true });
       });
     return () => {
       active = false;
