@@ -49,6 +49,10 @@ const SECTIONS: InfoSectionDef<GuideSection>[] = [
           Dans le journal, « Modifier » et « Supprimer » corrigent une ligne ; « Copier les repas de la veille » reprend
           la journée d’hier.
         </p>
+        <p className={text}>
+          Un produit scanné n’a pas de valeurs ? CalTrack propose une estimation d’après des produits proches :
+          vérifiez-la avec l’étiquette.
+        </p>
       </>
     ),
   },

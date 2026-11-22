@@ -9,6 +9,19 @@ Toutes les évolutions notables de CalTrack. Les numéros suivent le
 
 La version affichée dans l'app (pied de page, page « À propos ») est lue dans `package.json`.
 
+## [2.2.0] — 22 novembre 2026
+
+### Nouveautés
+
+- **Produit scanné sans valeurs** : estimation pour 100 g d'après les produits Open Food Facts les plus proches (même marque d'abord, puis toutes marques, classés par mots du nom en commun), avec le badge de proximité, la liste des 5 produits proches au choix et la saisie de l'étiquette toujours possible. Les valeurs pré-remplissent la saisie manuelle avec un bandeau d'avertissement.
+- **Badge « Estimé »** sur les aliments personnels enregistrés avec des valeurs estimées (« Mes aliments », recherche, aliment choisi), et bouton « Corriger avec l'étiquette ». Le badge disparaît dès qu'une valeur est corrigée.
+
+### Technique
+
+- Colonne `foods.values_estimated` (migration `20261122205300`, test BDD 10).
+- Proxy `/api/off/search` : paramètre `size` (1 à 30 résultats, 10 par défaut).
+- `src/lib/similarProducts.ts` : mots du nom, filtre de cohérence kcal / macros, score, estimation (produit le plus proche, moyenne de 2 ou médiane de 3).
+
 ## [2.1.1] — 22 novembre 2026
 
 ### Corrections

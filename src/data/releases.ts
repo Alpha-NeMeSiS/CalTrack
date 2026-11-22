@@ -13,6 +13,14 @@ export interface ReleaseNote {
 
 export const RELEASES: readonly ReleaseNote[] = [
   {
+    version: '2.2.0',
+    date: '2026-11-22',
+    items: [
+      'Produit scanné sans valeurs : CalTrack propose une estimation d’après les produits les plus proches, à vérifier avec l’étiquette.',
+      'Les aliments enregistrés avec des valeurs estimées portent le badge « Estimé ».',
+    ],
+  },
+  {
     version: '2.1.1',
     date: '2026-11-22',
     items: [

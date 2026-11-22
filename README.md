@@ -4,7 +4,7 @@ Application web de suivi calorique construite avec **React + TypeScript + Vite**
 
 ## Version
 
-Version actuelle : **2.1.1** (V2 : nouvelle direction artistique, scanner de code-barres, recettes, eau, pesées… ; 2.1 : visite guidée, Guide, fenêtre « Quoi de neuf ? »). Le détail des évolutions est dans [CHANGELOG.md](CHANGELOG.md).
+Version actuelle : **2.2.0** (V2 : nouvelle direction artistique, scanner de code-barres, recettes, eau, pesées… ; 2.1 : visite guidée, Guide, fenêtre « Quoi de neuf ? » ; 2.2 : estimation d'un produit scanné sans valeurs). Le détail des évolutions est dans [CHANGELOG.md](CHANGELOG.md).
 
 Pour une nouvelle version, mettre à jour `package.json` (`npm version minor --no-git-tag-version` pour une nouvelle fonctionnalité, `patch` pour un correctif, `major` pour une refonte) ajouter une entrée au CHANGELOG, et écrire les notes pour l'utilisateur dans `src/data/releases.ts` (affichées par la fenêtre « Quoi de neuf ? » ; un test refuse une version sans notes). La version affichée dans l'app en découle automatiquement.
 
@@ -16,7 +16,7 @@ Pour une nouvelle version, mettre à jour `package.json` (`npm version minor --n
 - Gestion d'objectifs (perte, maintien, prise) avec calcul des cibles.
 - Historique et tendances hebdomadaires.
 - Recherche d'aliments : base Ciqual locale et produits du commerce Open Food Facts (via une fonction Netlify qui interroge `search.openfoodfacts.org`).
-- Scanner de code-barres : avec l'appareil photo (ou en saisissant le code), le produit est retrouvé dans Open Food Facts et ses portions proposées.
+- Scanner de code-barres : avec l'appareil photo (ou en saisissant le code), le produit est retrouvé dans Open Food Facts et ses portions proposées. Produit sans valeurs : estimation d'après les produits les plus proches, à vérifier avec l'étiquette (badge « Estimé »).
 - Favoris et aliments récents en haut de la recherche, ajoutables en un tap ; « Mes aliments » pour les produits saisis à la main (reconnus au scan).
 - Ajout de plusieurs aliments à la suite : la fenêtre « Ajouter un aliment » reste ouverte après chaque ajout (confirmation, repas gardé) et se ferme avec la croix.
 - Composition corporelle saisie avec les pesées (balance impédancemètre) et courbe masse grasse / masse maigre.
@@ -148,6 +148,7 @@ Les migrations SQL se trouvent dans `supabase/migrations/`. Elles sont **aligné
 | `20261108225422` | Recettes (`recipes`, `recipe_ingredients`) et fonction `save_recipe` |
 | `20261108232714` | Suivi de l'eau (`water_logs`) et objectif manuel (`user_preferences.water_goal_ml`) |
 | `20261122192854` | Visite guidée et « Quoi de neuf ? » : `user_preferences.tour_completed_at` et `last_seen_version` |
+| `20261122205300` | Aliments personnels aux valeurs estimées : `foods.values_estimated` |
 
 Rejouer toutes les migrations sur une base vierge donne un schéma identique à la production (vérifié par empreinte des colonnes, contraintes, index, politiques RLS et buckets).
 
@@ -168,6 +169,7 @@ Rejouer toutes les migrations sur une base vierge donne un schéma identique à 
 | `07_recipes.sql` | Recettes et ingrédients isolés par compte, enregistrement en une opération |
 | `08_water.sql` | Prises d'eau isolées par compte, quantités et objectif bornés |
 | `09_tour_and_version.sql` | Visite guidée et version vue : vides par défaut, modifiables seulement sur son compte |
+| `10_foods_values_estimated.sql` | Valeurs estimées : `false` par défaut, modifiables seulement sur ses aliments |
 
 Outils (`supabase/tests/helpers.sql`) : `test.create_user('nom')`, `test.login(test.uid('nom'))` puis `SET ROLE authenticated` pour agir comme l'API, `test.ok(condition, 'message')`, `test.raises($$ SQL $$, 'SQLSTATE', 'message')`.
 
@@ -253,7 +255,7 @@ Onglet « Recettes » de « Ajouter un aliment » :
 
 ## Pied de page et page « À propos »
 
-- **Pied de page** sous chaque vue et sur l'écran de connexion : « CalTrack v2.1.1 · Guide · À propos · Vos données · Sources ». Une fois connecté, il cite aussi les sources nutritionnelles (Ciqual, Open Food Facts).
+- **Pied de page** sous chaque vue et sur l'écran de connexion : « CalTrack v2.2.0 · Guide · À propos · Vos données · Sources ». Une fois connecté, il cite aussi les sources nutritionnelles (Ciqual, Open Food Facts).
 - **Page « À propos »** en quatre sections : l'application (version), santé (estimations, pas un dispositif médical), vos données (ce qui est enregistré, où, qui y a accès, combien de temps ; liens vers l'export et la suppression une fois connecté) et sources (Ciqual sous Licence Ouverte 2.0, Open Food Facts sous ODbL, formules utilisées). Chaque lien du pied de page ouvre la page sur sa section.
 - **Version** : lue dans `package.json` au build (`__APP_VERSION__`, exposée par `src/utils/appInfo.ts`) ; changer `version` suffit.
 
@@ -272,7 +274,19 @@ Ajouter un aliment → bouton « Scanner » (icône code-barres) à côté de la
 2. Le code est lu par le `BarcodeDetector` natif du navigateur quand il existe (Chrome Android, macOS), sinon par le lecteur ZXing en WebAssembly (`barcode-detector/ponyfill`), chargé seulement à la première ouverture du scanner et servi par l'application (`zxing_reader.wasm`, mis en cache par le service worker). Formats lus : EAN-13, EAN-8 et UPC-A ; la clé de contrôle est vérifiée pour écarter les lectures erronées.
 3. La caméra est coupée dès la lecture, puis la fiche est demandée à Open Food Facts via `/api/off/product?code=…` ; le produit trouvé ouvre directement le choix de la quantité (portion du fabricant si elle est connue).
 
-Le code peut aussi être saisi à la main (caméra refusée, code abîmé, ordinateur sans caméra). Produit inconnu ou sans valeurs nutritionnelles : un message invite à le chercher par son nom.
+Le code peut aussi être saisi à la main (caméra refusée, code abîmé, ordinateur sans caméra). Produit inconnu : un message invite à le chercher par son nom ou à le créer.
+
+### Produit sans valeurs : produits similaires
+
+Quand le produit est dans Open Food Facts sans valeurs nutritionnelles, CalTrack cherche les produits proches (`src/lib/similarProducts.ts`) :
+
+1. **Mots du nom** : sans marque, quantités, mots vides ni pluriel (« Sodebo pastabox 330g fusilli a la bolognaise » → `pastabox fusilli bolognaise`).
+2. **Deux recherches** en parallèle via `/api/off/search?size=30` : `brands:"<marque>" <mots>` puis `<mots>` (une recherche en échec est ignorée si l'autre répond).
+3. **Produits retenus** : valeurs cohérentes (kcal ≈ 4 × protéines + 4 × glucides + 9 × lipides, à 20 % près), au moins un mot en commun, hors produit scanné et doublons.
+4. **Score** = part des mots en commun (« Pasta Box » compte comme « pastabox ») + 0,25 pour la même marque.
+5. **Estimation** d'après les produits au meilleur score (3 au plus) : le produit le plus proche, la moyenne de 2 ou la médiane de 3. Les 5 meilleurs sont proposés au choix.
+
+Les valeurs pré-remplissent la saisie manuelle (bandeau « Valeurs estimées »). L'aliment est enregistré avec `foods.values_estimated = true` tant que les valeurs pré-remplies ne sont pas modifiées ; il porte alors le badge « Estimé » et propose « Corriger avec l'étiquette ».
 
 ## Paramètres d'affichage
 
