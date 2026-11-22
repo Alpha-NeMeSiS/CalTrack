@@ -46,6 +46,24 @@ describe('fonction Netlify off-search (proxy Open Food Facts)', () => {
     expect(options.headers['User-Agent']).toMatch(/^CalTrack\//);
   });
 
+  it('« size » choisit le nombre de résultats (1 à 30, sinon 10)', async () => {
+    const cases: Array<[string | undefined, string]> = [
+      ['30', '30'],
+      ['1', '1'],
+      ['0', '10'],
+      ['31', '10'],
+      ['abc', '10'],
+      ['12.5', '10'],
+      [undefined, '10'],
+    ];
+    for (const [size, expected] of cases) {
+      const fetchMock = mockFetchJson({ hits: [] });
+      await handler({ queryStringParameters: { q: 'pastabox bolognaise', ...(size === undefined ? {} : { size }) } });
+      const parsed = new URL(fetchMock.mock.calls[0][0]);
+      expect(parsed.searchParams.get('page_size'), `size=${size}`).toBe(expected);
+    }
+  });
+
   it('convertit les résultats au format attendu par le client (marques en texte)', async () => {
     mockFetchJson({
       hits: [

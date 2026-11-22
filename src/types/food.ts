@@ -27,3 +27,6 @@ export interface NormalizedFood {
   /** Code-barres d'un aliment personnel */
   barcode?: string;
 }
+
+/** Valeurs nutritionnelles pour 100 g */
+export type NutritionPer100 = Pick<NormalizedFood, 'kcal_per_100g' | 'protein_g' | 'fat_g' | 'carbs_g' | 'fiber_g'>;

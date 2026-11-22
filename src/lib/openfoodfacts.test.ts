@@ -35,6 +35,15 @@ describe('searchOFF', () => {
     );
   });
 
+  it('demande le nombre de résultats voulu (produits similaires)', async () => {
+    const fetchMock = mockFetchJson({ products: [] });
+    await searchOFF('pastabox', undefined, 30);
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/off/search?q=pastabox&size=30');
+
+    await searchOFF('pastabox');
+    expect(fetchMock.mock.calls[1][0]).not.toContain('size=');
+  });
+
   it('normalise les produits', async () => {
     mockFetchJson({
       products: [
@@ -212,7 +221,31 @@ describe('fetchOFFProduct', () => {
 
   it('distingue un produit sans valeurs nutritionnelles', async () => {
     mockFetchJson({ product: { code: '1234567890128', product_name: 'Mystère', nutriments: {} } });
-    expect(await fetchOFFProduct('1234567890128')).toEqual({ status: 'no_nutrition', name: 'Mystère' });
+    expect(await fetchOFFProduct('1234567890128')).toEqual({ status: 'no_nutrition', code: '1234567890128', name: 'Mystère' });
+  });
+
+  it('transmet le code, la marque et la portion d’un produit sans valeurs (produits similaires)', async () => {
+    mockFetchJson({
+      product: {
+        code: '3242272270157',
+        product_name: 'Sodebo pastabox 330g fusilli a la bolognaise',
+        brands: 'Sodebo',
+        serving_size: '330 g',
+        nutriments: {},
+      },
+    });
+    expect(await fetchOFFProduct('3242272270157')).toEqual({
+      status: 'no_nutrition',
+      code: '3242272270157',
+      name: 'Sodebo pastabox 330g fusilli a la bolognaise',
+      brand: 'Sodebo',
+      servingGrams: 330,
+    });
+  });
+
+  it('garde le code demandé si la fiche sans valeurs n’en indique pas', async () => {
+    mockFetchJson({ product: { product_name: 'Mystère', nutriments: {} } });
+    expect(await fetchOFFProduct('1234567890128')).toEqual({ status: 'no_nutrition', code: '1234567890128', name: 'Mystère' });
   });
 
   it('renvoie « introuvable » pour un 404', async () => {
