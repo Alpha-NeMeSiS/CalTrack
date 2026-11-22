@@ -173,7 +173,7 @@ describe('FoodSearch', () => {
     });
 
     it('signale un produit sans valeurs nutritionnelles', async () => {
-      mockedFetchOFFProduct.mockResolvedValue({ status: 'no_nutrition', name: 'Mystère' });
+      mockedFetchOFFProduct.mockResolvedValue({ status: 'no_nutrition', code: '3017620422003', name: 'Mystère' });
       const { user } = setup();
 
       await scan(user);
@@ -266,7 +266,7 @@ describe('FoodSearch', () => {
     });
 
     it('garde le nom connu d’un produit sans valeurs nutritionnelles', async () => {
-      mockedFetchOFFProduct.mockResolvedValue({ status: 'no_nutrition', name: 'Mystère' });
+      mockedFetchOFFProduct.mockResolvedValue({ status: 'no_nutrition', code: '3017620422003', name: 'Mystère' });
       const onCreateFood = vi.fn();
       const { user } = setup({ onCreateFood });
 
