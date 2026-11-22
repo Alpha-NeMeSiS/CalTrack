@@ -93,3 +93,13 @@ export function placeBubble(
   }
   return { bottom: opts.bottomInset, left, width };
 }
+
+/** Premier élément [data-tour=id] réellement affiché (taille non nulle) */
+export function findTourTarget(id: TourTarget): HTMLElement | null {
+  const candidates = document.querySelectorAll<HTMLElement>(`[data-tour="${id}"]`);
+  for (const element of Array.from(candidates)) {
+    const rect = element.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) return element;
+  }
+  return null;
+}
