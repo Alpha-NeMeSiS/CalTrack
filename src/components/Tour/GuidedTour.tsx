@@ -150,7 +150,7 @@ export function GuidedTour({ steps, onFinish }: GuidedTourProps) {
         <div
           data-testid="tour-hole"
           aria-hidden="true"
-          className="pointer-events-none fixed rounded-[18px] ring-2 ring-primary-600"
+          className="pointer-events-none fixed rounded-[18px] outline outline-2 outline-primary-600"
           style={{
             top: `${hole.top - TOUR_HOLE_PADDING}px`,
             left: `${hole.left - TOUR_HOLE_PADDING}px`,

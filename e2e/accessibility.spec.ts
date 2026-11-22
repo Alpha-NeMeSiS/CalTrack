@@ -61,6 +61,46 @@ for (const colorScheme of ['light', 'dark'] as const) {
       await expectNoViolations(page);
     });
 
+    test('Guide, depuis la connexion', async ({ page }) => {
+      await page.goto('/');
+      await page.getByRole('navigation', { name: 'Informations sur l’application' }).getByRole('button', { name: 'Guide' }).click();
+      await expect(page.getByRole('heading', { name: 'Guide', level: 1 })).toBeVisible();
+      await expectNoViolations(page);
+    });
+
+    test.describe('premier lancement et mises à jour', () => {
+      test('visite guidée : étapes 1 à 5, puis enregistrée', async ({ page }) => {
+        const { writes } = await mockSupabase(page, { tourSeen: false });
+        await signIn(page);
+        await page.goto('/');
+
+        await expect(page.getByRole('dialog', { name: 'Votre journée en un coup d’œil' })).toBeVisible();
+        await expectNoViolations(page);
+        for (let i = 0; i < 4; i++) await page.getByRole('button', { name: 'Suivant' }).click();
+        await expect(page.getByRole('dialog', { name: 'Aller plus loin' })).toBeVisible();
+        await expectNoViolations(page);
+
+        await page.getByRole('button', { name: 'Terminer' }).click();
+        await expect(page.getByRole('dialog')).toHaveCount(0);
+        await expect.poll(() => writes.some((w) => w.table === 'user_preferences' && 'tour_completed_at' in w.body)).toBe(true);
+        // Visite terminée : pas de « Quoi de neuf ? » dans la même session
+        await expect(page.getByRole('dialog', { name: 'Quoi de neuf ?' })).toHaveCount(0);
+      });
+
+      test('« Quoi de neuf ? » après une mise à jour, puis enregistrée', async ({ page }) => {
+        const { writes } = await mockSupabase(page, { lastSeenVersion: '2.0.0' });
+        await signIn(page);
+        await page.goto('/');
+
+        const dialog = page.getByRole('dialog', { name: 'Quoi de neuf ?' });
+        await expect(dialog).toBeVisible();
+        await expectNoViolations(page);
+        await dialog.getByRole('button', { name: 'C’est noté' }).click();
+        await expect(dialog).toHaveCount(0);
+        await expect.poll(() => writes.some((w) => w.table === 'user_preferences' && 'last_seen_version' in w.body)).toBe(true);
+      });
+    });
+
     test.describe('connecté', () => {
       test.beforeEach(async ({ page }) => {
         await signIn(page);
@@ -143,6 +183,19 @@ for (const colorScheme of ['light', 'dark'] as const) {
         await footer.getByRole('button', { name: 'Sources' }).click();
         await expect(page.getByRole('heading', { name: 'À propos', level: 1 })).toBeVisible();
         await expect(page.getByRole('button', { name: 'Télécharger mes données' })).toBeVisible();
+        await expectNoViolations(page);
+      });
+
+      test('Guide et nouveautés', async ({ page }) => {
+        await page.getByRole('button', { name: /Menu du compte/ }).click();
+        await page.getByRole('menuitem', { name: 'Guide' }).click();
+        await expect(page.getByRole('heading', { name: 'Guide', level: 1 })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Revoir la visite' })).toBeVisible();
+        await expectNoViolations(page);
+
+        await page.getByRole('navigation', { name: 'Informations sur l’application' }).getByRole('button', { name: 'À propos' }).click();
+        await page.getByRole('button', { name: 'Voir les nouveautés' }).click();
+        await expect(page.getByRole('dialog', { name: 'Quoi de neuf ?' })).toContainText('Historique des mises à jour');
         await expectNoViolations(page);
       });
 

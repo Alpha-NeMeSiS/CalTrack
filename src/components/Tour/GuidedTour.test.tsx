@@ -108,6 +108,16 @@ describe('GuidedTour', () => {
     expect(hole.style.top).toBe(`${200 - 6}px`);
   });
 
+  it('garde un contour visible autour de la découpe (pas une ombre, déjà prise par le fond assombri)', async () => {
+    addTarget('calories');
+    render(<GuidedTour steps={TOUR_STEPS.slice(0, 1)} onFinish={vi.fn()} />);
+    const hole = await screen.findByTestId('tour-hole');
+    // ring-* est dessiné par box-shadow : le style en ligne du fond assombri l'écraserait
+    expect(hole.className).not.toMatch(/\bring-/);
+    expect(hole.className).toMatch(/\boutline-2\b/);
+    expect(hole.className).toMatch(/\boutline-primary-600\b/);
+  });
+
   it('replace la découpe quand l’écran change de taille (Review Focus 3)', async () => {
     const { move } = addTarget('calories', { top: 200, left: 40, width: 250, height: 150 });
     render(<GuidedTour steps={TOUR_STEPS.slice(0, 1)} onFinish={vi.fn()} />);
