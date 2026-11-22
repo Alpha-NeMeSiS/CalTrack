@@ -26,6 +26,8 @@ export interface NormalizedFood {
   foodId?: string;
   /** Code-barres d'un aliment personnel */
   barcode?: string;
+  /** Aliment personnel aux valeurs estimées (badge « Estimé ») */
+  estimated?: boolean;
 }
 
 /** Valeurs nutritionnelles pour 100 g */

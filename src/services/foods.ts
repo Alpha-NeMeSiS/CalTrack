@@ -54,8 +54,13 @@ export async function fetchPersonalFoods(userId: string): Promise<Food[]> {
  * Si un aliment a déjà ce code-barres, il est mis à jour : un code-barres ne
  * correspond qu'à un seul de vos aliments.
  */
-export async function savePersonalFood(userId: string, values: PortionValues, barcode?: string | null): Promise<Food> {
-  const payload = buildPersonalFoodPayload(userId, values, barcode);
+export async function savePersonalFood(
+  userId: string,
+  values: PortionValues,
+  barcode?: string | null,
+  estimated = false
+): Promise<Food> {
+  const payload = buildPersonalFoodPayload(userId, values, barcode, estimated);
 
   if (payload.barcode) {
     const { data: existing, error: lookupError } = await supabase
