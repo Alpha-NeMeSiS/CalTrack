@@ -157,6 +157,62 @@ for (const colorScheme of ['light', 'dark'] as const) {
         await expect(dialog).toBeHidden();
       });
 
+      test('produit scanné sans valeurs : estimation', async ({ page }) => {
+        // Produit Open Food Facts sans valeurs, puis produits proches de la même marque
+        await page.route('**/api/off/product**', (route) =>
+          route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              product: {
+                code: '3242272270157',
+                product_name: 'Sodebo pastabox 330g fusilli a la bolognaise',
+                brands: 'Sodebo',
+                serving_size: '330 g',
+                nutriments: {},
+              },
+            }),
+          })
+        );
+        const hit = (code: string, name: string, kcal: number, proteins: number, fat: number, carbs: number) => ({
+          code,
+          product_name: name,
+          brands: 'Sodebo',
+          nutriments: { 'energy-kcal_100g': kcal, proteins_100g: proteins, fat_100g: fat, carbohydrates_100g: carbs },
+        });
+        await page.route('**/api/off/search**', (route) =>
+          route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              products: [
+                hit('3242272252054', 'Pasta Box fusilli à la bolognaise', 123, 6.7, 3, 16),
+                hit('3242272252528', 'Pastabox fusilli carbonara', 160, 5.8, 7.6, 17),
+                hit('3242272251750', 'Pastabox fusilli napolitaine au poulet', 123, 6.6, 2.8, 17),
+              ],
+            }),
+          })
+        );
+
+        await page.getByRole('button', { name: /^Ajouter( un aliment)?$/ }).filter({ visible: true }).first().click();
+        const dialog = page.getByRole('dialog', { name: 'Ajouter un aliment' });
+        await dialog.getByRole('button', { name: 'Scanner un code-barres' }).click();
+        await dialog.getByLabel('Ou saisissez le code-barres').fill('3242272270157');
+        await dialog.getByLabel('Ou saisissez le code-barres').press('Enter');
+
+        const card = dialog.getByRole('region', { name: 'Estimation pour 100 g' });
+        await expect(card).toBeVisible();
+        await expect(card).toContainText('≈ 123 kcal');
+        await card.getByRole('button', { name: 'Ou choisir un produit proche (3)' }).click();
+        await expect(card.getByRole('listitem')).toHaveCount(3);
+        await expectNoViolations(page);
+
+        await card.getByRole('button', { name: 'Utiliser l’estimation' }).click();
+        await expect(dialog.getByText(/d’après 1 produit proche/)).toBeVisible();
+        await expect(dialog.getByLabel('Calories (kcal)')).toHaveValue('123');
+        await expectNoViolations(page);
+      });
+
       test('recettes', async ({ page }) => {
         await page.getByRole('button', { name: /^Ajouter( un aliment)?$/ }).filter({ visible: true }).first().click();
         await page.getByRole('tab', { name: 'Recettes' }).click();

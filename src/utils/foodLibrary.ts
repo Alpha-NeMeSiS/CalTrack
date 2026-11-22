@@ -142,6 +142,7 @@ export function personalFoodToNormalized(food: Food): NormalizedFood {
     name: food.name,
     foodId: food.id,
     ...(food.barcode ? { barcode: food.barcode } : {}),
+    ...(food.values_estimated ? { estimated: true } : {}),
     kcal_per_100g: Number(food.kcal_per_100g),
     protein_g: Number(food.protein_g),
     fat_g: Number(food.fat_g),
@@ -162,9 +163,10 @@ export interface PortionValues {
 
 /**
  * Ligne à insérer dans foods pour un aliment personnel : les valeurs saisies
- * pour une portion sont ramenées à 100 g.
+ * pour une portion sont ramenées à 100 g. `estimated` : valeurs estimées
+ * d'après des produits proches, pas recopiées de l'étiquette.
  */
-export function buildPersonalFoodPayload(userId: string, values: PortionValues, barcode?: string | null) {
+export function buildPersonalFoodPayload(userId: string, values: PortionValues, barcode?: string | null, estimated = false) {
   const factor = values.qty_grammes > 0 ? 100 / values.qty_grammes : 0;
   return {
     user_id: userId,
@@ -176,6 +178,7 @@ export function buildPersonalFoodPayload(userId: string, values: PortionValues, 
     fiber_g: round1((values.fiber_g || 0) * factor),
     barcode: barcode || null,
     is_public: false,
+    values_estimated: estimated,
   };
 }
 

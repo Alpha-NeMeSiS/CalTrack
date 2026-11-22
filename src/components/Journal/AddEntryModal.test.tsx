@@ -31,7 +31,7 @@ vi.mock('../Foods/FoodSearch', () => ({
   }: {
     onSelect: (food: unknown) => void;
     idleContent?: React.ReactNode;
-    onCreateFood?: (draft: { barcode: string; name?: string }) => void;
+    onCreateFood?: (draft: import('../../types/food').FoodDraft) => void;
     personalFoods?: { name: string }[];
     focusKey?: number;
   }) => (
@@ -51,6 +51,22 @@ vi.mock('../Foods/FoodSearch', () => ({
       </button>
       <button type="button" onClick={() => onCreateFood?.({ barcode: '3245678901236', name: 'Mystère' })}>
         Simuler un produit inconnu
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          onCreateFood?.({
+            barcode: '3242272270157',
+            name: 'PastaBox bolognaise',
+            servingGrams: 330,
+            estimate: {
+              values: { kcal_per_100g: 123, protein_g: 6.7, fat_g: 3, carbs_g: 16, fiber_g: 0 },
+              source: '1 produit proche : Pasta Box fusilli à la bolognaise (Sodebo)',
+            },
+          })
+        }
+      >
+        Simuler un produit estimé
       </button>
       <p data-testid="personal-foods">{(personalFoods ?? []).map((food) => food.name).join(', ')}</p>
       {idleContent}
@@ -439,8 +455,111 @@ describe('AddEntryModal', () => {
 
       await waitFor(() => expect(supabaseMock.callsFor('foods', 'insert')).toHaveLength(1));
       const [insert] = supabaseMock.callsFor('foods', 'insert');
-      expect(getOperationArgs(insert, 'insert')?.[0]).toMatchObject({ name: 'Mystère', barcode: '3245678901236', kcal_per_100g: 250 });
+      expect(getOperationArgs(insert, 'insert')?.[0]).toMatchObject({
+        name: 'Mystère',
+        barcode: '3245678901236',
+        kcal_per_100g: 250,
+        values_estimated: false,
+      });
       expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ label: 'Mystère', qty_grammes: 100, food_id: 'food-new' }));
+    });
+
+    describe('produit scanné sans valeurs : estimation', () => {
+      const pastaBox = {
+        id: 'food-pasta', user_id: 'user-1', name: 'PastaBox bolognaise', kcal_per_100g: 123, protein_g: 6.7,
+        fat_g: 3, carbs_g: 16, fiber_g: 0, is_public: false, barcode: '3242272270157', values_estimated: true,
+        created_at: '2025-01-01T00:00:00Z',
+      };
+
+      async function openEstimate() {
+        const onAdd = vi.fn().mockResolvedValue(true);
+        render(<AddEntryModal date="2025-01-10" onAdd={onAdd} onClose={vi.fn()} />);
+        const user = userEvent.setup();
+        await user.click(screen.getByRole('button', { name: 'Simuler un produit estimé' }));
+        return { user, onAdd };
+      }
+
+      async function savedPayload() {
+        await waitFor(() => expect(supabaseMock.callsFor('foods', 'insert')).toHaveLength(1));
+        return getOperationArgs(supabaseMock.callsFor('foods', 'insert')[0], 'insert')?.[0] as Record<string, unknown>;
+      }
+
+      it('pré-remplit la saisie avec les valeurs estimées et le signale', async () => {
+        await openEstimate();
+
+        expect(screen.getByRole('tab', { name: 'Saisie manuelle' })).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByLabelText("Nom de l'aliment")).toHaveValue('PastaBox bolognaise');
+        expect(screen.getByLabelText('Quantité (g)')).toHaveValue(330);
+        expect(screen.getByRole('radio', { name: '100 g (étiquette)' })).toBeChecked();
+        expect(screen.getByLabelText('Calories (kcal)')).toHaveValue(123);
+        expect(screen.getByLabelText('Protéines (g)')).toHaveValue(6.7);
+        expect(screen.getByLabelText('Lipides (g)')).toHaveValue(3);
+        expect(screen.getByLabelText('Glucides (g)')).toHaveValue(16);
+        expect(screen.getByRole('checkbox', { name: /Enregistrer dans mes aliments/ })).toBeChecked();
+        expect(screen.getByLabelText('Code-barres')).toHaveValue('3242272270157');
+        expect(screen.getByText(/d’après 1 produit proche/)).toHaveTextContent(
+          'Valeurs estimées d’après 1 produit proche : Pasta Box fusilli à la bolognaise (Sodebo). Corrigez-les avec l’étiquette si vous l’avez. Le produit sera enregistré dans vos aliments et reconnu au prochain scan.'
+        );
+        expect(screen.queryByText(/recopiez les valeurs de l’étiquette/)).not.toBeInTheDocument();
+      });
+
+      it('enregistre l’aliment comme estimé si les valeurs n’ont pas changé', async () => {
+        const { user, onAdd } = await openEstimate();
+        await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+
+        expect(await savedPayload()).toMatchObject({ barcode: '3242272270157', kcal_per_100g: 123, values_estimated: true });
+        expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ label: 'PastaBox bolognaise', qty_grammes: 330, kcal: 406 }));
+      });
+
+      it('n’est plus estimé dès qu’une valeur est corrigée', async () => {
+        const { user } = await openEstimate();
+        fireEvent.change(screen.getByLabelText('Calories (kcal)'), { target: { value: '127' } });
+        await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+
+        expect(await savedPayload()).toMatchObject({ kcal_per_100g: 127, values_estimated: false });
+      });
+
+      it('n’est plus estimé si les valeurs sont saisies pour la quantité indiquée', async () => {
+        const { user } = await openEstimate();
+        await user.click(screen.getByRole('radio', { name: 'La quantité indiquée' }));
+        await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+
+        expect(await savedPayload()).toMatchObject({ values_estimated: false });
+      });
+
+      it('affiche le badge « Estimé » dans mes aliments', async () => {
+        tables.foods = [pastaBox];
+        render(<AddEntryModal date="2025-01-10" onAdd={vi.fn()} onClose={vi.fn()} />);
+        const user = userEvent.setup();
+
+        await user.click(screen.getByRole('tab', { name: 'Mes aliments' }));
+        const list = await screen.findByRole('list', { name: 'Mes aliments' });
+        const row = within(list).getByText('PastaBox bolognaise').closest('li')!;
+        expect(within(row).getByText('Estimé')).toBeInTheDocument();
+      });
+
+      it('corrige un aliment estimé avec les valeurs de l’étiquette', async () => {
+        tables.foods = [pastaBox];
+        render(<AddEntryModal date="2025-01-10" onAdd={vi.fn().mockResolvedValue(true)} onClose={vi.fn()} />);
+        const user = userEvent.setup();
+
+        await user.click(screen.getByRole('tab', { name: 'Mes aliments' }));
+        const list = await screen.findByRole('list', { name: 'Mes aliments' });
+        await user.click(within(list).getByRole('button', { name: 'Utiliser « PastaBox bolognaise »' }));
+
+        expect(screen.getByText('Estimé')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Corriger avec l’étiquette' }));
+
+        expect(screen.getByRole('tab', { name: 'Saisie manuelle' })).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByLabelText("Nom de l'aliment")).toHaveValue('PastaBox bolognaise');
+        expect(screen.getByLabelText('Calories (kcal)')).toHaveValue(123);
+        expect(screen.getByLabelText('Code-barres')).toHaveValue('3242272270157');
+        expect(screen.getByText('Valeurs estimées : remplacez-les par celles de l’étiquette.')).toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText('Calories (kcal)'), { target: { value: '127' } });
+        await user.click(screen.getByRole('button', { name: 'Ajouter' }));
+        expect(await savedPayload()).toMatchObject({ barcode: '3242272270157', kcal_per_100g: 127, values_estimated: false });
+      });
     });
 
     it('refuse un code-barres invalide sans rien enregistrer', async () => {

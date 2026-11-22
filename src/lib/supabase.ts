@@ -112,6 +112,8 @@ export interface Food {
   is_public: boolean;
   /** Code-barres d'un aliment personnel (migration 20261108170840) */
   barcode?: string | null;
+  /** Valeurs estimées d'après des produits proches (migration foods_values_estimated) */
+  values_estimated?: boolean;
   created_at: string;
 }
 

@@ -170,7 +170,20 @@ describe('mes aliments', () => {
       fiber_g: 3,
       barcode: '3017620422003',
       is_public: false,
+      values_estimated: false,
     });
+  });
+
+  it('marque les valeurs estimées (produit similaire) seulement si demandé', () => {
+    const values = { name: 'PastaBox', qty_grammes: 100, kcal: 123, protein_g: 6.7, fat_g: 3, carbs_g: 16, fiber_g: 0 };
+    expect(buildPersonalFoodPayload('u', values, '3242272270157').values_estimated).toBe(false);
+    expect(buildPersonalFoodPayload('u', values, '3242272270157', true).values_estimated).toBe(true);
+  });
+
+  it('signale un aliment personnel aux valeurs estimées', () => {
+    expect(personalFoodToNormalized({ ...food, values_estimated: true }).estimated).toBe(true);
+    expect(personalFoodToNormalized({ ...food, values_estimated: false })).not.toHaveProperty('estimated');
+    expect(personalFoodToNormalized(food)).not.toHaveProperty('estimated');
   });
 
   it('recherche sans accents ni majuscules', () => {

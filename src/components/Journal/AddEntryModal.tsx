@@ -16,9 +16,10 @@ import { getMealLabel } from '../../utils/preferences';
 import type { AddEntryPayload, MealType } from '../../utils/entries';
 import { MealTypeSelector } from './MealTypeSelector';
 import { RecipesTab } from '../Recipes/RecipesTab';
-import type { NormalizedFood } from '../../types/food';
+import type { FoodDraft, NormalizedFood, NutritionPer100 } from '../../types/food';
 import { parseLocalDate } from '../../utils/date';
 import { cleanBarcodeInput, isValidGtin } from '../../utils/barcode';
+import { nutritionOf } from '../../lib/similarProducts';
 import { foodLabel, nutritionForQuantity, QuickFood } from '../../utils/foodLibrary';
 
 type AddEntryMode = 'search' | 'manual' | 'mine' | 'recipes';
@@ -84,6 +85,9 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
   const [saveToMyFoods, setSaveToMyFoods] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
   const [manualFromScan, setManualFromScan] = useState(false);
+  // Valeurs pré-remplies d'après des produits proches (ou aliment estimé à corriger)
+  const [manualEstimate, setManualEstimate] = useState<{ values: NutritionPer100; source: string } | null>(null);
+  const [manualCorrection, setManualCorrection] = useState(false);
   const [barcodeError, setBarcodeError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [libraryMessage, setLibraryMessage] = useState<string | null>(null);
@@ -160,6 +164,8 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     setSaveToMyFoods(false);
     setManualBarcode('');
     setManualFromScan(false);
+    setManualEstimate(null);
+    setManualCorrection(false);
     setValuesBasis('portion');
     setBarcodeError(null);
   };
@@ -287,14 +293,57 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     }
   };
 
-  /** Produit scanné inconnu : saisie manuelle pré-remplie, enregistrée dans mes aliments */
-  const handleCreateFood = (draft: { barcode: string; name?: string }) => {
+  /**
+   * Produit scanné inconnu ou sans valeurs : saisie manuelle pré-remplie (valeurs
+   * estimées éventuelles), enregistrée dans mes aliments.
+   */
+  const handleCreateFood = (draft: FoodDraft) => {
     switchTab('manual');
-    setManualForm({ ...defaultManualForm, label: draft.name ?? '', meal_type: lastMeal });
+    const values = draft.estimate?.values;
+    setManualForm({
+      ...defaultManualForm,
+      label: draft.name ?? '',
+      qty_grammes: draft.servingGrams ?? defaultManualForm.qty_grammes,
+      meal_type: lastMeal,
+      ...(values
+        ? {
+            kcal: values.kcal_per_100g,
+            protein_g: values.protein_g,
+            fat_g: values.fat_g,
+            carbs_g: values.carbs_g,
+            fiber_g: values.fiber_g,
+          }
+        : {}),
+    });
     setSaveToMyFoods(true);
     setManualBarcode(draft.barcode);
     setManualFromScan(true);
+    setManualEstimate(draft.estimate ?? null);
+    setManualCorrection(Boolean(draft.correction));
     setValuesBasis('per100');
+  };
+
+  /** Aliment estimé choisi : correction avec les valeurs de l'étiquette */
+  const handleCorrectEstimated = (food: NormalizedFood) => {
+    handleCreateFood({
+      barcode: food.barcode ?? '',
+      name: food.name,
+      estimate: { values: nutritionOf(food), source: '' },
+      correction: true,
+    });
+  };
+
+  /** Valeurs pré-remplies d'une estimation, enregistrées telles quelles (base 100 g inchangée) */
+  const keepsEstimate = () => {
+    if (!manualEstimate || valuesBasis !== 'per100') return false;
+    const { values } = manualEstimate;
+    return (
+      manualForm.kcal === values.kcal_per_100g &&
+      manualForm.protein_g === values.protein_g &&
+      manualForm.fat_g === values.fat_g &&
+      manualForm.carbs_g === values.carbs_g &&
+      manualForm.fiber_g === values.fiber_g
+    );
   };
 
   // --- Saisie manuelle --------------------------------------------------------
@@ -341,7 +390,8 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
             carbs_g: manualForm.carbs_g,
             fiber_g: manualForm.fiber_g,
           },
-          saveToMyFoods && barcode ? barcode : null
+          saveToMyFoods && barcode ? barcode : null,
+          keepsEstimate()
         );
         foodId = saved.id;
       } catch (error) {
@@ -441,10 +491,22 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                 />
               )}
               <div className="min-w-0 flex-1">
-                <div className="font-medium text-primary-900">{foodLabel(selectedFood)}</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-primary-900">{foodLabel(selectedFood)}</span>
+                  {selectedFood.estimated && <span className="badge badge-warning">Estimé</span>}
+                </div>
                 <div className="mt-1 text-sm text-primary-700">
                   {Math.round(selectedFood.kcal_per_100g)} kcal pour 100 g
                 </div>
+                {selectedFood.estimated && selectedFood.barcode && (
+                  <button
+                    type="button"
+                    onClick={() => handleCorrectEstimated(selectedFood)}
+                    className="mt-2 rounded-md text-sm font-medium text-primary-700 underline underline-offset-2 hover:text-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                  >
+                    Corriger avec l’étiquette
+                  </button>
+                )}
               </div>
               <button
                 type="button"
@@ -600,7 +662,16 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     const totals = manualEntryValues();
     return (
       <form onSubmit={handleManualSubmit} className="space-y-6">
-        {manualFromScan && (
+        {manualCorrection ? (
+          <p className="rounded-md border border-warning-200 bg-warning-50 p-3 text-sm text-warning-900">
+            Valeurs estimées : remplacez-les par celles de l’étiquette.
+          </p>
+        ) : manualEstimate ? (
+          <p className="rounded-md border border-warning-200 bg-warning-50 p-3 text-sm text-warning-900">
+            <strong>Valeurs estimées</strong> d’après {manualEstimate.source}. Corrigez-les avec l’étiquette si vous
+            l’avez. Le produit sera enregistré dans vos aliments et reconnu au prochain scan.
+          </p>
+        ) : manualFromScan && (
           <p className="rounded-md border border-primary-200 bg-primary-50 p-3 text-sm text-primary-800">
             Produit scanné : recopiez les valeurs de l’étiquette pour 100 g, puis indiquez la quantité mangée. Il sera
             enregistré dans vos aliments et reconnu au prochain scan.
@@ -753,7 +824,10 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
           {library.personalFoods.map((food) => (
             <li key={food.foodId} className="flex flex-wrap items-center gap-2 p-3">
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-medium text-ink">{food.name}</div>
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="truncate text-sm font-medium text-ink">{food.name}</span>
+                  {food.estimated && <span className="badge badge-warning shrink-0">Estimé</span>}
+                </div>
                 <div className="text-xs text-subtle">{Math.round(food.kcal_per_100g)} kcal pour 100 g</div>
                 {food.barcode && <div className="text-xs text-subtle">Code-barres {food.barcode}</div>}
               </div>

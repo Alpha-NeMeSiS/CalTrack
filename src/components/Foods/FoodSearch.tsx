@@ -9,11 +9,13 @@ import {
   useState,
 } from 'react';
 import { ScanBarcode, Search } from 'lucide-react';
-import type { NormalizedFood, SearchCategory } from '../../types/food';
+import type { FoodDraft, NormalizedFood, SearchCategory } from '../../types/food';
 import { searchCiqual } from '../../lib/ciqual';
 import { fetchOFFProduct, searchOFF } from '../../lib/openfoodfacts';
+import { findSimilarProducts, SimilarEstimate } from '../../lib/similarProducts';
 import { searchPersonalFoods } from '../../utils/foodLibrary';
 import { BarcodeScanner } from './BarcodeScanner';
+import { SimilarEstimateCard } from './SimilarEstimateCard';
 
 interface FoodSearchProps {
   onSelect: (food: NormalizedFood) => void;
@@ -21,8 +23,8 @@ interface FoodSearchProps {
   personalFoods?: NormalizedFood[];
   /** Contenu affiché quand rien n'est saisi (ex : favoris et récents) */
   idleContent?: ReactNode;
-  /** Produit scanné inconnu : ouvre la création d'un aliment personnel */
-  onCreateFood?: (draft: { barcode: string; name?: string }) => void;
+  /** Produit scanné inconnu ou sans valeurs : ouvre la création d'un aliment personnel */
+  onCreateFood?: (draft: FoodDraft) => void;
   /** Change après chaque ajout : le champ reprend le focus pour l'aliment suivant */
   focusKey?: number;
 }
@@ -70,12 +72,20 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
     type: 'info' | 'error';
     text: string;
     /** Produit inconnu : de quoi pré-remplir sa création */
-    draft?: { barcode: string; name?: string };
+    draft?: FoodDraft;
+    /** Produit sans valeurs : « Créer cet aliment » attend la recherche de produits similaires */
+    awaitsSimilar?: boolean;
   } | null>(null);
+  // Produit sans valeurs : estimation d'après les produits les plus proches
+  const [similar, setSimilar] = useState<
+    { status: 'loading' } | { status: 'done'; estimate: SimilarEstimate | null } | null
+  >(null);
   const barcodeAbortRef = useRef<AbortController | null>(null);
   // Lu dans les effets sans relancer la recherche à chaque rendu du parent
   const personalFoodsRef = useRef(personalFoods);
   personalFoodsRef.current = personalFoods;
+  const onCreateFoodRef = useRef(onCreateFood);
+  onCreateFoodRef.current = onCreateFood;
 
   useEffect(() => () => barcodeAbortRef.current?.abort(), []);
 
@@ -183,10 +193,12 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
       const personal = personalFoodsRef.current.find((food) => food.barcode === code);
       if (personal) {
         setBarcodeMessage(null);
+        setSimilar(null);
         handleSelect(personal);
         return;
       }
       setBarcodeMessage({ type: 'info', text: `Recherche du produit ${code}…` });
+      setSimilar(null);
       barcodeAbortRef.current?.abort();
       const controller = new AbortController();
       barcodeAbortRef.current = controller;
@@ -196,19 +208,52 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
         if (controller.signal.aborted) return;
         if (result.status === 'found') {
           setBarcodeMessage(null);
+          setSimilar(null);
           handleSelect(result.food);
           return;
         }
         // Pas exploitable : on bascule sur la recherche de produits par nom
         setCategory('off');
+        if (result.status === 'not_found') {
+          setBarcodeMessage({
+            type: 'info',
+            text: `Aucun produit trouvé pour le code ${code} dans Open Food Facts. Créez-le dans vos aliments, ou cherchez-le par son nom.`,
+            draft: { barcode: code },
+          });
+          return;
+        }
+        const draft: FoodDraft = {
+          barcode: code,
+          name: result.name,
+          ...(result.servingGrams ? { servingGrams: result.servingGrams } : {}),
+        };
+        if (!onCreateFoodRef.current) {
+          setBarcodeMessage({
+            type: 'info',
+            text: `« ${result.name} » est dans Open Food Facts, mais sans valeurs nutritionnelles. Créez-le avec les valeurs de l’étiquette, ou cherchez un produit équivalent.`,
+            draft,
+          });
+          return;
+        }
+        // Produit sans valeurs : estimation d'après les produits les plus proches
         setBarcodeMessage({
           type: 'info',
-          text:
-            result.status === 'not_found'
-              ? `Aucun produit trouvé pour le code ${code} dans Open Food Facts. Créez-le dans vos aliments, ou cherchez-le par son nom.`
-              : `« ${result.name} » est dans Open Food Facts, mais sans valeurs nutritionnelles. Créez-le avec les valeurs de l’étiquette, ou cherchez un produit équivalent.`,
-          draft: result.status === 'not_found' ? { barcode: code } : { barcode: code, name: result.name },
+          text: `« ${result.name} » est dans Open Food Facts, mais sans valeurs nutritionnelles.`,
+          draft,
+          awaitsSimilar: true,
         });
+        setSimilar({ status: 'loading' });
+        try {
+          const estimate = await findSimilarProducts(
+            { code: result.code, name: result.name, ...(result.brand ? { brand: result.brand } : {}) },
+            controller.signal,
+          );
+          if (controller.signal.aborted) return;
+          setSimilar({ status: 'done', estimate });
+        } catch {
+          if (controller.signal.aborted) return;
+          setSimilar({ status: 'done', estimate: null });
+        }
       } catch {
         if (controller.signal.aborted) return;
         setBarcodeMessage({ type: 'error', text: 'Open Food Facts est indisponible, réessayez dans un instant.' });
@@ -257,6 +302,10 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
 
   const formatMacro = (value: number) => Math.round(value * 10) / 10;
 
+  const similarEstimate = similar?.status === 'done' ? similar.estimate : null;
+  // Recherche de produits similaires terminée sans résultat : saisie de l'étiquette
+  const similarMissing = Boolean(barcodeMessage?.awaitsSimilar && similar?.status === 'done' && !similar.estimate);
+
   return (
     <div className="space-y-3">
       <div
@@ -304,7 +353,10 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
+              // Une nouvelle saisie remplace le produit scanné (et ses produits similaires)
+              barcodeAbortRef.current?.abort();
               setBarcodeMessage(null);
+              setSimilar(null);
             }}
             onKeyDown={handleKeyDown}
             placeholder={
@@ -330,6 +382,7 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
           onClick={() => {
             barcodeAbortRef.current?.abort();
             setBarcodeMessage(null);
+            setSimilar(null);
             setScannerOpen((open) => !open);
           }}
           aria-expanded={scannerOpen}
@@ -360,7 +413,10 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
           }`}
         >
           {barcodeMessage.text}
-          {barcodeMessage.draft && onCreateFood && (
+          {similarMissing && (
+            <span className="mt-1 block">Aucun produit similaire trouvé : créez-le avec les valeurs de l’étiquette.</span>
+          )}
+          {barcodeMessage.draft && onCreateFood && (!barcodeMessage.awaitsSimilar || similarMissing) && (
             <button
               type="button"
               onClick={() => onCreateFood(barcodeMessage.draft!)}
@@ -370,6 +426,20 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
             </button>
           )}
         </p>
+      )}
+
+      {barcodeMessage?.awaitsSimilar && similar?.status === 'loading' && (
+        <p role="status" className="text-sm text-subtle">
+          Recherche de produits similaires…
+        </p>
+      )}
+
+      {barcodeMessage?.awaitsSimilar && barcodeMessage.draft && similarEstimate && onCreateFood && (
+        <SimilarEstimateCard
+          estimate={similarEstimate}
+          onUse={(values, source) => onCreateFood({ ...barcodeMessage.draft!, estimate: { values, source } })}
+          onManual={() => onCreateFood(barcodeMessage.draft!)}
+        />
       )}
 
       {idleContent && !query.trim() && !scannerOpen && !barcodeMessage && idleContent}
@@ -413,6 +483,7 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
                         <div className="flex-1">
                           <div className="flex flex-wrap items-center gap-2 text-ink">
                             <span className="font-medium">{food.name}</span>
+                            {food.estimated && <span className="badge badge-warning">Estimé</span>}
                             {food.brand && (
                               <span className="text-xs text-subtle">{food.brand}</span>
                             )}

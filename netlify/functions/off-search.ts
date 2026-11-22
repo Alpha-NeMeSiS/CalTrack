@@ -10,7 +10,9 @@
 
 const OFF_SEARCH_ENDPOINT = 'https://search.openfoodfacts.org/search';
 const MIN_QUERY_LENGTH = 3;
-const PAGE_SIZE = '10';
+const DEFAULT_PAGE_SIZE = 10;
+// Produits similaires : jusqu'à 30 résultats pour trouver les plus proches
+const MAX_PAGE_SIZE = 30;
 
 const OFF_FIELDS = [
   'code',
@@ -25,6 +27,7 @@ const OFF_FIELDS = [
 type NetlifyEvent = {
   queryStringParameters?: {
     q?: string;
+    size?: string;
   } | null;
 };
 
@@ -57,6 +60,13 @@ const errorHeaders = {
   'Cache-Control': 'no-store',
 };
 
+/** Nombre de résultats demandé : entier de 1 à 30, sinon la valeur par défaut. */
+function pageSize(size: string | undefined): string {
+  if (!size || !/^\d+$/.test(size)) return String(DEFAULT_PAGE_SIZE);
+  const value = Number(size);
+  return value >= 1 && value <= MAX_PAGE_SIZE ? String(value) : String(DEFAULT_PAGE_SIZE);
+}
+
 function json(statusCode: number, headers: Record<string, string>, body: unknown): NetlifyResponse {
   return { statusCode, headers, body: JSON.stringify(body) };
 }
@@ -81,7 +91,7 @@ export async function handler(event: NetlifyEvent): Promise<NetlifyResponse> {
   const params = new URLSearchParams({
     q,
     langs: 'fr',
-    page_size: PAGE_SIZE,
+    page_size: pageSize(event.queryStringParameters?.size),
     fields: OFF_FIELDS,
   });
 

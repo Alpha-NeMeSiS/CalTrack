@@ -26,4 +26,22 @@ export interface NormalizedFood {
   foodId?: string;
   /** Code-barres d'un aliment personnel */
   barcode?: string;
+  /** Aliment personnel aux valeurs estimées (badge « Estimé ») */
+  estimated?: boolean;
+}
+
+/** Valeurs nutritionnelles pour 100 g */
+export type NutritionPer100 = Pick<NormalizedFood, 'kcal_per_100g' | 'protein_g' | 'fat_g' | 'carbs_g' | 'fiber_g'>;
+
+/**
+ * Brouillon d'aliment personnel ouvert depuis un scan (saisie manuelle pré-remplie).
+ * `estimate` : valeurs estimées d'après des produits proches ; `correction` :
+ * correction d'un aliment estimé avec les valeurs de l'étiquette.
+ */
+export interface FoodDraft {
+  barcode: string;
+  name?: string;
+  servingGrams?: number;
+  estimate?: { values: NutritionPer100; source: string };
+  correction?: boolean;
 }

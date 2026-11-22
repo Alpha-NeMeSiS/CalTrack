@@ -99,9 +99,9 @@ export function useFoodLibrary(userId: string | undefined) {
   );
 
   const savePersonal = useCallback(
-    async (values: PortionValues, barcode?: string | null) => {
+    async (values: PortionValues, barcode?: string | null, estimated = false) => {
       if (!userId) throw new Error('Utilisateur non connecté');
-      const saved = await savePersonalFood(userId, values, barcode);
+      const saved = await savePersonalFood(userId, values, barcode, estimated);
       setPersonalFoods((current) =>
         [...current.filter((food) => food.id !== saved.id), saved].sort((a, b) => a.name.localeCompare(b.name, 'fr'))
       );

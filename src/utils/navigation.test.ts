@@ -29,7 +29,7 @@ describe('navigation', () => {
 });
 
 describe('appInfo', () => {
-  it('lit la version de package.json : 2.1.1 (correctif confirmations et notifications)', () => {
-    expect(APP_VERSION).toBe('2.1.1');
+  it('lit la version de package.json : 2.2.0 (estimation des produits sans valeurs)', () => {
+    expect(APP_VERSION).toBe('2.2.0');
   });
 });

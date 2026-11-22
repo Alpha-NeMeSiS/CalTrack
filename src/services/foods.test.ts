@@ -102,6 +102,28 @@ describe('services/foods', () => {
     expect(update.operations).toContainEqual({ method: 'eq', args: ['id', 'f-old'] });
   });
 
+  it('enregistre le drapeau des valeurs estimées, à la création comme à la mise à jour', async () => {
+    supabaseMock.setHandler((call) => {
+      if (hasOperation(call, 'maybeSingle')) return { data: null, error: null };
+      return { data: { id: 'f-new' }, error: null };
+    });
+    await savePersonalFood('user-1', portion, '3242272270157', true);
+    expect(getOperationArgs(supabaseMock.callsFor('foods', 'insert')[0], 'insert')?.[0]).toMatchObject({ values_estimated: true });
+
+    supabaseMock.reset();
+    supabaseMock.setHandler((call) => {
+      if (hasOperation(call, 'maybeSingle')) return { data: { id: 'f-old' }, error: null };
+      return { data: { id: 'f-old' }, error: null };
+    });
+    await savePersonalFood('user-1', portion, '3242272270157', true);
+    expect(getOperationArgs(supabaseMock.callsFor('foods', 'update')[0], 'update')?.[0]).toMatchObject({ values_estimated: true });
+
+    supabaseMock.reset();
+    supabaseMock.setHandler(() => ({ data: { id: 'f-new' }, error: null }));
+    await savePersonalFood('user-1', portion);
+    expect(getOperationArgs(supabaseMock.callsFor('foods', 'insert')[0], 'insert')?.[0]).toMatchObject({ values_estimated: false });
+  });
+
   it('propage les erreurs Supabase', async () => {
     supabaseMock.setHandler(() => ({ data: null, error: { message: 'boom' } }));
     await expect(fetchFavorites('user-1')).rejects.toEqual({ message: 'boom' });

@@ -89,12 +89,14 @@ function normalizeOFFProduct(product: OFFProduct): NormalizedFood {
 /** Un produit sans calories ni macros ne peut pas être ajouté au journal */
 const hasNutrition = (food: NormalizedFood) => Boolean(food.kcal_per_100g || food.protein_g || food.fat_g || food.carbs_g);
 
-export async function searchOFF(term: string, signal?: AbortSignal): Promise<NormalizedFood[]> {
+/** `size` : nombre de résultats voulu (1 à 30, 10 par défaut côté proxy). */
+export async function searchOFF(term: string, signal?: AbortSignal, size?: number): Promise<NormalizedFood[]> {
   const trimmed = term.trim();
   if (trimmed.length < MIN_QUERY_LENGTH) return [];
 
+  const sizeParam = size === undefined ? '' : `&size=${size}`;
   const response = await fetch(
-    `${OFF_PROXY_SEARCH}?q=${encodeURIComponent(trimmed)}`,
+    `${OFF_PROXY_SEARCH}?q=${encodeURIComponent(trimmed)}${sizeParam}`,
     { signal },
   );
   if (!response.ok) {
@@ -109,8 +111,8 @@ export async function searchOFF(term: string, signal?: AbortSignal): Promise<Nor
 
 export type OFFProductLookup =
   | { status: 'found'; food: NormalizedFood }
-  /** Produit connu d'Open Food Facts, mais sans valeurs nutritionnelles */
-  | { status: 'no_nutrition'; name: string }
+  /** Produit connu d'Open Food Facts, mais sans valeurs nutritionnelles (de quoi chercher des produits similaires) */
+  | { status: 'no_nutrition'; code: string; name: string; brand?: string; servingGrams?: number }
   | { status: 'not_found' };
 
 /** Fiche produit à partir d'un code-barres (scanner). Lève une erreur si le service est indisponible. */
@@ -124,5 +126,12 @@ export async function fetchOFFProduct(code: string, signal?: AbortSignal): Promi
   const json = await response.json();
   if (!json?.product) return { status: 'not_found' };
   const food = normalizeOFFProduct(json.product as OFFProduct);
-  return hasNutrition(food) ? { status: 'found', food } : { status: 'no_nutrition', name: food.name };
+  if (hasNutrition(food)) return { status: 'found', food };
+  return {
+    status: 'no_nutrition',
+    code: food.offCode ?? code,
+    name: food.name,
+    ...(food.brand ? { brand: food.brand } : {}),
+    ...(food.servingGrams ? { servingGrams: food.servingGrams } : {}),
+  };
 }
