@@ -22,10 +22,15 @@ import { WaterCard } from '../Water/WaterCard';
 import { waterGoal } from '../../utils/water';
 import { GoalProgressCard } from './GoalProgressCard';
 import { AddEntryModal } from '../Journal/AddEntryModal';
+import { GuidedTour, TourFinishReason } from '../Tour/GuidedTour';
+import { TOUR_STEPS } from '../../utils/tour';
 
 interface DashboardProps {
   activeDate?: string;
   onActiveDateChange?: (date: string) => void;
+  /** Visite guidée demandée : affichée une fois le journal chargé (cibles présentes) */
+  tourActive?: boolean;
+  onTourFinish?: (reason: TourFinishReason) => void;
 }
 
 type AddEntryData = Omit<Entry, 'id' | 'user_id' | 'date' | 'created_at'>;
@@ -35,6 +40,8 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 export function Dashboard({
   activeDate,
   onActiveDateChange,
+  tourActive = false,
+  onTourFinish,
 }: DashboardProps) {
   const { user, profile, refreshProfile } = useAuth();
   const { preferences } = usePreferences();
@@ -273,6 +280,7 @@ export function Dashboard({
         <button
           type="button"
           onClick={() => setShowAddModal(true)}
+          data-tour="add"
           className="btn-brand hidden sm:flex items-center gap-2"
         >
           <Plus className="w-5 h-5" aria-hidden="true" />
@@ -368,7 +376,7 @@ export function Dashboard({
       {/* 1. Calories et macros du jour : l'information principale, en premier */}
       <div className="panel p-4">
         <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-8 p-2 sm:p-6">
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0" data-tour="calories">
             <CalorieRing
               consumed={summary.consumed.calories_kcal}
               target={summary.target.calories_kcal}
@@ -561,6 +569,7 @@ export function Dashboard({
           type="button"
           onClick={() => setShowAddModal(true)}
           aria-label="Ajouter un aliment"
+          data-tour="add"
           className="sm:hidden fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-on-color shadow-lg shadow-brand-600/30 transition-transform active:scale-95 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-300"
         >
           <Plus className="h-7 w-7" aria-hidden="true" />
@@ -573,6 +582,11 @@ export function Dashboard({
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddEntry}
         />
+      )}
+
+      {/* Visite guidée : seulement sur le journal chargé, cibles présentes */}
+      {tourActive && !showAddModal && (
+        <GuidedTour steps={TOUR_STEPS} onFinish={(reason) => onTourFinish?.(reason)} />
       )}
     </div>
   );

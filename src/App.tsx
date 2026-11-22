@@ -21,6 +21,11 @@ import { SettingsPage } from './components/Settings/SettingsPage';
 import { AboutPage } from './components/About/AboutPage';
 import { AppFooter } from './components/Layout/AppFooter';
 import { PreferencesProvider } from './contexts/PreferencesContext';
+import { usePreferences } from './contexts/usePreferences';
+import { WhatsNewDialog } from './components/WhatsNew/WhatsNewDialog';
+import { RELEASES } from './data/releases';
+import { APP_VERSION } from './utils/appInfo';
+import { isNewerVersion, unseenReleases } from './utils/releases';
 import { getTodayDate } from './utils/date';
 import { AboutSection, AppView, isAboutSection, isAppView, NAVIGATE_EVENT, NavigateEventDetail } from './utils/navigation';
 
@@ -38,6 +43,47 @@ function AppScreens() {
   const [aboutRequest, setAboutRequest] = useState(0);
   const [guestAbout, setGuestAbout] = useState<AboutSection | null>(null);
   const [dashboardDate, setDashboardDate] = useState<string>(() => getTodayDate());
+
+  // Au lancement : visite guidée si elle n'a pas été vue, sinon « Quoi de neuf ? »
+  // après une mise à jour. Jamais les deux dans la même session.
+  const { preferences, status: preferencesStatus, markTourCompleted, markVersionSeen } = usePreferences();
+  const [tourRequest, setTourRequest] = useState<'auto' | 'manual' | null>(null);
+  const [autoTourThisSession, setAutoTourThisSession] = useState(false);
+  const [whatsNewClosed, setWhatsNewClosed] = useState(false);
+  const startupReady = Boolean(user && profile) && preferencesStatus === 'ready';
+
+  // Nouvelle session (autre compte) : on repart de zéro
+  useEffect(() => {
+    setTourRequest(null);
+    setAutoTourThisSession(false);
+    setWhatsNewClosed(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!startupReady || autoTourThisSession || preferences.tourCompletedAt !== null) return;
+    setAutoTourThisSession(true);
+    setTourRequest('auto');
+  }, [startupReady, autoTourThisSession, preferences.tourCompletedAt]);
+
+  const handleTourFinish = () => {
+    const mode = tourRequest;
+    setTourRequest(null);
+    // Visite automatique : enregistrée (visite + version actuelle) ; un échec ne bloque rien
+    if (mode === 'auto') markTourCompleted().catch((error) => console.error('Visite non enregistrée :', error));
+  };
+
+  const showWhatsNew =
+    startupReady &&
+    !autoTourThisSession &&
+    tourRequest === null &&
+    !whatsNewClosed &&
+    preferences.tourCompletedAt !== null &&
+    isNewerVersion(APP_VERSION, preferences.lastSeenVersion);
+
+  const closeWhatsNew = () => {
+    setWhatsNewClosed(true);
+    markVersionSeen(APP_VERSION).catch((error) => console.error('Version vue non enregistrée :', error));
+  };
 
   // Changement de vue demandé par un composant (menu du compte, bandeau d'objectif…)
   useEffect(() => {
@@ -163,7 +209,12 @@ function AppScreens() {
       {/* pb-28 sur mobile : place pour la barre d'onglets fixée en bas et le bouton « Ajouter » */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-28 sm:py-8">
         {currentView === 'dashboard' && (
-          <Dashboard activeDate={dashboardDate} onActiveDateChange={setDashboardDate} />
+          <Dashboard
+            activeDate={dashboardDate}
+            onActiveDateChange={setDashboardDate}
+            tourActive={tourRequest !== null}
+            onTourFinish={handleTourFinish}
+          />
         )}
         {currentView === 'trends' && <WeeklyTrends />}
         {currentView === 'goal' && <GoalPage />}
@@ -185,6 +236,10 @@ function AppScreens() {
           }}
         />
       </main>
+
+      {showWhatsNew && (
+        <WhatsNewDialog releases={unseenReleases(RELEASES, preferences.lastSeenVersion)} onClose={closeWhatsNew} />
+      )}
     </div>
   );
 }

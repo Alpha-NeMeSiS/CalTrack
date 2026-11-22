@@ -34,8 +34,9 @@ const prefersReducedMotion = () => Boolean(window.matchMedia?.('(prefers-reduced
 const toRect = (rect: DOMRect): Rect => ({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
 
 export function GuidedTour({ steps, onFinish }: GuidedTourProps) {
-  // Étapes dont la cible est présente au démarrage (les autres sont sautées)
-  const [available] = useState(() => steps.filter((step) => findTourTarget(step.id)));
+  // Étapes dont la cible est présente (les autres sont sautées), cherchées une fois
+  // la page affichée : la visite apparaît en même temps que ses cibles
+  const [available, setAvailable] = useState<readonly TourStep[] | null>(null);
   const [index, setIndex] = useState(0);
   const [hole, setHole] = useState<Rect | null>(null);
   const [placement, setPlacement] = useState<BubblePlacement | null>(null);
@@ -52,12 +53,18 @@ export function GuidedTour({ steps, onFinish }: GuidedTourProps) {
     [onFinish]
   );
 
+  useLayoutEffect(() => {
+    setAvailable(steps.filter((step) => findTourTarget(step.id)));
+    // Recherche au démarrage seulement
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Aucune cible : rien à montrer
   useEffect(() => {
-    if (available.length === 0) finish('skipped');
-  }, [available.length, finish]);
+    if (available?.length === 0) finish('skipped');
+  }, [available, finish]);
 
-  const step = available[index];
+  const step = available?.[index];
 
   const measure = useCallback(() => {
     if (!step) return;
@@ -113,7 +120,7 @@ export function GuidedTour({ steps, onFinish }: GuidedTourProps) {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [finish]);
 
-  if (!step) return null;
+  if (!step || !available) return null;
 
   const isLast = index === available.length - 1;
   const titleId = 'guided-tour-title';

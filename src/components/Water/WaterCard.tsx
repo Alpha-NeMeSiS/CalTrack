@@ -38,7 +38,7 @@ export function WaterCard({ userId, date, goalMl }: WaterCardProps) {
   };
 
   return (
-    <section aria-labelledby="water-title" className="panel p-4 sm:p-6">
+    <section aria-labelledby="water-title" data-tour="water" className="panel p-4 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="water-title" className="card-title flex items-center gap-2">
           <Droplet className="h-5 w-5 text-info-600" aria-hidden="true" />
