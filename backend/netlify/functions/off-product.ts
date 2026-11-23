@@ -7,6 +7,8 @@
 // Réponse : { product: { code, product_name, product_name_fr, brands,
 // image_small_url, nutriments, serving_size } } ou 404 { error: 'not_found' }.
 
+import { fetchWithRetry } from '../lib/fetchWithRetry';
+
 const OFF_PRODUCT_ENDPOINT = 'https://world.openfoodfacts.org/api/v2/product';
 
 // EAN-8, UPC-A (12), EAN-13 et GTIN-14
@@ -63,7 +65,7 @@ export async function handler(event: NetlifyEvent): Promise<NetlifyResponse> {
   const url = `${OFF_PRODUCT_ENDPOINT}/${code}?${new URLSearchParams({ fields: OFF_FIELDS.join(',') })}`;
 
   try {
-    const offResponse = await fetch(url, {
+    const offResponse = await fetchWithRetry(url, {
       headers: {
         Accept: 'application/json',
         'User-Agent': 'CalTrack/1.0 (support@caltrack.app)',

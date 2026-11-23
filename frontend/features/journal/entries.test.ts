@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCopiedEntries, groupEntriesByMeal, parseServingGrams, scaleEntry } from './entries';
+import { buildCopiedEntries, groupEntriesByMeal, parseServingGrams, scaleEntry, servingUnit } from './entries';
 import { makeEntry } from '../../test/fixtures';
 
 describe('journal — fonctions pures', () => {
@@ -35,10 +35,32 @@ describe('journal — fonctions pures', () => {
     ['1 pot (125 g)', 125],
     ['30g', 30],
     ['2 biscuits (25,5 g)', 25.5],
-    ['250 ml', null],
+    // Boissons : 1 ml ≈ 1 g (jus, lait, sodas)
+    ['250 ml', 250],
+    ['150ml', 150],
+    ['20 cl', 200],
+    ['33cl', 330],
+    ['0,25 l', 250],
+    ['1 L', 1000],
+    ['1 verre (200 mL)', 200],
+    ['1 litre', 1000],
+    // Les grammes priment si les deux sont indiqués
+    ['1 portion (30 g) 25 ml', 30],
+    ['2 lamelles', null],
     ['', null],
     [undefined, null],
   ])('lit la portion « %s » → %s', (input, expected) => {
     expect(parseServingGrams(input)).toBe(expected);
+  });
+
+  it.each([
+    ['150 ml', 'ml'],
+    ['20 cl', 'ml'],
+    ['1 L', 'ml'],
+    ['1 pot (125 g)', 'g'],
+    ['1 portion (30 g) 25 ml', 'g'],
+    [undefined, 'g'],
+  ])('unité affichée pour la portion « %s » → %s', (input, expected) => {
+    expect(servingUnit(input)).toBe(expected);
   });
 });

@@ -13,6 +13,14 @@ export interface ReleaseNote {
 
 export const RELEASES: readonly ReleaseNote[] = [
   {
+    version: '2.2.1',
+    date: '2026-11-23',
+    items: [
+      'Boissons : la portion du fabricant en ml ou en cl est maintenant proposée, par exemple « 1 portion (200 ml) ».',
+      'Scanner et recherche : CalTrack réessaie tout seul quand Open Food Facts ne répond pas du premier coup.',
+    ],
+  },
+  {
     version: '2.2.0',
     date: '2026-11-22',
     items: [
