@@ -8,6 +8,8 @@
 // La réponse garde la forme attendue par le client (frontend/features/foods/openfoodfacts.ts) :
 // { products: [{ code, product_name, product_name_fr, brands, image_small_url, nutriments }] }
 
+import { fetchWithRetry } from '../lib/fetchWithRetry';
+
 const OFF_SEARCH_ENDPOINT = 'https://search.openfoodfacts.org/search';
 const MIN_QUERY_LENGTH = 3;
 const DEFAULT_PAGE_SIZE = 10;
@@ -96,7 +98,7 @@ export async function handler(event: NetlifyEvent): Promise<NetlifyResponse> {
   });
 
   try {
-    const offResponse = await fetch(`${OFF_SEARCH_ENDPOINT}?${params.toString()}`, {
+    const offResponse = await fetchWithRetry(`${OFF_SEARCH_ENDPOINT}?${params.toString()}`, {
       headers: {
         Accept: 'application/json',
         'User-Agent': 'CalTrack/1.0 (support@caltrack.app)',

@@ -49,6 +49,18 @@ vi.mock('../foods/FoodSearch', () => ({
       >
         Choisir un yaourt
       </button>
+      <button
+        type="button"
+        onClick={() =>
+          onSelect({
+            source: 'off', name: 'Jus multifruits', brand: 'Paquito', offCode: '3250391995684',
+            kcal_per_100g: 47, protein_g: 0.5, fat_g: 0, carbs_g: 10, fiber_g: 0,
+            servingGrams: 200, servingLabel: '20 cl',
+          })
+        }
+      >
+        Choisir un jus
+      </button>
       <button type="button" onClick={() => onCreateFood?.({ barcode: '3245678901236', name: 'Mystère' })}>
         Simuler un produit inconnu
       </button>
@@ -256,6 +268,17 @@ describe('AddEntryModal', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ajouter' }));
     expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ qty_grammes: 250, kcal: 150, label: 'Danone Yaourt nature' }));
+  });
+
+  it('propose la portion d’une boisson en ml (1 ml ≈ 1 g)', async () => {
+    render(<AddEntryModal date="2025-01-10" onAdd={vi.fn().mockResolvedValue(true)} onClose={vi.fn()} />);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Choisir un jus' }));
+    expect(screen.getByLabelText('Quantité (grammes)')).toHaveValue(200);
+    expect(screen.getByRole('button', { name: '1 portion (200 ml)' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByRole('button', { name: '2 portions' }));
+    expect(screen.getByLabelText('Quantité (grammes)')).toHaveValue(400);
   });
 
   it('se ferme avec la touche Échap', async () => {

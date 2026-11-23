@@ -14,6 +14,7 @@ import { useAuth } from '../../app/contexts/useAuth';
 import { usePreferences } from '../../app/contexts/usePreferences';
 import { getMealLabel } from '../settings/preferences';
 import type { AddEntryPayload, MealType } from './entries';
+import { servingUnit } from './entries';
 import { MealTypeSelector } from './MealTypeSelector';
 import { RecipesTab } from '../recipes/RecipesTab';
 import type { FoodDraft, NormalizedFood, NutritionPer100 } from '../foods/types';
@@ -550,7 +551,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
                       aria-pressed={quantity === selectedFood.servingGrams}
                       className={`rounded-full border px-3 py-1 text-xs font-medium ${quantity === selectedFood.servingGrams ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-line-strong text-body hover:bg-surface-muted'}`}
                     >
-                      1 portion ({selectedFood.servingGrams} g)
+                      1 portion ({selectedFood.servingGrams} {servingUnit(selectedFood.servingLabel)})
                     </button>
                     <button
                       type="button"

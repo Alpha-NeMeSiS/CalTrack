@@ -114,6 +114,24 @@ describe('fonction Netlify off-search (proxy Open Food Facts)', () => {
     expect(JSON.parse(response.body)).toEqual({ error: 'Open Food Facts upstream error', status: 503 });
   });
 
+  it('réessaie une fois quand OFF a une panne passagère', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 503, json: () => Promise.resolve({}) })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ hits: [{ code: '3250390258957', product_name: 'Nectar multifruits', nutriments: {} }] }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const response = await handler({ queryStringParameters: { q: 'paquito multifruits' } });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).products[0].product_name).toBe('Nectar multifruits');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('renvoie 503 (non mis en cache) si OFF est injoignable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('ECONNRESET')));
 

@@ -76,15 +76,44 @@ describe('off-product', () => {
     expect(JSON.parse(response.body)).toEqual({ error: 'not_found' });
   });
 
-  it('ne met pas en cache une panne d’Open Food Facts', async () => {
-    fetchMock.mockResolvedValueOnce(new Response('busy', { status: 503 }));
+  it('ne met pas en cache une panne d’Open Food Facts qui dure (deux essais)', async () => {
+    fetchMock.mockImplementation(() => Promise.resolve(new Response('busy', { status: 503 })));
     const unavailable = await call('3017620422003');
     expect(unavailable.statusCode).toBe(502);
     expect(unavailable.headers['Cache-Control']).toBe('no-store');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
 
-    fetchMock.mockRejectedValueOnce(new Error('network'));
+    fetchMock.mockReset();
+    fetchMock.mockRejectedValue(new Error('network'));
     const offline = await call('3017620422003');
     expect(offline.statusCode).toBe(503);
     expect(offline.headers['Cache-Control']).toBe('no-store');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('réessaie une fois quand Open Food Facts a une panne passagère', async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response('bad gateway', { status: 502 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: 1, product: { code: '3250393399282', product_name: 'Paquito' } }), { status: 200 }),
+      );
+    const response = await call('3250393399282');
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).product.product_name).toBe('Paquito');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('réessaie aussi après une coupure réseau', async () => {
+    fetchMock
+      .mockRejectedValueOnce(new Error('ECONNRESET'))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 1, product: { code: '3017620422003' } }), { status: 200 }));
+    expect((await call('3017620422003')).statusCode).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('ne réessaie pas un produit inconnu', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ status: 0 }), { status: 404 }));
+    expect((await call('3245678901236')).statusCode).toBe(404);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

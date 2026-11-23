@@ -9,7 +9,12 @@ Toutes les évolutions notables de CalTrack. Les numéros suivent le
 
 La version affichée dans l'app (pied de page, page « À propos ») est lue dans `package.json`.
 
-## [Non publié]
+## [2.2.1] — 23 novembre 2026
+
+### Corrections
+
+- **Boissons** : les portions du fabricant en volume (`ml`, `cl`, `l`) sont lues, avec 1 ml ≈ 1 g (jus, lait, sodas). Le bouton affiche « 1 portion (200 ml) ». Avant, seules les portions en grammes étaient proposées.
+- **Open Food Facts** : les fonctions `off-product` et `off-search` réessaient une fois, après 300 ms, en cas de panne passagère (réponse 5xx ou 429, ou coupure réseau), avant d'afficher « indisponible ». Un produit inconnu (404) n'est pas réessayé.
 
 ### Technique
 

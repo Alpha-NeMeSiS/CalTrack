@@ -88,10 +88,31 @@ export function buildCopiedEntries(entries: readonly Entry[], userId: string, da
  * (« 125 g », « 1 pot (125 g) », « 30g », « 2 biscuits (25,5 g) »).
  * Les volumes (ml, cl) et unités inconnues sont ignorés.
  */
+const GRAMS = /(\d+(?:[.,]\d+)?)\s*(?:g|gr|grammes?)\b/i;
+// Boissons : ml, cl, l (ou litre), converties en ml
+const VOLUME = /(\d+(?:[.,]\d+)?)\s*(ml|cl|l|litres?)\b/i;
+const ML_PER_UNIT: Record<string, number> = { ml: 1, cl: 10, l: 1000, litre: 1000, litres: 1000 };
+
+const toNumber = (text: string) => Number(text.replace(',', '.'));
+const plausible = (value: number) => (Number.isFinite(value) && value > 0 && value <= 2000 ? value : null);
+
+/**
+ * Portion du fabricant en grammes (« 1 pot (125 g) » → 125). Pour une boisson,
+ * la portion en volume est convertie avec 1 ml ≈ 1 g (« 20 cl » → 200), ce qui
+ * est juste pour les jus, le lait ou les sodas. Les grammes priment si les deux
+ * sont indiqués.
+ */
 export function parseServingGrams(servingSize?: string | null): number | null {
   if (!servingSize) return null;
-  const match = /(\d+(?:[.,]\d+)?)\s*(?:g|gr|grammes?)\b/i.exec(servingSize);
-  if (!match) return null;
-  const grams = Number(match[1].replace(',', '.'));
-  return Number.isFinite(grams) && grams > 0 && grams <= 2000 ? grams : null;
+  const grams = GRAMS.exec(servingSize);
+  if (grams) return plausible(toNumber(grams[1]));
+  const volume = VOLUME.exec(servingSize);
+  if (!volume) return null;
+  return plausible(Math.round(toNumber(volume[1]) * ML_PER_UNIT[volume[2].toLowerCase()]));
+}
+
+/** Unité à afficher pour la portion : « ml » pour une boisson, sinon « g ». */
+export function servingUnit(servingSize?: string | null): 'g' | 'ml' {
+  if (!servingSize || GRAMS.test(servingSize)) return 'g';
+  return VOLUME.test(servingSize) ? 'ml' : 'g';
 }
