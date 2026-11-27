@@ -62,6 +62,12 @@ describe('en-têtes de sécurité', () => {
     expect(directive('img-src')).toContain('blob:');
   });
 
+  it('autorise la barre de revue des prévisualisations Netlify, et rien d’autre en iframe', () => {
+    // Vérifié sur la prévisualisation de la PR #63 : sans cette directive, la
+    // CSP bloquait l'iframe app.netlify.com injectée par Netlify.
+    expect(directive('frame-src')).toEqual(["'self'", 'https://app.netlify.com']);
+  });
+
   it('interdit l’affichage dans une iframe', () => {
     expect(directive('frame-ancestors')).toContain("'none'");
     expect(netlifyToml).toContain('X-Frame-Options = "DENY"');

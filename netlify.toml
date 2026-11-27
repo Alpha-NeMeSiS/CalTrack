@@ -34,7 +34,13 @@
 # sombre). SI CE SCRIPT EST MODIFIÉ, il faut recalculer l'empreinte, sinon le
 # navigateur le bloque et le flash revient :
 #   python3 -c "import re,hashlib,base64;b=re.search(r'<script>(.*?)</script>',open('index.html').read(),re.S).group(1);print('sha256-'+base64.b64encode(hashlib.sha256(b.encode()).digest()).decode())"
-# Le test e2e « en-têtes de sécurité » vérifie que l'empreinte correspond.
+# Le test « en-têtes de sécurité » (backend/netlify/tests) vérifie l'empreinte.
+#
+# frame-src https://app.netlify.com : la barre de revue que Netlify injecte dans
+# les prévisualisations de PR s'affiche dans un iframe de app.netlify.com. Sans
+# cette directive, la CSP la bloquait. frame-src ne règle que ce que NOTRE page
+# embarque (pas qui peut nous embarquer : c'est frame-ancestors 'none') ; la
+# production n'embarque rien de Netlify, donc aucun effet sur elle.
 [[headers]]
   for = "/*"
   [headers.values]
@@ -44,7 +50,7 @@
     # Le scanner de code-barres a besoin de la caméra ; rien d'autre.
     Permissions-Policy = "camera=(self), microphone=(), geolocation=(), payment=()"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-KBZ3SZLCRiaxvAre9Sxj299h4CiabYI1gfJ3eADdoTc='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://images.openfoodfacts.org https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-KBZ3SZLCRiaxvAre9Sxj299h4CiabYI1gfJ3eADdoTc='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://images.openfoodfacts.org https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; frame-src 'self' https://app.netlify.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 
 # PWA : le service worker et le manifeste doivent toujours être revalidés,
 # sinon une ancienne version du service worker resterait active.
