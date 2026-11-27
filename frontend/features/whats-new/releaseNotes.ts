@@ -18,6 +18,7 @@ export const RELEASES: readonly ReleaseNote[] = [
     items: [
       'Recherche de produits par nom : les produits du supermarché sont de nouveau trouvés, avec leurs valeurs.',
       'Vous pouvez chercher avec la marque (« jus multifruits Paquito ») et avec les petits mots (« jus de pomme »).',
+      'Un produit affiché « Valeurs chargées au choix » se choisit normalement : ses valeurs sont chargées à ce moment-là, comme après un scan.',
     ],
   },
   {

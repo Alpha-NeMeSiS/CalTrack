@@ -44,7 +44,10 @@ export function hasNutriments(nutriments: Nutriments | null | undefined): boolea
   );
 }
 
-/** Valeurs et portion d'un produit, ou null si la fiche est introuvable ou indisponible. */
+/**
+ * Valeurs et portion d'un produit, ou null si la fiche est introuvable.
+ * Lève une erreur si Open Food Facts ne répond pas (délai dépassé, 429, 5xx…).
+ */
 export async function fetchProductNutrition(
   code: string
 ): Promise<{ nutriments: Nutriments; serving_size?: string } | null> {
@@ -53,7 +56,10 @@ export async function fetchProductNutrition(
     headers: { Accept: 'application/json', 'User-Agent': OFF_USER_AGENT },
     signal: AbortSignal.timeout(PRODUCT_TIMEOUT_MS),
   });
-  if (!response.ok) return null;
+  // Fiche inexistante : réponse définitive. Autre erreur (429 trop de requêtes,
+  // panne…) : passagère, on la signale pour ne pas la garder en mémoire.
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const payload = (await response.json()) as { status?: number; product?: { nutriments?: Nutriments; serving_size?: string } };
   if (payload?.status !== 1 || !payload.product?.nutriments) return null;
   return {
@@ -64,7 +70,8 @@ export async function fetchProductNutrition(
 
 /**
  * Comme fetchProductNutrition, avec la mémoire : une fiche lue (avec ou sans
- * valeurs) n'est pas redemandée pendant 30 minutes. Une erreur n'est pas retenue.
+ * valeurs) n'est pas redemandée pendant 30 minutes. Une erreur (fiche refusée
+ * ou indisponible) n'est pas retenue : la recherche suivante la redemande.
  */
 export async function getProductNutrition(code: string): Promise<{ nutriments: Nutriments; serving_size?: string } | null> {
   const now = Date.now();

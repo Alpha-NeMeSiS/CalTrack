@@ -127,6 +127,92 @@ describe('FoodSearch', () => {
     expect(await screen.findByText('Service OFF indisponible, réessayez dans un instant.')).toBeInTheDocument();
   });
 
+  describe('produit trouvé par son nom sans ses valeurs (index Open Food Facts incomplet)', () => {
+    const pastaboxSansValeurs: NormalizedFood = {
+      source: 'off',
+      name: 'Sodebo pastabox 330g',
+      brand: 'Sodebo',
+      offCode: '3242272270157',
+      kcal_per_100g: 0,
+      protein_g: 0,
+      fat_g: 0,
+      carbs_g: 0,
+      fiber_g: 0,
+      valuesPending: true,
+    };
+    const pastabox: NormalizedFood = {
+      ...pastaboxSansValeurs,
+      valuesPending: undefined,
+      kcal_per_100g: 127,
+      protein_g: 5.6,
+      fat_g: 3.8,
+      carbs_g: 17,
+      fiber_g: 1.4,
+    };
+
+    async function searchPastabox(user: ReturnType<typeof userEvent.setup>, input: HTMLElement) {
+      await user.click(screen.getByRole('tab', { name: 'Produits supermarché' }));
+      await user.type(input, 'pastabox bolognaise');
+      await wait(1300);
+      return screen.findByRole('option', { name: /Sodebo pastabox 330g/ });
+    }
+
+    it('le propose sans afficher 0 kcal', async () => {
+      mockedSearchOFF.mockResolvedValue([pastaboxSansValeurs]);
+      const { user, input } = setup();
+
+      const option = await searchPastabox(user, input);
+
+      expect(option).toHaveTextContent('Valeurs chargées au choix');
+      expect(option).not.toHaveTextContent('0 kcal');
+    });
+
+    it('charge sa fiche quand on le choisit, puis le sélectionne', async () => {
+      mockedSearchOFF.mockResolvedValue([pastaboxSansValeurs]);
+      mockedFetchOFFProduct.mockResolvedValue({ status: 'found', food: pastabox });
+      const { user, input, onSelect } = setup();
+
+      await user.click(await searchPastabox(user, input));
+
+      expect(mockedFetchOFFProduct).toHaveBeenCalledWith('3242272270157', expect.any(AbortSignal));
+      await vi.waitFor(() => expect(onSelect).toHaveBeenCalledWith(pastabox));
+      expect(onSelect).toHaveBeenCalledTimes(1);
+    });
+
+    it('le charge aussi au clavier (Entrée)', async () => {
+      mockedSearchOFF.mockResolvedValue([pastaboxSansValeurs]);
+      mockedFetchOFFProduct.mockResolvedValue({ status: 'found', food: pastabox });
+      const { user, input, onSelect } = setup();
+
+      await searchPastabox(user, input);
+      await user.keyboard('{Enter}');
+
+      await vi.waitFor(() => expect(onSelect).toHaveBeenCalledWith(pastabox));
+    });
+
+    it('signale une fiche sans valeurs, comme après un scan', async () => {
+      mockedSearchOFF.mockResolvedValue([pastaboxSansValeurs]);
+      mockedFetchOFFProduct.mockResolvedValue({ status: 'no_nutrition', code: '3242272270157', name: 'Sodebo pastabox 330g' });
+      const { user, input, onSelect } = setup();
+
+      await user.click(await searchPastabox(user, input));
+
+      expect(await screen.findByText(/« Sodebo pastabox 330g » est dans Open Food Facts, mais sans valeurs nutritionnelles/)).toBeInTheDocument();
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it('signale une panne pendant le chargement de la fiche', async () => {
+      mockedSearchOFF.mockResolvedValue([pastaboxSansValeurs]);
+      mockedFetchOFFProduct.mockRejectedValue(new Error('503'));
+      const { user, input, onSelect } = setup();
+
+      await user.click(await searchPastabox(user, input));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Open Food Facts est indisponible');
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+  });
+
   it('affiche "Aucun résultat" quand la recherche ne trouve rien', async () => {
     mockedSearchCiqual.mockResolvedValue([]);
     const { user, input } = setup();

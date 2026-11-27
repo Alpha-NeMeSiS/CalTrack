@@ -106,7 +106,13 @@ export async function searchOFF(term: string, signal?: AbortSignal, size?: numbe
   const json = await response.json();
   const products: OFFProduct[] = Array.isArray(json?.products) ? json.products : [];
 
-  return products.map(normalizeOFFProduct).filter(hasNutrition);
+  // Sans valeurs mais avec un code-barres : le produit reste proposé et sa
+  // fiche est chargée quand on le choisit (l'index de recherche n'a plus les
+  // valeurs de tous les produits, et le proxy ne peut pas toujours les compléter).
+  return products.map(normalizeOFFProduct).flatMap((food) => {
+    if (hasNutrition(food)) return [food];
+    return food.offCode ? [{ ...food, valuesPending: true }] : [];
+  });
 }
 
 export type OFFProductLookup =

@@ -17,6 +17,7 @@ function mockFetchJson(body: unknown, status = 200) {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   clearNutritionCache();
 });
 
@@ -212,6 +213,7 @@ describe('fonction Netlify off-search (proxy Open Food Facts)', () => {
         .mockResolvedValueOnce(searchResponse([{ code: '1', product_name: 'Mystère', nutriments: null }]))
         .mockRejectedValueOnce(new Error('ECONNRESET'));
       vi.stubGlobal('fetch', fetchMock);
+      vi.spyOn(console, 'warn').mockImplementation(() => {}); // signalé dans les journaux
 
       const response = await handler({ queryStringParameters: { q: 'mystere' } });
 
@@ -250,6 +252,41 @@ describe('fonction Netlify off-search (proxy Open Food Facts)', () => {
       const productCalls = fetchMock.mock.calls.filter(([url]) => String(url).includes('/api/v2/product/'));
       expect(productCalls).toHaveLength(1);
       expect(JSON.parse(second.body).products[0].nutriments).toEqual({ 'energy-kcal_100g': 37 });
+    });
+
+    it('redemande une fiche refusée (trop de requêtes) au lieu de la garder 30 min sans valeurs', async () => {
+      const hits = [{ code: '3242272270157', product_name: 'Sodebo pastabox 330g', nutriments: null }];
+      const tooManyRequests = { ok: false, status: 429, json: () => Promise.resolve({}) };
+      let productCalls = 0;
+      const fetchMock = vi.fn((url: string) => {
+        if (!url.includes('/api/v2/product/')) return Promise.resolve(searchResponse(hits));
+        productCalls += 1;
+        return Promise.resolve(
+          productCalls === 1 ? tooManyRequests : productResponse({ nutriments: { 'energy-kcal_prepared_100g': 127 } })
+        );
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const first = await handler({ queryStringParameters: { q: 'pastabox' } });
+      const second = await handler({ queryStringParameters: { q: 'pastabox' } });
+
+      expect(JSON.parse(first.body).products[0].nutriments).toEqual({});
+      expect(productCalls).toBe(2);
+      expect(JSON.parse(second.body).products[0].nutriments).toEqual({ 'energy-kcal_prepared_100g': 127 });
+    });
+
+    it('signale dans les journaux une fiche qui n’a pas pu être lue', async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(searchResponse([{ code: '1', product_name: 'Mystère', nutriments: null }]))
+        .mockResolvedValueOnce({ ok: false, status: 429, json: () => Promise.resolve({}) });
+      vi.stubGlobal('fetch', fetchMock);
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await handler({ queryStringParameters: { q: 'mystere' } });
+
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('HTTP 429'));
     });
 
     it('nettoie les marques au format « xx: » de l’index', async () => {

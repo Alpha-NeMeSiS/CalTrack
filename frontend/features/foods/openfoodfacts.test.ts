@@ -86,7 +86,7 @@ describe('searchOFF', () => {
     expect(food.kcal_per_100g).toBe(100);
   });
 
-  it('écarte les produits sans aucune valeur nutritionnelle', async () => {
+  it('écarte les produits sans aucune valeur nutritionnelle ni code-barres', async () => {
     mockFetchJson({
       products: [
         { product_name: 'Vide', nutriments: {} },
@@ -97,6 +97,23 @@ describe('searchOFF', () => {
     const results = await searchOFF('test');
     expect(results).toHaveLength(1);
     expect(results[0].name).toBe('Produit'); // nom par défaut
+    expect(results[0].valuesPending).toBeUndefined();
+  });
+
+  it('garde un produit sans valeurs mais avec un code-barres : sa fiche sera chargée au choix', async () => {
+    mockFetchJson({
+      products: [{ code: '3242272270157', product_name: 'Sodebo pastabox 330g', brands: 'Sodebo', nutriments: {} }],
+    });
+    expect(await searchOFF('pastabox bolognaise')).toEqual([
+      expect.objectContaining({
+        source: 'off',
+        name: 'Sodebo pastabox 330g',
+        brand: 'Sodebo',
+        offCode: '3242272270157',
+        kcal_per_100g: 0,
+        valuesPending: true,
+      }),
+    ]);
   });
 
   it('lève une erreur si le proxy répond en erreur (affichée par FoodSearch)', async () => {

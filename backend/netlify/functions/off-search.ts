@@ -173,8 +173,10 @@ export async function handler(event: NetlifyEvent): Promise<NetlifyResponse> {
           if (!details || !hasNutriments(details.nutriments)) return;
           product.nutriments = details.nutriments;
           if (!product.serving_size && details.serving_size) product.serving_size = details.serving_size;
-        } catch {
-          // Fiche indisponible : le produit reste sans valeurs (écarté par l'app)
+        } catch (error) {
+          // Fiche indisponible : le produit reste sans valeurs, l'app chargera
+          // sa fiche quand on le choisira. Visible dans les journaux Netlify.
+          console.warn(`off-search : fiche ${product.code} non lue (${error instanceof Error ? error.message : String(error)})`);
         }
       })
     );
