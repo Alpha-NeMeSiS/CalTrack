@@ -4,7 +4,7 @@ Application web de suivi calorique construite avec **React + TypeScript + Vite**
 
 ## Version
 
-Version actuelle : **2.2.1** (V2 : nouvelle direction artistique, scanner de code-barres, recettes, eau, pesées… ; 2.1 : visite guidée, Guide, fenêtre « Quoi de neuf ? » ; 2.2 : estimation d'un produit scanné sans valeurs). Le détail des évolutions est dans [CHANGELOG.md](CHANGELOG.md).
+Version actuelle : **2.2.2** (V2 : nouvelle direction artistique, scanner de code-barres, recettes, eau, pesées… ; 2.1 : visite guidée, Guide, fenêtre « Quoi de neuf ? » ; 2.2 : estimation d'un produit scanné sans valeurs). Le détail des évolutions est dans [CHANGELOG.md](CHANGELOG.md).
 
 Pour une nouvelle version, mettre à jour `package.json` (`npm version minor --no-git-tag-version` pour une nouvelle fonctionnalité, `patch` pour un correctif, `major` pour une refonte) ajouter une entrée au CHANGELOG, et écrire les notes pour l'utilisateur dans `frontend/features/whats-new/releaseNotes.ts` (affichées par la fenêtre « Quoi de neuf ? » ; un test refuse une version sans notes). La version affichée dans l'app en découle automatiquement.
 
@@ -77,7 +77,7 @@ npm run dev
 
 Par défaut, Vite démarre sur `http://localhost:5173`.
 
-> **Recherche Open Food Facts en local** : elle passe par la fonction Netlify `backend/netlify/functions/off-search.ts` (route `/api/off/search`, voir `netlify.toml`), qui interroge le service de recherche `search.openfoodfacts.org` (l'ancien `cgi/search.pl` est trop limité en débit et répond souvent 503). Avec `npm run dev` seul, cette route n'existe pas et la recherche « Produits supermarché » affiche « Service OFF indisponible ». Pour la tester en local, lancer le projet avec la [Netlify CLI](https://docs.netlify.com/cli/get-started/) :
+> **Recherche Open Food Facts en local** : elle passe par la fonction Netlify `backend/netlify/functions/off-search.ts` (route `/api/off/search`, voir `netlify.toml`), qui interroge le service de recherche `search.openfoodfacts.org` (l'ancien `cgi/search.pl` est trop limité en débit et répond souvent 503). Depuis fin novembre 2026, cet index ne contient plus les valeurs nutritionnelles de la plupart des produits et combine les mots en ET. Le proxy complète donc les valeurs depuis la fiche produit (10 au plus par recherche, gardées en mémoire 30 minutes), cherche chaque mot dans le nom ou la marque et ignore les petits mots (« de », « à »…). Avec `npm run dev` seul, cette route n'existe pas et la recherche « Produits supermarché » affiche « Service OFF indisponible ». Pour la tester en local, lancer le projet avec la [Netlify CLI](https://docs.netlify.com/cli/get-started/) :
 >
 > ```bash
 > npx netlify dev
@@ -294,7 +294,7 @@ Onglet « Recettes » de « Ajouter un aliment » :
 
 ## Pied de page et page « À propos »
 
-- **Pied de page** sous chaque vue et sur l'écran de connexion : « CalTrack v2.2.1 · Guide · À propos · Vos données · Sources ». Une fois connecté, il cite aussi les sources nutritionnelles (Ciqual, Open Food Facts).
+- **Pied de page** sous chaque vue et sur l'écran de connexion : « CalTrack v2.2.2 · Guide · À propos · Vos données · Sources ». Une fois connecté, il cite aussi les sources nutritionnelles (Ciqual, Open Food Facts).
 - **Page « À propos »** en quatre sections : l'application (version), santé (estimations, pas un dispositif médical), vos données (ce qui est enregistré, où, qui y a accès, combien de temps ; liens vers l'export et la suppression une fois connecté) et sources (Ciqual sous Licence Ouverte 2.0, Open Food Facts sous ODbL, formules utilisées). Chaque lien du pied de page ouvre la page sur sa section.
 - **Version** : lue dans `package.json` au build (`__APP_VERSION__`, exposée par `frontend/app/appInfo.ts`) ; changer `version` suffit.
 

@@ -97,12 +97,16 @@ describe('nameTokens', () => {
 });
 
 describe('brandFilter', () => {
-  it('filtre sur la première marque, en minuscules', () => {
-    expect(brandFilter('Sodebo, PastaBOX')).toBe('brands:"sodebo"');
+  it('filtre sur la première marque, sous ses formes de l’index (avec ou sans « xx: »)', () => {
+    expect(brandFilter('Sodebo, PastaBOX')).toBe(
+      '(brands:"Sodebo" OR brands:"sodebo" OR brands:"xx:Sodebo" OR brands:"xx:sodebo")'
+    );
   });
 
-  it('garde les accents et retire les guillemets', () => {
-    expect(brandFilter('Côté "Snack"')).toBe('brands:"côté snack"');
+  it('garde les accents, retire les guillemets et ajoute la forme courte de la marque', () => {
+    expect(brandFilter('Côté "Snack"')).toBe(
+      '(brands:"Côté Snack" OR brands:"côté snack" OR brands:"xx:Côté Snack" OR brands:"xx:côté snack" OR brands:"xx:cote-snack")'
+    );
   });
 
   it('ne filtre pas sans marque', () => {
@@ -230,8 +234,13 @@ describe('findSimilarProducts', () => {
 
     const estimate = await findSimilarProducts(TARGET, controller.signal);
 
-    expect(mockedSearchOFF).toHaveBeenCalledWith('brands:"sodebo" pastabox fusilli bolognaise', controller.signal, 30);
-    expect(mockedSearchOFF).toHaveBeenCalledWith('pastabox fusilli bolognaise', controller.signal, 30);
+    // L'index combine les mots en ET : les mots du nom sont reliés par OR
+    expect(mockedSearchOFF).toHaveBeenCalledWith(
+      '(brands:"Sodebo" OR brands:"sodebo" OR brands:"xx:Sodebo" OR brands:"xx:sodebo") AND (pastabox OR fusilli OR bolognaise)',
+      controller.signal,
+      30
+    );
+    expect(mockedSearchOFF).toHaveBeenCalledWith('pastabox OR fusilli OR bolognaise', controller.signal, 30);
     expect(estimate?.used[0].food.name).toBe('Pasta Box fusilli à la bolognaise');
     expect(estimate?.choices.map((item) => item.food.name)).toEqual(['Pasta Box fusilli à la bolognaise', 'Box fusilli bolognaise']);
   });
@@ -252,7 +261,7 @@ describe('findSimilarProducts', () => {
     mockedSearchOFF.mockResolvedValue([belleFrance]);
     await findSimilarProducts({ code: '1', name: 'Box fusilli bolognaise' });
     expect(mockedSearchOFF).toHaveBeenCalledTimes(1);
-    expect(mockedSearchOFF).toHaveBeenCalledWith('box fusilli bolognaise', undefined, 30);
+    expect(mockedSearchOFF).toHaveBeenCalledWith('box OR fusilli OR bolognaise', undefined, 30);
   });
 
   it('ne cherche rien si le nom n’a pas de mot utile', async () => {

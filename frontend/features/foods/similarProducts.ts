@@ -56,16 +56,21 @@ export function nameTokens(name: string, brand?: string): string[] {
     .slice(0, MAX_TOKENS);
 }
 
-/** Filtre de recherche sur la première marque (accents gardés, guillemets retirés). */
+/**
+ * Filtre de recherche sur la première marque. L'index stocke la marque telle
+ * quelle (« sodebo », casse comprise) ou, depuis fin novembre 2026, avec le
+ * préfixe « xx: » (« xx:Côté Snack », « xx:cote-snack ») : on cherche toutes ces formes.
+ */
 export function brandFilter(brand?: string): string | null {
   const first = brandsOf(brand)[0];
   if (!first) return null;
-  const cleaned = first
-    .toLowerCase()
-    .replace(/["\\]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return cleaned ? `brands:"${cleaned}"` : null;
+  const cleaned = first.replace(/["\\]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!cleaned) return null;
+  const lower = cleaned.toLowerCase();
+  const slug = stripAccents(lower).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const forms = [cleaned, lower, `xx:${cleaned}`, `xx:${lower}`, `xx:${slug}`];
+  const unique = forms.filter((form, index) => form !== 'xx:' && forms.indexOf(form) === index);
+  return `(${unique.map((form) => `brands:"${form}"`).join(' OR ')})`;
 }
 
 /** Mots du nom d'un produit trouvé, avec les mots accolés deux à deux (« Pasta Box » → « pastabox »). */
@@ -184,9 +189,10 @@ export function estimateSummary(estimate: SimilarEstimate): string {
 export async function findSimilarProducts(target: SimilarTarget, signal?: AbortSignal): Promise<SimilarEstimate | null> {
   const tokens = nameTokens(target.name, target.brand);
   if (tokens.length === 0) return null;
-  const terms = tokens.join(' ');
+  // L'index combine les mots en ET : on les relie par OR pour trouver les produits proches
+  const terms = tokens.join(' OR ');
   const brand = brandFilter(target.brand);
-  const queries = brand ? [`${brand} ${terms}`, terms] : [terms];
+  const queries = brand ? [`${brand} AND (${terms})`, terms] : [terms];
 
   const results = await Promise.allSettled(queries.map((query) => searchOFF(query, signal, SEARCH_SIZE)));
   if (signal?.aborted) {
