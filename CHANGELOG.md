@@ -9,6 +9,18 @@ Toutes les évolutions notables de CalTrack. Les numéros suivent le
 
 La version affichée dans l'app (pied de page, page « À propos ») est lue dans `package.json`.
 
+## [2.2.2] — 27 novembre 2026
+
+### Corrections
+
+- **Recherche Open Food Facts par nom**, cassée par un changement du service `search.openfoodfacts.org` (fin novembre 2026). Son index ne contient plus les valeurs nutritionnelles de la plupart des produits, il stocke les marques au format `xx:marque` et il combine les mots en ET. CalTrack écartait donc presque tous les résultats.
+  - Le proxy `off-search` complète les valeurs manquantes depuis la fiche produit (10 au plus par recherche, gardées en mémoire 30 minutes pour ménager la limite de requêtes d'Open Food Facts).
+  - Les marques sont nettoyées (`xx:ferrero` → « Ferrero »).
+  - Chaque mot est cherché dans le nom **ou** la marque, et les petits mots (« de », « à »…) sont ignorés : « jus de pomme » donnait 0 résultat.
+  - Depuis les serveurs de Netlify, Open Food Facts refuse parfois une partie de ces fiches (trop de requêtes). Un produit dont la fiche n'a pas pu être lue n'est donc plus écarté : il s'affiche avec « Valeurs chargées au choix ». Quand on le choisit, sa fiche est chargée comme après un scan (estimation d'après des produits similaires si elle n'a pas de valeurs). Exemple : « pastabox bolognaise ». Un produit dont la fiche est lue mais vide reste écarté.
+  - Une fiche refusée (429, panne) n'est plus gardée en mémoire 30 minutes comme « sans valeurs » : la recherche suivante la redemande. Le refus est noté dans les journaux de la fonction.
+- **Produits similaires** (2.2.0) : le filtre de marque cherche aussi les formes `xx:` de l'index, et les mots du nom sont reliés par OR.
+
 ## [2.2.1] — 23 novembre 2026
 
 ### Corrections

@@ -28,6 +28,11 @@ export interface NormalizedFood {
   barcode?: string;
   /** Aliment personnel aux valeurs estimées (badge « Estimé ») */
   estimated?: boolean;
+  /**
+   * Produit Open Food Facts trouvé par son nom, arrivé sans ses valeurs : sa
+   * fiche est chargée quand on le choisit (comme après un scan).
+   */
+  valuesPending?: boolean;
 }
 
 /** Valeurs nutritionnelles pour 100 g */

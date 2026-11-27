@@ -29,7 +29,7 @@ describe('navigation', () => {
 });
 
 describe('appInfo', () => {
-  it('lit la version de package.json : 2.2.1 (portions des boissons, nouvel essai Open Food Facts)', () => {
-    expect(APP_VERSION).toBe('2.2.1');
+  it('lit la version de package.json : 2.2.2 (recherche Open Food Facts réparée)', () => {
+    expect(APP_VERSION).toBe('2.2.2');
   });
 });

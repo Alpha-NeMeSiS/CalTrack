@@ -186,18 +186,14 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
     [onSelect],
   );
 
-  const handleBarcode = useCallback(
-    async (code: string) => {
-      setScannerOpen(false);
-      // Produit déjà créé dans mes aliments : inutile d'interroger Open Food Facts
-      const personal = personalFoodsRef.current.find((food) => food.barcode === code);
-      if (personal) {
-        setBarcodeMessage(null);
-        setSimilar(null);
-        handleSelect(personal);
-        return;
-      }
-      setBarcodeMessage({ type: 'info', text: `Recherche du produit ${code}…` });
+  /**
+   * Fiche Open Food Facts d'un code-barres (scan, ou produit trouvé par son nom
+   * sans ses valeurs) : sélectionne le produit, ou propose de le créer / de
+   * l'estimer d'après des produits similaires s'il n'a pas de valeurs.
+   */
+  const loadOFFProduct = useCallback(
+    async (code: string, loadingText: string) => {
+      setBarcodeMessage({ type: 'info', text: loadingText });
       setSimilar(null);
       barcodeAbortRef.current?.abort();
       const controller = new AbortController();
@@ -262,6 +258,40 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
     [handleSelect],
   );
 
+  const handleBarcode = useCallback(
+    (code: string) => {
+      setScannerOpen(false);
+      // Produit déjà créé dans mes aliments : inutile d'interroger Open Food Facts
+      const personal = personalFoodsRef.current.find((food) => food.barcode === code);
+      if (personal) {
+        setBarcodeMessage(null);
+        setSimilar(null);
+        handleSelect(personal);
+        return;
+      }
+      void loadOFFProduct(code, `Recherche du produit ${code}…`);
+    },
+    [handleSelect, loadOFFProduct],
+  );
+
+  /** Choix d'un résultat : un produit arrivé sans ses valeurs charge d'abord sa fiche. */
+  const handlePick = useCallback(
+    (food: NormalizedFood) => {
+      if (!food.valuesPending || !food.offCode) {
+        handleSelect(food);
+        return;
+      }
+      abortRef.current?.abort();
+      setQuery('');
+      setItems([]);
+      setStatusMessage(null);
+      setHighlightedIndex(-1);
+      setLoading(false);
+      void loadOFFProduct(food.offCode, `Chargement de « ${food.name} »…`);
+    },
+    [handleSelect, loadOFFProduct],
+  );
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
       if (items.length === 0) return;
@@ -282,7 +312,7 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
         event.preventDefault();
         const food = items[highlightedIndex >= 0 ? highlightedIndex : 0];
         if (food) {
-          handleSelect(food);
+          handlePick(food);
         }
       } else if (event.key === 'Escape') {
         event.preventDefault();
@@ -290,7 +320,7 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
         setHighlightedIndex(-1);
       }
     },
-    [handleSelect, highlightedIndex, items],
+    [handlePick, highlightedIndex, items],
   );
 
   const expanded = useMemo(() => {
@@ -467,7 +497,7 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
                         role="option"
                         aria-selected={isActive}
                         onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => handleSelect(food)}
+                        onClick={() => handlePick(food)}
                         className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors focus:outline-none ${
                           isActive ? 'bg-primary-50' : 'hover:bg-surface-muted'
                         }`}
@@ -489,7 +519,9 @@ export function FoodSearch({ onSelect, personalFoods = EMPTY_FOODS, idleContent,
                             )}
                           </div>
                           <div className="mt-1 text-xs text-subtle">
-                            {Math.round(food.kcal_per_100g)} kcal · P {formatMacro(food.protein_g)} g · L {formatMacro(food.fat_g)} g · G {formatMacro(food.carbs_g)} g · F {formatMacro(food.fiber_g)} g (100 g)
+                            {food.valuesPending
+                              ? 'Valeurs chargées au choix'
+                              : `${Math.round(food.kcal_per_100g)} kcal · P ${formatMacro(food.protein_g)} g · L ${formatMacro(food.fat_g)} g · G ${formatMacro(food.carbs_g)} g · F ${formatMacro(food.fiber_g)} g (100 g)`}
                           </div>
                         </div>
                         <span className="rounded bg-surface-sunken px-2 py-1 text-[10px] font-semibold text-muted">
