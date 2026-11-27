@@ -165,12 +165,18 @@ export async function handler(event: NetlifyEvent): Promise<NetlifyResponse> {
 
     // L'index ne contient plus les valeurs de la plupart des produits : on les
     // complète avec la fiche produit (en parallèle, sans bloquer si elle échoue).
+    // Une fiche lue mais vide (ou introuvable) rend le produit inutilisable : il
+    // est écarté. Une fiche non lue (refus, panne) laisse le produit sans valeurs.
     const missing = products.filter((product) => product.code && !hasNutriments(product.nutriments)).slice(0, ENRICH_LIMIT);
+    const unusable = new Set<string>();
     await Promise.all(
       missing.map(async (product) => {
         try {
           const details = await getProductNutrition(product.code as string);
-          if (!details || !hasNutriments(details.nutriments)) return;
+          if (!details || !hasNutriments(details.nutriments)) {
+            unusable.add(product.code as string);
+            return;
+          }
           product.nutriments = details.nutriments;
           if (!product.serving_size && details.serving_size) product.serving_size = details.serving_size;
         } catch (error) {
@@ -181,7 +187,9 @@ export async function handler(event: NetlifyEvent): Promise<NetlifyResponse> {
       })
     );
 
-    return json(200, successHeaders, { products });
+    return json(200, successHeaders, {
+      products: products.filter((product) => !(product.code && unusable.has(product.code))),
+    });
   } catch {
     return json(503, errorHeaders, {
       error: 'Open Food Facts unavailable',

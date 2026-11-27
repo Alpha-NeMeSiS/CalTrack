@@ -81,7 +81,7 @@ describe('fonction Netlify off-search (proxy Open Food Facts)', () => {
           image_small_url: 'https://img/yaourt.jpg',
           nutriments: { 'energy-kcal_100g': 53, proteins_100g: 4.1 },
         },
-        { code: '1', product_name: 'Sans marque' },
+        { code: '1', product_name: 'Sans marque', nutriments: { 'energy-kcal_100g': 20 } },
       ],
     });
 
@@ -99,7 +99,7 @@ describe('fonction Netlify off-search (proxy Open Food Facts)', () => {
           image_small_url: 'https://img/yaourt.jpg',
           nutriments: { 'energy-kcal_100g': 53, proteins_100g: 4.1 },
         },
-        { code: '1', product_name: 'Sans marque', nutriments: {} },
+        { code: '1', product_name: 'Sans marque', nutriments: { 'energy-kcal_100g': 20 } },
       ],
     });
   });
@@ -220,6 +220,34 @@ describe('fonction Netlify off-search (proxy Open Food Facts)', () => {
       expect(response.statusCode).toBe(200);
       expect(JSON.parse(response.body).products).toEqual([
         expect.objectContaining({ code: '1', product_name: 'Mystère', nutriments: {} }),
+      ]);
+    });
+
+    it('écarte un produit dont la fiche est lue mais vide ou introuvable (inutilisable)', async () => {
+      const fetchMock = vi.fn((url: string) => {
+        if (!url.includes('/api/v2/product/')) {
+          return Promise.resolve(
+            searchResponse([
+              { code: '6181003014226', product_name: 'Pâte à tartiner (fiche vide)', nutriments: null },
+              { code: '404', product_name: 'Pâte à tartiner (supprimée)', nutriments: null },
+              { code: '3266481502847', product_name: 'Pâte à tartiner', nutriments: null },
+              { code: '8723700213526', product_name: 'Pâte à tartiner (refusée)', nutriments: null },
+            ])
+          );
+        }
+        if (url.includes('/6181003014226')) return Promise.resolve(productResponse({ nutriments: {} }));
+        if (url.includes('/404')) return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+        if (url.includes('/8723700213526')) return Promise.resolve({ ok: false, status: 429, json: () => Promise.resolve({}) });
+        return Promise.resolve(productResponse({ nutriments: { 'energy-kcal_100g': 539 } }));
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const response = await handler({ queryStringParameters: { q: 'pâte à tartiner' } });
+
+      expect(JSON.parse(response.body).products.map((product: { code: string }) => product.code)).toEqual([
+        '3266481502847',
+        '8723700213526', // non lue : l'app chargera sa fiche au choix
       ]);
     });
 
