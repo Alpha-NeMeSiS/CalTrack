@@ -19,6 +19,7 @@
     "test:a11y": "playwright test"
   },
   "dependencies": {
+    "@netlify/blobs": "^10.7.13",
     "@supabase/supabase-js": "^2.57.4",
     "barcode-detector": "^3.2.3",
     "lucide-react": "^0.344.0",

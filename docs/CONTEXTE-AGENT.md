@@ -315,6 +315,7 @@ Nouveautés introduites par les correctifs, utiles à connaître :
   **À utiliser pour la fenêtre « Copier un repas »** de la 2.3.0.
 - `frontend/app/AppErrorBoundary.tsx` : garde-fou d'erreurs de rendu.
 - `backend/netlify/lib/rateLimit.ts` : limite de débit des routes `/api/off/*`.
+- A-11 (retrait de `@netlify/blobs`) est **annulé** : voir les pièges, § 9.
 - `eslint-plugin-jsx-a11y` est actif : il attrape statiquement ce qu'axe ne voit
   pas. Deux motifs légitimes sont configurés dans `eslint.config.js`.
 - Les écrans secondaires sont chargés à la demande (`React.lazy` dans `App.tsx`) :
@@ -354,8 +355,11 @@ Ce backlog est à confirmer avec l'utilisateur avant de lancer quoi que ce soit.
 
 ### Points d'attention et dette technique
 
-- La dépendance `@netlify/blobs` (`package.json`) n'est importée nulle part.
-  Vérifier avant de la retirer.
+- **Ne pas retirer `@netlify/blobs`** (`package.json`), même si aucun fichier du
+  dépôt ne l'importe : une extension Netlify installée sur le site
+  (`netlify-observability-extension`, qui injecte une edge function au build)
+  en dépend. Son retrait pendant l'audit a fait échouer la prévisualisation
+  (PR #63) ; elle a été restaurée.
 - Le build signale un gros bundle (avertissement Vite `chunkSizeWarningLimit`).
   On pourrait découper avec des `import()` dynamiques.
 - La section « Fonctionnalités » du README cite une liste de tables incomplète
@@ -367,6 +371,12 @@ Ce backlog est à confirmer avec l'utilisateur avant de lancer quoi que ce soit.
 ## 9. Pièges déjà rencontrés
 
 - **Fusion annoncée trop tôt** : toujours vérifier l'état réel de la PR.
+- **Une dépendance « inutilisée » peut servir à Netlify** : le site a des
+  extensions qui injectent du code au build (edge function, plugin). Un
+  `grep` dans le dépôt ne suffit pas pour retirer une dépendance : il faut une
+  prévisualisation verte. Le journal de build n'est lisible que dans
+  l'interface Netlify (l'API sans jeton renvoie 404) : le demander à
+  l'utilisateur si un build échoue sans cause reproductible en local.
 - **Après un déplacement de fichiers**, un `git add` sur un chemin disparu
   échoue sans tout ajouter : relire `git status` avant de commiter.
 - **Réseau de la session cloud** : des requêtes longues vers Netlify sont
