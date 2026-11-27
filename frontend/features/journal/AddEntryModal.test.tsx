@@ -100,15 +100,19 @@ const granola = {
 };
 
 function handler(call: QueryCall) {
-  const isWrite = ['insert', 'update', 'delete'].some((method) => hasOperation(call, method));
+  const isWrite = ['insert', 'upsert', 'update', 'delete'].some((method) => hasOperation(call, method));
   if (call.table === 'favorite_foods' && hasOperation(call, 'insert')) {
     const payload = getOperationArgs(call, 'insert')?.[0] as Record<string, unknown>;
     return { data: { id: 'fav-new', created_at: '2025-01-10T00:00:00Z', ...payload }, error: null };
   }
   if (call.table === 'foods' && hasOperation(call, 'maybeSingle')) return { data: null, error: null };
-  if (call.table === 'foods' && hasOperation(call, 'insert')) {
-    const payload = getOperationArgs(call, 'insert')?.[0] as Record<string, unknown>;
-    return { data: { id: 'food-new', created_at: '2025-01-10T00:00:00Z', ...payload }, error: null };
+  // Un aliment personnel est enregistré par `insert` (sans code-barres) ou par
+  // `upsert` (avec code-barres, audit A-09) : les deux renvoient la ligne créée.
+  for (const method of ['insert', 'upsert'] as const) {
+    if (call.table === 'foods' && hasOperation(call, method)) {
+      const payload = getOperationArgs(call, method)?.[0] as Record<string, unknown>;
+      return { data: { id: 'food-new', created_at: '2025-01-10T00:00:00Z', ...payload }, error: null };
+    }
   }
   if (isWrite) return { data: null, error: null };
   return { data: tables[call.table as keyof typeof tables] ?? [], error: null };
@@ -476,9 +480,10 @@ describe('AddEntryModal', () => {
       fireEvent.change(screen.getByLabelText('Calories (kcal)'), { target: { value: '250' } });
       await user.click(screen.getByRole('button', { name: 'Ajouter' }));
 
-      await waitFor(() => expect(supabaseMock.callsFor('foods', 'insert')).toHaveLength(1));
-      const [insert] = supabaseMock.callsFor('foods', 'insert');
-      expect(getOperationArgs(insert, 'insert')?.[0]).toMatchObject({
+      // Aliment avec code-barres : un seul upsert, pas de lecture puis insertion
+      await waitFor(() => expect(supabaseMock.callsFor('foods', 'upsert')).toHaveLength(1));
+      const [saved] = supabaseMock.callsFor('foods', 'upsert');
+      expect(getOperationArgs(saved, 'upsert')?.[0]).toMatchObject({
         name: 'Mystère',
         barcode: '3245678901236',
         kcal_per_100g: 250,
@@ -503,8 +508,9 @@ describe('AddEntryModal', () => {
       }
 
       async function savedPayload() {
-        await waitFor(() => expect(supabaseMock.callsFor('foods', 'insert')).toHaveLength(1));
-        return getOperationArgs(supabaseMock.callsFor('foods', 'insert')[0], 'insert')?.[0] as Record<string, unknown>;
+        // Produit scanné : il a un code-barres, donc un upsert (audit A-09)
+        await waitFor(() => expect(supabaseMock.callsFor('foods', 'upsert')).toHaveLength(1));
+        return getOperationArgs(supabaseMock.callsFor('foods', 'upsert')[0], 'upsert')?.[0] as Record<string, unknown>;
       }
 
       it('pré-remplit la saisie avec les valeurs estimées et le signale', async () => {
@@ -596,6 +602,7 @@ describe('AddEntryModal', () => {
 
       expect(screen.getByText(/Code-barres invalide/)).toBeInTheDocument();
       expect(supabaseMock.callsFor('foods', 'insert')).toHaveLength(0);
+      expect(supabaseMock.callsFor('foods', 'upsert')).toHaveLength(0);
       expect(onAdd).not.toHaveBeenCalled();
     });
 
@@ -676,5 +683,48 @@ describe('AddEntryModal', () => {
       const status = await screen.findByRole('status');
       await waitFor(() => expect(status).toHaveFocus());
     });
+  });
+});
+
+// Audit A-05 : la fenêtre annonce aria-modal="true" mais laissait Tab sortir
+// vers la page derrière. axe ne détecte pas ce défaut (il ne simule pas le
+// clavier) : d'où ce test d'intégration, en plus de useModalFocus.test.tsx.
+describe('accessibilité de la fenêtre', () => {
+  it('garde le focus à l’intérieur, même après plusieurs Tab', async () => {
+    render(
+      <>
+        <button type="button">Bouton de la page derrière</button>
+        <AddEntryModal date="2025-01-10" onAdd={vi.fn()} onClose={vi.fn()} />
+      </>
+    );
+
+    const dialog = screen.getByRole('dialog');
+    const behind = screen.getByRole('button', { name: 'Bouton de la page derrière' });
+
+    // Un tour complet de la fenêtre ne doit jamais atteindre la page
+    for (let i = 0; i < 25; i++) {
+      await userEvent.tab();
+      expect(behind).not.toHaveFocus();
+      expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    }
+  });
+
+  it('rend le focus au bouton qui a ouvert la fenêtre', () => {
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    opener.focus();
+
+    const { unmount } = render(<AddEntryModal date="2025-01-10" onAdd={vi.fn()} onClose={vi.fn()} />);
+    unmount();
+
+    expect(opener).toHaveFocus();
+    opener.remove();
+  });
+
+  it('bloque le défilement de la page derrière', () => {
+    const { unmount } = render(<AddEntryModal date="2025-01-10" onAdd={vi.fn()} onClose={vi.fn()} />);
+    expect(document.body.style.overflow).toBe('hidden');
+    unmount();
+    expect(document.body.style.overflow).toBe('');
   });
 });

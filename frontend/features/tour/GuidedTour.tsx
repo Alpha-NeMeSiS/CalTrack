@@ -1,8 +1,9 @@
 // Visite guidée : fond assombri avec une découpe autour de l'élément montré,
 // et une bulle (dialogue) avec Passer / Précédent / Suivant / Terminer.
 // Les cibles sont les éléments visibles portant data-tour="<id>".
-import { KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useModalFocus } from '../../shared/ui/useModalFocus';
 import {
   BubblePlacement,
   findTourTarget,
@@ -52,6 +53,9 @@ export function GuidedTour({ steps, onFinish }: GuidedTourProps) {
     },
     [onFinish]
   );
+
+  /** Quitter la visite (Échap ou « Passer ») */
+  const skip = useCallback(() => finish('skipped'), [finish]);
 
   useLayoutEffect(() => {
     setAvailable(steps.filter((step) => findTourTarget(step.id)));
@@ -108,39 +112,15 @@ export function GuidedTour({ steps, onFinish }: GuidedTourProps) {
     };
   }, [measure]);
 
-  // Échap = passer, où que soit le focus
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        finish('skipped');
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [finish]);
+  // Échap = passer, piège de focus dans la bulle, restauration du focus.
+  // lockScroll: false — la visite fait défiler la page jusqu'à chaque cible.
+  useModalFocus(bubbleRef, skip, { lockScroll: false });
 
   if (!step || !available) return null;
 
   const isLast = index === available.length - 1;
   const titleId = 'guided-tour-title';
   const bodyId = 'guided-tour-body';
-
-  // Tab reste dans la bulle
-  const trapFocus = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'Tab' || !bubbleRef.current) return;
-    const buttons = Array.from(bubbleRef.current.querySelectorAll<HTMLButtonElement>('button'));
-    if (buttons.length === 0) return;
-    const first = buttons[0];
-    const last = buttons[buttons.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
 
   return createPortal(
     <div className="fixed inset-0 z-[60]">
@@ -166,7 +146,6 @@ export function GuidedTour({ steps, onFinish }: GuidedTourProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={bodyId}
-        onKeyDown={trapFocus}
         className="panel fixed space-y-2 overflow-y-auto p-4"
         style={{
           maxHeight: 'calc(100vh - 32px)',

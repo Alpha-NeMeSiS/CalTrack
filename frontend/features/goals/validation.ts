@@ -24,6 +24,11 @@ export const GOAL_LIMITS = {
   target_weight_kg: { min: 30, max: 300 },
   duration_weeks: { min: 1, max: 260 },
   protein_g_per_kg: { min: 1.2, max: 2.5 },
+  // Audit A-27 : aligné sur la contrainte CHECK de la base (migration
+  // 20251023212206). Le champ n'est pas encore modifiable depuis l'interface,
+  // mais sans cette borne une valeur hors limites remonterait sous forme
+  // d'erreur Postgres au lieu d'un message clair.
+  fat_g_per_kg_min: { min: 0.3, max: 3 },
 } as const;
 
 export interface ProfileInput {
@@ -47,6 +52,8 @@ export interface GoalFormInput {
   target_weight_kg?: number | null;
   duration_weeks?: number | null;
   protein_g_per_kg?: number | null;
+  /** Minimum de lipides (g/kg). Pas encore modifiable depuis l'interface. */
+  fat_g_per_kg_min?: number | null;
 }
 
 const isInRange = (value: number, { min, max }: { min: number; max: number }) =>
@@ -163,6 +170,12 @@ export function validateGoalInput(goal: GoalFormInput, currentWeightKg: number):
   if (isProvided(goal.protein_g_per_kg) && !isInRange(goal.protein_g_per_kg, GOAL_LIMITS.protein_g_per_kg)) {
     errors.push(
       `Les protéines doivent être comprises entre ${GOAL_LIMITS.protein_g_per_kg.min} et ${GOAL_LIMITS.protein_g_per_kg.max} g/kg.`
+    );
+  }
+
+  if (isProvided(goal.fat_g_per_kg_min) && !isInRange(goal.fat_g_per_kg_min, GOAL_LIMITS.fat_g_per_kg_min)) {
+    errors.push(
+      `Les lipides doivent être comprises entre ${formatLimit(GOAL_LIMITS.fat_g_per_kg_min.min)} et ${formatLimit(GOAL_LIMITS.fat_g_per_kg_min.max)} g/kg.`
     );
   }
 

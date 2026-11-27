@@ -37,7 +37,10 @@ Quand les crédits sont épuisés, Netlify ne publie plus rien jusqu'au mois sui
 - Ajustement des calories proposé d'après la dépense réelle (repas saisis et pesées), à accepter ou non.
 - Pied de page et page « À propos » (version, avertissement santé, données enregistrées, sources), accessibles aussi sans compte.
 - Visite guidée au premier lancement, page « Guide » et fenêtre « Quoi de neuf ? » à chaque mise à jour.
-- Persistance des données via Supabase (tables `profiles`, `goals`, `daily_targets`, `foods`, `entries`).
+- Persistance des données via Supabase : `profiles`, `goals`, `daily_targets`, `foods`,
+  `entries`, `favorite_foods`, `recipes` et `recipe_ingredients`, `water_logs`,
+  `weight_logs`, `user_preferences`, `push_subscriptions` — toutes isolées par
+  compte grâce aux politiques RLS.
 
 ## Stack technique
 

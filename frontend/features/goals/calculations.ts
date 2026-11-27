@@ -36,6 +36,12 @@ export interface MacroTargets {
   fiber_g?: number;
   /** true si les calories ont été relevées au plancher de sécurité (voir getCalorieFloor) */
   calorie_floor_applied?: boolean;
+  /**
+   * true si protéines ou lipides ont dû être réduits pour tenir dans la cible
+   * calorique (voir calculateMacros). Sans cela, la somme des macros affichées
+   * pouvait dépasser les calories annoncées.
+   */
+  macros_reduced_to_fit?: boolean;
 }
 
 // --- Règles nutritionnelles (V2) -------------------------------------------
@@ -240,11 +246,29 @@ export function calculateMacros(
   fat_g_per_kg_min: number
 ): MacroTargets {
   // Utilise la valeur demandée (auparavant un plancher caché de 1.6 g/kg l'écrasait)
-  const protein_g = protein_g_per_kg * referenceWeightKg;
+  let protein_g = protein_g_per_kg * referenceWeightKg;
 
   const minFatFromWeight = fat_g_per_kg_min * referenceWeightKg;
   const minFatFromCalories = (0.25 * targetCalories) / 9;
-  const fat_g = Math.max(minFatFromWeight, minFatFromCalories);
+  let fat_g = Math.max(minFatFromWeight, minFatFromCalories);
+
+  // Garde-fou de cohérence (audit A-15). Les glucides étaient bornés à 0 sans
+  // que protéines et lipides bougent : la somme des macros pouvait alors
+  // dépasser les calories annoncées (cas trouvé par balayage : femme de 100 ans
+  // et plus, 1,75 m, 80 kg, protéines à 2,5 g/kg → 1 318 kcal de macros pour
+  // une cible de 1 200). On réduit dans l'ordre inverse des priorités :
+  //   1. la règle « 25 % des calories » cède, jamais le minimum lié au poids ;
+  //   2. en dernier recours, les protéines (valeur choisie, alors que le
+  //      minimum de lipides est un seuil physiologique).
+  let reduced = false;
+  if (protein_g * 4 + fat_g * 9 > targetCalories) {
+    fat_g = Math.max(minFatFromWeight, (targetCalories - protein_g * 4) / 9);
+    reduced = true;
+  }
+  if (protein_g * 4 + fat_g * 9 > targetCalories) {
+    protein_g = Math.max(0, (targetCalories - fat_g * 9) / 4);
+    reduced = true;
+  }
 
   const remainingCalories = targetCalories - (protein_g * 4 + fat_g * 9);
   const carbs_g = Math.max(0, remainingCalories / 4);
@@ -255,6 +279,7 @@ export function calculateMacros(
     fat_g: Math.round(fat_g * 10) / 10,
     carbs_g: Math.round(carbs_g * 10) / 10,
     fiber_g: calculateFiberTarget(targetCalories),
+    ...(reduced ? { macros_reduced_to_fit: true } : {}),
   };
 }
 
@@ -264,9 +289,14 @@ export function calculateCompleteTargets(profile: UserProfile, goal: GoalParams)
   const rawCalories =
     calculateTargetCalories(tdee, goal.type, goal.deficit_or_surplus_pct) + Math.round(Number(goal.calorie_adjustment_kcal) || 0);
 
-  // Garde-fou : un déficit ne doit pas descendre sous le plancher de sécurité
+  // Garde-fou : la cible ne doit jamais descendre sous le plancher de sécurité,
+  // quel que soit le type d'objectif. L'ajustement d'après la dépense réelle
+  // (calorie_adjustment_kcal, jusqu'à −1 000 kcal) pouvait sinon faire tomber
+  // un objectif « maintien » ou « prise » sous le métabolisme de base.
+  // Sans ajustement négatif, « prise » reste au-dessus du TDEE : le plancher ne
+  // se déclenche jamais et le comportement est inchangé.
   const floor = getCalorieFloor(profile, bmr);
-  const floorApplied = goal.type === 'loss' && rawCalories < floor;
+  const floorApplied = rawCalories < floor;
   const targetCalories = floorApplied ? floor : rawCalories;
 
   const macros = calculateMacros(

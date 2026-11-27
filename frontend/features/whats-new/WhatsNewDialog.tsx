@@ -1,10 +1,11 @@
 // Fenêtre « Quoi de neuf ? » : notes des versions (la plus récente en premier).
 // Fermée par « C'est noté », la croix ou Échap ; un clic sur le fond ne la ferme pas.
-import { KeyboardEvent as ReactKeyboardEvent, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import type { ReleaseNote } from './releaseNotes';
 import { formatDateFR } from '../../shared/timeProgress';
 import { parseLocalDate } from '../../shared/date';
+import { useModalFocus } from '../../shared/ui/useModalFocus';
 
 interface WhatsNewDialogProps {
   releases: ReleaseNote[];
@@ -21,32 +22,8 @@ export function WhatsNewDialog({ releases, onClose, subtitle }: WhatsNewDialogPr
     confirmRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
-  // Tab reste dans la fenêtre
-  const trapFocus = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== 'Tab' || !dialogRef.current) return;
-    const buttons = Array.from(dialogRef.current.querySelectorAll<HTMLButtonElement>('button'));
-    if (buttons.length === 0) return;
-    const first = buttons[0];
-    const last = buttons[buttons.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
+  // Échap, piège de focus, restauration du focus et verrou du défilement
+  useModalFocus(dialogRef, onClose);
 
   const defaultSubtitle =
     releases.length > 1 ? `${releases.length} mises à jour depuis votre dernière visite` : 'CalTrack a été mis à jour';
@@ -61,8 +38,6 @@ export function WhatsNewDialog({ releases, onClose, subtitle }: WhatsNewDialogPr
         role="dialog"
         aria-modal="true"
         aria-labelledby="whats-new-title"
-        onKeyDown={trapFocus}
-        onClick={(event) => event.stopPropagation()}
         className="bg-surface rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-4 sm:p-6 space-y-4"
       >
         <div className="flex items-start justify-between gap-3">

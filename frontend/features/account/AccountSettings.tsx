@@ -46,13 +46,33 @@ export function AccountSettings() {
 
     setDeleting(true);
     setDeleteError('');
-    // Les photos de profil (stockage) ne sont pas supprimées par la cascade SQL
-    await deleteAllProfilePhotos(user.id).catch(() => undefined);
+
+    // Les photos de profil (stockage) ne sont pas supprimées par la cascade SQL,
+    // et il faut une session valide pour y toucher : on les retire AVANT le
+    // compte. Audit A-26 : l'échec était avalé, laissant un fichier sans
+    // propriétaire dans le stockage (RGPD). On arrête maintenant la suppression
+    // plutôt que d'abandonner un fichier derrière soi.
+    try {
+      await deleteAllProfilePhotos(user.id);
+    } catch (photoError) {
+      console.error('Error deleting profile photos:', photoError);
+      setDeleteError(
+        "Vos photos n'ont pas pu être supprimées, le compte n'a donc pas été supprimé. " +
+          'Vérifiez votre connexion puis réessayez.'
+      );
+      setDeleting(false);
+      return;
+    }
+
     const { error } = await deleteAccount();
     // En cas de succès, la déconnexion démonte cette page : rien d'autre à faire.
     if (error) {
       console.error('Error deleting account:', error);
-      setDeleteError("La suppression a échoué. Aucune donnée n'a été effacée. Réessayez plus tard.");
+      // Les photos ont déjà été supprimées : le message ne promet plus que
+      // « aucune donnée » n'a été effacée, ce qui serait faux.
+      setDeleteError(
+        'La suppression du compte a échoué. Vos données de suivi sont intactes. Réessayez plus tard.'
+      );
       setDeleting(false);
     }
   };

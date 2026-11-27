@@ -4,7 +4,7 @@
 // mot de passe oublié, changement de mot de passe et d'email, déconnexion de
 // tous les appareils, suppression du compte).
 // Le hook useAuth est dans ./useAuth.ts.
-import React, { createContext, useCallback, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import {
   clearAuthMessageFromUrl,
@@ -171,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, loadProfile]);
 
   // Inscription avec email/mot de passe via Supabase
-  const signUp = async (email: string, password: string) => {
+  const signUp = useCallback(async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -183,10 +183,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       return { error: error as Error };
     }
-  };
+  }, []);
 
   // Connexion avec email/mot de passe via Supabase
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -198,11 +198,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       return { error: error as Error };
     }
-  };
+  }, []);
 
   // Déconnexion : l'état local est vidé même si l'appel réseau échoue.
   // « local » : cet appareil seulement ; « global » : toutes les sessions.
-  const signOut = async (scope: 'global' | 'local' = 'local') => {
+  const signOut = useCallback(async (scope: 'global' | 'local' = 'local') => {
     // Ce navigateur ne doit plus recevoir les rappels de ce compte
     await forgetThisDevice();
     try {
@@ -214,11 +214,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setPasswordRecovery(false);
       applySession(null);
     }
-  };
+  }, [applySession]);
 
   // Mot de passe oublié : Supabase envoie un lien qui ramène sur l'application.
   // L'URL de retour doit être autorisée dans Supabase (Authentication → URL Configuration).
-  const requestPasswordReset = async (email: string) => {
+  const requestPasswordReset = useCallback(async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin,
@@ -227,9 +227,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       return { error: error as Error };
     }
-  };
+  }, []);
 
-  const updatePassword = async (password: string) => {
+  const updatePassword = useCallback(async (password: string) => {
     try {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) return { error };
@@ -238,7 +238,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       return { error: error as Error };
     }
-  };
+  }, []);
 
   const dismissPasswordRecovery = useCallback(() => setPasswordRecovery(false), []);
   const dismissAuthNotice = useCallback(() => setAuthNotice(null), []);
@@ -247,7 +247,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // et à la nouvelle adresse si le « changement sécurisé » est activé).
   // L'adresse ne change qu'après confirmation ; en attendant, user.new_email
   // contient l'adresse demandée.
-  const updateEmail = async (email: string) => {
+  const updateEmail = useCallback(async (email: string) => {
     try {
       const { data, error } = await supabase.auth.updateUser(
         { email },
@@ -259,11 +259,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       return { error: error as Error };
     }
-  };
+  }, []);
 
   // Suppression du compte (RGPD) : la fonction SQL delete_my_account() supprime
   // l'utilisateur connecté ; ses données sont effacées en cascade.
-  const deleteAccount = async () => {
+  const deleteAccount = useCallback(async () => {
     try {
       const { error } = await supabase.rpc('delete_my_account');
       if (error) return { error: new Error(error.message) };
@@ -273,32 +273,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Le compte n'existe plus : on ne révoque que la session locale.
     await signOut('local');
     return { error: null };
-  };
+  }, [signOut]);
+
+  // Audit A-20 : cet objet était reconstruit à chaque rendu, ce qui faisait
+  // re-rendre TOUS les consommateurs de useAuth (donc presque toute
+  // l'application) au moindre changement d'état du provider.
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+      profile,
+      loading,
+      profileError,
+      signUp,
+      signIn,
+      signOut: () => signOut('local'),
+      signOutEverywhere: () => signOut('global'),
+      refreshProfile,
+      passwordRecovery,
+      requestPasswordReset,
+      updatePassword,
+      dismissPasswordRecovery,
+      deleteAccount,
+      updateEmail,
+      authNotice,
+      dismissAuthNotice,
+    }),
+    [
+      user,
+      profile,
+      loading,
+      profileError,
+      signUp,
+      signIn,
+      signOut,
+      refreshProfile,
+      passwordRecovery,
+      requestPasswordReset,
+      updatePassword,
+      dismissPasswordRecovery,
+      deleteAccount,
+      updateEmail,
+      authNotice,
+      dismissAuthNotice,
+    ]
+  );
 
   // Fournit le contexte aux composants enfants
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        profile,
-        loading,
-        profileError,
-        signUp,
-        signIn,
-        signOut: () => signOut('local'),
-        signOutEverywhere: () => signOut('global'),
-        refreshProfile,
-        passwordRecovery,
-        requestPasswordReset,
-        updatePassword,
-        dismissPasswordRecovery,
-        deleteAccount,
-        updateEmail,
-        authNotice,
-        dismissAuthNotice,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

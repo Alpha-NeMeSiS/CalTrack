@@ -151,8 +151,8 @@ export function OnboardingForm() {
 
         <div className="space-y-6">
           <div>
-            <label className="field-label mb-2">Sexe</label>
-            <div className="flex gap-4">
+            <span id="onboarding-sexe-label" className="field-label mb-2 block">Sexe</span>
+            <div className="flex gap-4" role="group" aria-labelledby="onboarding-sexe-label">
               <button
                 type="button"
                 onClick={() => updateFormData('sexe', 'M')}
@@ -283,8 +283,11 @@ export function OnboardingForm() {
 
       <div className="space-y-6">
         <div>
-          <label className="field-label mb-2">Niveau d'activité</label>
+          <label className="field-label mb-2" htmlFor="onboarding-activity">
+            Niveau d'activité
+          </label>
           <select
+            id="onboarding-activity"
             value={formData.activity_level}
             onChange={(e) => updateFormData('activity_level', Number(e.target.value))}
             className="w-full px-3 py-2 field-input"
@@ -298,8 +301,8 @@ export function OnboardingForm() {
         </div>
 
         <div>
-          <label className="field-label mb-2">Objectif</label>
-          <div className="grid grid-cols-3 gap-4">
+          <span id="onboarding-goal-label" className="field-label mb-2 block">Objectif</span>
+          <div className="grid grid-cols-3 gap-4" role="group" aria-labelledby="onboarding-goal-label">
             <button
               type="button"
               onClick={() => updateFormData('goal_type', 'loss')}

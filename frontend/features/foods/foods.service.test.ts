@@ -85,38 +85,43 @@ describe('services/foods', () => {
     });
   });
 
+  // Audit A-09 : un seul aller-retour, sans course possible entre une lecture
+  // et une insertion. C'est l'index unique (user_id, barcode) qui tranche.
   it('met à jour l’aliment qui a déjà ce code-barres au lieu d’en créer un second', async () => {
-    supabaseMock.setHandler((call) => {
-      if (hasOperation(call, 'update')) return { data: { id: 'f-old' }, error: null };
-      if (hasOperation(call, 'maybeSingle')) return { data: { id: 'f-old' }, error: null };
-      return { data: null, error: null };
-    });
+    supabaseMock.setHandler(() => ({ data: { id: 'f-old' }, error: null }));
 
     const food = await savePersonalFood('user-1', portion, '3017620422003');
 
     expect(food).toEqual({ id: 'f-old' });
-    const [lookup] = supabaseMock.callsFor('foods', 'maybeSingle');
-    expect(lookup.operations).toContainEqual({ method: 'eq', args: ['barcode', '3017620422003'] });
+    // Aucune lecture préalable, aucune insertion séparée : un seul upsert
+    expect(supabaseMock.callsFor('foods', 'maybeSingle')).toHaveLength(0);
     expect(supabaseMock.callsFor('foods', 'insert')).toHaveLength(0);
-    const [update] = supabaseMock.callsFor('foods', 'update');
-    expect(update.operations).toContainEqual({ method: 'eq', args: ['id', 'f-old'] });
+    const upserts = supabaseMock.callsFor('foods', 'upsert');
+    expect(upserts).toHaveLength(1);
+    expect(getOperationArgs(upserts[0], 'upsert')?.[0]).toMatchObject({
+      user_id: 'user-1',
+      barcode: '3017620422003',
+    });
+    expect(getOperationArgs(upserts[0], 'upsert')?.[1]).toEqual({ onConflict: 'user_id,barcode' });
+  });
+
+  it('deux enregistrements successifs du même code-barres ne créent qu’une ligne', async () => {
+    supabaseMock.setHandler(() => ({ data: { id: 'f-old' }, error: null }));
+    await savePersonalFood('user-1', portion, '3017620422003');
+    await savePersonalFood('user-1', portion, '3017620422003');
+    expect(supabaseMock.callsFor('foods', 'insert')).toHaveLength(0);
+    expect(supabaseMock.callsFor('foods', 'upsert')).toHaveLength(2);
   });
 
   it('enregistre le drapeau des valeurs estimées, à la création comme à la mise à jour', async () => {
-    supabaseMock.setHandler((call) => {
-      if (hasOperation(call, 'maybeSingle')) return { data: null, error: null };
-      return { data: { id: 'f-new' }, error: null };
-    });
+    supabaseMock.setHandler(() => ({ data: { id: 'f-new' }, error: null }));
     await savePersonalFood('user-1', portion, '3242272270157', true);
-    expect(getOperationArgs(supabaseMock.callsFor('foods', 'insert')[0], 'insert')?.[0]).toMatchObject({ values_estimated: true });
+    expect(getOperationArgs(supabaseMock.callsFor('foods', 'upsert')[0], 'upsert')?.[0]).toMatchObject({ values_estimated: true });
 
     supabaseMock.reset();
-    supabaseMock.setHandler((call) => {
-      if (hasOperation(call, 'maybeSingle')) return { data: { id: 'f-old' }, error: null };
-      return { data: { id: 'f-old' }, error: null };
-    });
+    supabaseMock.setHandler(() => ({ data: { id: 'f-old' }, error: null }));
     await savePersonalFood('user-1', portion, '3242272270157', true);
-    expect(getOperationArgs(supabaseMock.callsFor('foods', 'update')[0], 'update')?.[0]).toMatchObject({ values_estimated: true });
+    expect(getOperationArgs(supabaseMock.callsFor('foods', 'upsert')[0], 'upsert')?.[0]).toMatchObject({ values_estimated: true });
 
     supabaseMock.reset();
     supabaseMock.setHandler(() => ({ data: { id: 'f-new' }, error: null }));

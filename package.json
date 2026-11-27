@@ -2,6 +2,9 @@
   "name": "caltrack",
   "private": true,
   "version": "2.2.2",
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,7 +19,6 @@
     "test:a11y": "playwright test"
   },
   "dependencies": {
-    "@netlify/blobs": "^10.7.13",
     "@supabase/supabase-js": "^2.57.4",
     "barcode-detector": "^3.2.3",
     "lucide-react": "^0.344.0",
@@ -37,6 +39,7 @@
     "@vitest/coverage-v8": "^1.6.1",
     "autoprefixer": "^10.4.18",
     "eslint": "^9.9.1",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",

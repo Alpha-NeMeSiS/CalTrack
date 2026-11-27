@@ -238,9 +238,10 @@ describe('findSimilarProducts', () => {
     expect(mockedSearchOFF).toHaveBeenCalledWith(
       '(brands:"Sodebo" OR brands:"sodebo" OR brands:"xx:Sodebo" OR brands:"xx:sodebo") AND (pastabox OR fusilli OR bolognaise)',
       controller.signal,
-      30
+      30,
+      true
     );
-    expect(mockedSearchOFF).toHaveBeenCalledWith('pastabox OR fusilli OR bolognaise', controller.signal, 30);
+    expect(mockedSearchOFF).toHaveBeenCalledWith('pastabox OR fusilli OR bolognaise', controller.signal, 30, true);
     expect(estimate?.used[0].food.name).toBe('Pasta Box fusilli à la bolognaise');
     expect(estimate?.choices.map((item) => item.food.name)).toEqual(['Pasta Box fusilli à la bolognaise', 'Box fusilli bolognaise']);
   });
@@ -261,7 +262,7 @@ describe('findSimilarProducts', () => {
     mockedSearchOFF.mockResolvedValue([belleFrance]);
     await findSimilarProducts({ code: '1', name: 'Box fusilli bolognaise' });
     expect(mockedSearchOFF).toHaveBeenCalledTimes(1);
-    expect(mockedSearchOFF).toHaveBeenCalledWith('box OR fusilli OR bolognaise', undefined, 30);
+    expect(mockedSearchOFF).toHaveBeenCalledWith('box OR fusilli OR bolognaise', undefined, 30, true);
   });
 
   it('ne cherche rien si le nom n’a pas de mot utile', async () => {

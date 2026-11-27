@@ -8,6 +8,7 @@
 // image_small_url, nutriments, serving_size } } ou 404 { error: 'not_found' }.
 
 import { fetchWithRetry } from '../lib/fetchWithRetry';
+import { clientIp, isRateLimited, TOO_MANY_REQUESTS } from '../lib/rateLimit';
 
 const OFF_PRODUCT_ENDPOINT = 'https://world.openfoodfacts.org/api/v2/product';
 
@@ -26,6 +27,7 @@ const OFF_FIELDS = [
 
 type NetlifyEvent = {
   queryStringParameters?: { code?: string } | null;
+  headers?: Record<string, string | undefined> | null;
 };
 
 type NetlifyResponse = {
@@ -57,6 +59,10 @@ function json(statusCode: number, headers: Record<string, string>, body: unknown
 }
 
 export async function handler(event: NetlifyEvent): Promise<NetlifyResponse> {
+  // Garde-fou de débit (audit A-10) : la route est publique, et Open Food Facts
+  // limite les lectures de fiches par minute pour les IP partagées de Netlify.
+  if (isRateLimited(clientIp(event.headers))) return TOO_MANY_REQUESTS;
+
   const code = event.queryStringParameters?.code?.trim() ?? '';
   if (!BARCODE_PATTERN.test(code)) {
     return json(400, errorHeaders, { error: 'invalid_code' });
