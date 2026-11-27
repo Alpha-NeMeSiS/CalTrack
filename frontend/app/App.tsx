@@ -1,25 +1,15 @@
 // Composant racine de l'application
 // Gère l'authentification et la navigation entre vues (tableau de bord, tendances,
 // objectif, et profil / compte depuis le menu de l'avatar)
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/useAuth';
 import { LoginForm } from '../features/auth/LoginForm';
-import { SignupForm } from '../features/auth/SignupForm';
-import { PasswordRecoveryScreen } from '../features/auth/PasswordRecoveryScreen';
 import { AuthBrand } from '../features/auth/AuthBrand';
-import { OnboardingForm } from '../features/onboarding/OnboardingForm';
 import { Header } from './layout/Header';
 import { AuthNoticeBanner } from './layout/AuthNoticeBanner';
 import { Navigation } from './layout/Navigation';
 import { Dashboard } from '../features/journal/Dashboard';
-import { WeeklyTrends } from '../features/stats/WeeklyTrends';
-import { GoalPage } from '../features/goals/GoalPage';
-import { ProfilePage } from '../features/profile/ProfilePage';
-import { AccountPage } from '../features/account/AccountPage';
-import { SettingsPage } from '../features/settings/SettingsPage';
-import { AboutPage } from '../features/about/AboutPage';
-import { GuidePage } from '../features/guide/GuidePage';
 import { AppFooter } from './layout/AppFooter';
 import { PreferencesProvider } from './contexts/PreferencesContext';
 import { usePreferences } from './contexts/usePreferences';
@@ -39,6 +29,48 @@ import {
   NAVIGATE_EVENT,
   NavigateEventDetail,
 } from './navigation';
+
+/**
+ * Affiché le temps de télécharger un écran différé (audit A-12). Volontairement
+ * discret : sur une connexion normale, l'attente est de quelques dizaines de
+ * millisecondes. `role="status"` l'annonce aux lecteurs d'écran.
+ */
+function ScreenLoading() {
+  return (
+    <div role="status" className="py-12 text-center text-muted">
+      Chargement…
+    </div>
+  );
+}
+
+// Découpage du bundle (audit A-12). Seuls les deux écrans d'arrivée sont
+// chargés d'emblée : LoginForm (visiteur) et Dashboard (utilisateur connecté).
+// Tout le reste est téléchargé au premier affichage de l'écran concerné.
+// `.then` : ces modules exportent un composant nommé, pas un export par défaut.
+const SignupForm = lazy(() =>
+  import('../features/auth/SignupForm').then((m) => ({ default: m.SignupForm }))
+);
+const PasswordRecoveryScreen = lazy(() =>
+  import('../features/auth/PasswordRecoveryScreen').then((m) => ({ default: m.PasswordRecoveryScreen }))
+);
+const OnboardingForm = lazy(() =>
+  import('../features/onboarding/OnboardingForm').then((m) => ({ default: m.OnboardingForm }))
+);
+const WeeklyTrends = lazy(() =>
+  import('../features/stats/WeeklyTrends').then((m) => ({ default: m.WeeklyTrends }))
+);
+const GoalPage = lazy(() => import('../features/goals/GoalPage').then((m) => ({ default: m.GoalPage })));
+const ProfilePage = lazy(() =>
+  import('../features/profile/ProfilePage').then((m) => ({ default: m.ProfilePage }))
+);
+const AccountPage = lazy(() =>
+  import('../features/account/AccountPage').then((m) => ({ default: m.AccountPage }))
+);
+const SettingsPage = lazy(() =>
+  import('../features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage }))
+);
+const AboutPage = lazy(() => import('../features/about/AboutPage').then((m) => ({ default: m.AboutPage })));
+const GuidePage = lazy(() => import('../features/guide/GuidePage').then((m) => ({ default: m.GuidePage })));
 
 function AppScreens() {
   // Récupère l'état d'authentification et le profil utilisateur
@@ -161,7 +193,9 @@ function AppScreens() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex flex-col items-center justify-center p-4">
         <AuthBrand />
-        <PasswordRecoveryScreen />
+        <Suspense fallback={<ScreenLoading />}>
+          <PasswordRecoveryScreen />
+        </Suspense>
       </div>
     );
   }
@@ -173,11 +207,13 @@ function AppScreens() {
     if (guestInfo) {
       return (
         <div className="min-h-screen bg-canvas px-4 py-6 sm:py-10">
-          {guestInfo.page === 'guide' ? (
-            <GuidePage signedIn={false} onBack={() => setGuestInfo(null)} />
-          ) : (
-            <AboutPage section={guestInfo.section} signedIn={false} onBack={() => setGuestInfo(null)} />
-          )}
+          <Suspense fallback={<ScreenLoading />}>
+            {guestInfo.page === 'guide' ? (
+              <GuidePage signedIn={false} onBack={() => setGuestInfo(null)} />
+            ) : (
+              <AboutPage section={guestInfo.section} signedIn={false} onBack={() => setGuestInfo(null)} />
+            )}
+          </Suspense>
           <AppFooter onOpen={openGuestInfo} />
         </div>
       );
@@ -188,7 +224,9 @@ function AppScreens() {
         {authMode === 'login' ? (
           <LoginForm onToggle={() => setAuthMode('signup')} />
         ) : (
-          <SignupForm onToggle={() => setAuthMode('login')} />
+          <Suspense fallback={<ScreenLoading />}>
+            <SignupForm onToggle={() => setAuthMode('login')} />
+          </Suspense>
         )}
         <AppFooter onOpen={openGuestInfo} />
       </div>
@@ -235,7 +273,9 @@ function AppScreens() {
   if (!profile) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center p-4">
-        <OnboardingForm />
+        <Suspense fallback={<ScreenLoading />}>
+          <OnboardingForm />
+        </Suspense>
       </div>
     );
   }
@@ -256,16 +296,21 @@ function AppScreens() {
             onTourFinish={handleTourFinish}
           />
         )}
-        {currentView === 'trends' && <WeeklyTrends />}
-        {currentView === 'goal' && <GoalPage />}
-        {currentView === 'profile' && <ProfilePage />}
-        {currentView === 'account' && <AccountPage />}
-        {currentView === 'settings' && <SettingsPage />}
-        {currentView === 'about' && (
-          <AboutPage section={aboutSection} scrollKey={aboutRequest} signedIn onOpenAccount={() => setCurrentView('account')} />
-        )}
-        {currentView === 'guide' && (
-          <GuidePage section={guideSection} scrollKey={guideRequest} signedIn onReplayTour={startTourReplay} />
+        {/* Écrans différés : téléchargés au premier affichage (audit A-12) */}
+        {currentView !== 'dashboard' && (
+          <Suspense fallback={<ScreenLoading />}>
+            {currentView === 'trends' && <WeeklyTrends />}
+            {currentView === 'goal' && <GoalPage />}
+            {currentView === 'profile' && <ProfilePage />}
+            {currentView === 'account' && <AccountPage />}
+            {currentView === 'settings' && <SettingsPage />}
+            {currentView === 'about' && (
+              <AboutPage section={aboutSection} scrollKey={aboutRequest} signedIn onOpenAccount={() => setCurrentView('account')} />
+            )}
+            {currentView === 'guide' && (
+              <GuidePage section={guideSection} scrollKey={guideRequest} signedIn onReplayTour={startTourReplay} />
+            )}
+          </Suspense>
         )}
 
         {/* pb-8 sur mobile : le bouton flottant « Ajouter un aliment » ne recouvre pas le texte */}

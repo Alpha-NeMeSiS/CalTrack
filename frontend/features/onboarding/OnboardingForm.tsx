@@ -275,8 +275,14 @@ export function OnboardingForm() {
     <div className="w-full max-w-2xl mx-auto p-8 panel">
       <h2 className="page-title mb-6">Votre objectif</h2>
 
+      {/* role="alert" : sans lui, l'échec de la création du compte n'était jamais
+          annoncé aux lecteurs d'écran (contrairement aux erreurs de l'étape 1).
+          Trouvé en écrivant les tests de l'audit A-06. */}
       {error && (
-        <div className="mb-6 p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded-md text-sm">
+        <div
+          role="alert"
+          className="mb-6 p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded-md text-sm"
+        >
           {error}
         </div>
       )}

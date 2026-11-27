@@ -22,7 +22,7 @@ BEGIN
     INSERT INTO public.recipes (user_id, name, servings) VALUES (test.uid(who), 'Recette', 2);
     INSERT INTO public.water_logs (user_id, date, amount_ml) VALUES (test.uid(who), '2026-11-08', 250);
     INSERT INTO public.push_subscriptions (user_id, endpoint, p256dh, auth)
-    VALUES (test.uid(who), 'https://push.example.com/' || who, repeat('k', 60), repeat('a', 16));
+    VALUES (test.uid(who), 'https://fcm.googleapis.com/fcm/send/' || who, repeat('k', 60), repeat('a', 16));
   END LOOP;
 END $$;
 

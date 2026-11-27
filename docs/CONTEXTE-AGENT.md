@@ -229,12 +229,14 @@ Le détail est dans `CHANGELOG.md`.
 
 ## 7. État actuel (27/11/2026)
 
-- `main` et `dev` sont alignés sur la fusion de la PR #61 (`9d3ee0b`), en version 2.2.2.
-- Production en 2.2.2, vérifiée : « pastabox bolognaise » trouve le PastaBox à 127 kcal.
-- Seule PR en cours : celle qui ajoute ce fichier et `CLAUDE.md` (documentation
-  seulement, sans changement de version, donc sans déploiement en production).
-  Vérifier si elle est fusionnée.
-- Tests : 85 fichiers et 888 tests Vitest, 64 tests Playwright, tous verts.
+- `main` est en version **2.2.2** (fusion de la PR #62). `dev` porte en plus
+  l'audit et ses correctifs, sans changement de version : **la production est
+  toujours en 2.2.2**, les correctifs n'y sont pas.
+- Production vérifiée : « pastabox bolognaise » trouve le PastaBox à 127 kcal.
+- PR en cours : celle des correctifs de l'audit (`dev` → `main`). Vérifier si
+  elle est fusionnée avant d'agir.
+- Tests : 90 fichiers et 965 tests Vitest, 64 tests Playwright, 160 vérifications
+  SQL, tous verts. Couverture : 93,73 %.
 
 ## 8. À faire
 
@@ -283,20 +285,43 @@ Elle ne touche pas à la base et réutilise l'existant :
    - phrase du Guide mise à jour ;
    - version 2.3.0 (CHANGELOG, « Quoi de neuf ? », test de version).
 
-### Audit complet du 27/11/2026
+### Audit complet du 27/11/2026 : correctifs appliqués
 
-Un audit de tout le code a été réalisé : **[`docs/AUDIT-2026-11-27.md`](AUDIT-2026-11-27.md)**.
-30 problèmes identifiés (`A-01` à `A-30`), chacun avec son correctif prêt à
-appliquer, et un ordre de travail en trois lots. Rien n'a encore été corrigé.
+L'audit est dans **[`docs/AUDIT-2026-11-27.md`](AUDIT-2026-11-27.md)** :
+30 problèmes (`A-01` à `A-30`), **28 corrigés**. Lire son bandeau d'état en
+tête pour savoir où en est chaque point.
 
-Les deux plus urgents :
+Ce qui reste :
 
-- **A-01** : le plancher calorique de sécurité est contourné pour les objectifs
-  « maintien » et « prise » (cible possible à 173 kcal/jour, vérifié par le
-  calcul). Correctif d'une ligne dans `calculations.ts`.
-- **A-02** : le bucket `profile-pictures` est public et sa politique `SELECT`
-  n'a aucune restriction : les photos de profil sont lisibles (et listables)
-  sans être connecté.
+1. **Appliquer les trois migrations SQL** de `backend/supabase/migrations/20261127*`
+   (A-02, A-04, A-16, A-17, A-18). Elles sont rejouées sur un Postgres vierge et
+   couvertes par `backend/supabase/tests/11_audit_2026_11_27.sql`, mais **pas
+   appliquées en production** : cela demande l'accord de l'utilisateur.
+   ⚠️ Pour A-02 (photos de profil privées), le code doit être déployé AVANT la
+   migration, et les photos déjà enregistrées devront être renvoyées.
+2. **A-08** : activer « Leaked password protection » et « Secure password
+   change » dans Supabase. À faire par l'utilisateur, aucun code.
+3. **A-21** : passage à vitest 5 (changement majeur, 965 tests) — chantier à part.
+4. **A-25** : suivi des erreurs en production. Le point de branchement existe
+   (`componentDidCatch` dans `AppErrorBoundary`).
+
+**Rien n'est en production** : la version de `package.json` n'a pas changé.
+Pour livrer, passer en **2.2.3** (CHANGELOG, « Quoi de neuf ? », test de version).
+
+Nouveautés introduites par les correctifs, utiles à connaître :
+
+- `frontend/shared/ui/useModalFocus.ts` : accessibilité commune aux fenêtres
+  modales (piège de focus, Échap, restauration du focus, verrou du défilement).
+  **À utiliser pour la fenêtre « Copier un repas »** de la 2.3.0.
+- `frontend/app/AppErrorBoundary.tsx` : garde-fou d'erreurs de rendu.
+- `backend/netlify/lib/rateLimit.ts` : limite de débit des routes `/api/off/*`.
+- `eslint-plugin-jsx-a11y` est actif : il attrape statiquement ce qu'axe ne voit
+  pas. Deux motifs légitimes sont configurés dans `eslint.config.js`.
+- Les écrans secondaires sont chargés à la demande (`React.lazy` dans `App.tsx`) :
+  un test qui les attend doit utiliser `findBy*`, pas `getBy*`.
+- La CSP de `netlify.toml` autorise l'empreinte sha256 du `<script>` en ligne de
+  `index.html`. **Si ce script change, recalculer l'empreinte** : le test
+  `backend/netlify/tests/security-headers.test.ts` le signale.
 
 ### À faire par l'utilisateur (le lui rappeler de temps en temps)
 

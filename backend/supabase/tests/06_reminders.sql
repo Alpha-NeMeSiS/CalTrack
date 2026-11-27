@@ -11,8 +11,8 @@ INSERT INTO public.user_preferences (user_id, timezone, reminder_weigh_in_time, 
   (test.uid('bob'), 'America/New_York', '08:00', NULL),
   (test.uid('carole'), 'Europe/Paris', '08:00', '20:30');
 INSERT INTO public.push_subscriptions (user_id, endpoint, p256dh, auth) VALUES
-  (test.uid('alice'), 'https://push.example.com/alice', repeat('k', 60), repeat('a', 16)),
-  (test.uid('bob'), 'https://push.example.com/bob', repeat('k', 60), repeat('b', 16));
+  (test.uid('alice'), 'https://fcm.googleapis.com/fcm/send/alice', repeat('k', 60), repeat('a', 16)),
+  (test.uid('bob'), 'https://fcm.googleapis.com/fcm/send/bob', repeat('k', 60), repeat('b', 16));
 
 -- 8 novembre 2026, 07:10 UTC = 08:10 à Paris (UTC+1), 02:10 à New York
 CREATE TEMP TABLE claimed AS SELECT * FROM public.claim_due_reminders('2026-11-08 07:10:00+00');

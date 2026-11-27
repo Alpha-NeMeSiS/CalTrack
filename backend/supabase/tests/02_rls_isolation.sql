@@ -24,7 +24,7 @@ VALUES (auth.uid(), 'Granola maison', 450, 10, 18, 60, '3017620422003');
 INSERT INTO public.favorite_foods (user_id, label, kcal_per_100g, protein_g, fat_g, carbs_g)
 VALUES (auth.uid(), 'Yaourt nature', 53, 4, 1.5, 5.5);
 INSERT INTO public.user_preferences (user_id) VALUES (auth.uid());
-SELECT public.save_push_subscription('https://push.example.com/alice', repeat('k', 60), repeat('a', 16), 'Test');
+SELECT public.save_push_subscription('https://fcm.googleapis.com/fcm/send/alice', repeat('k', 60), repeat('a', 16), 'Test');
 
 SELECT test.ok(
   (SELECT count(*) FROM public.push_subscriptions WHERE user_id = auth.uid()) = 1,
@@ -97,10 +97,10 @@ SELECT test.raises(
 );
 
 -- Un même endpoint réenregistré par Bob passe à Bob (changement de compte sur l'appareil)
-SELECT public.save_push_subscription('https://push.example.com/alice', repeat('k', 60), repeat('b', 16), 'Test');
+SELECT public.save_push_subscription('https://fcm.googleapis.com/fcm/send/alice', repeat('k', 60), repeat('b', 16), 'Test');
 RESET ROLE;
 SELECT test.ok(
-  (SELECT user_id FROM public.push_subscriptions WHERE endpoint = 'https://push.example.com/alice') = test.uid('bob'),
+  (SELECT user_id FROM public.push_subscriptions WHERE endpoint = 'https://fcm.googleapis.com/fcm/send/alice') = test.uid('bob'),
   'push : l''appareil réenregistré appartient au dernier compte connecté'
 );
 
