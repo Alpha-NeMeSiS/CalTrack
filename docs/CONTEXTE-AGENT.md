@@ -283,6 +283,21 @@ Elle ne touche pas à la base et réutilise l'existant :
    - phrase du Guide mise à jour ;
    - version 2.3.0 (CHANGELOG, « Quoi de neuf ? », test de version).
 
+### Audit complet du 27/11/2026
+
+Un audit de tout le code a été réalisé : **[`docs/AUDIT-2026-11-27.md`](AUDIT-2026-11-27.md)**.
+30 problèmes identifiés (`A-01` à `A-30`), chacun avec son correctif prêt à
+appliquer, et un ordre de travail en trois lots. Rien n'a encore été corrigé.
+
+Les deux plus urgents :
+
+- **A-01** : le plancher calorique de sécurité est contourné pour les objectifs
+  « maintien » et « prise » (cible possible à 173 kcal/jour, vérifié par le
+  calcul). Correctif d'une ligne dans `calculations.ts`.
+- **A-02** : le bucket `profile-pictures` est public et sa politique `SELECT`
+  n'a aucune restriction : les photos de profil sont lisibles (et listables)
+  sans être connecté.
+
 ### À faire par l'utilisateur (le lui rappeler de temps en temps)
 
 - Créer les **releases GitHub** v2.0.0, v2.1.0, v2.1.1, v2.2.0, v2.2.1 et
@@ -353,6 +368,7 @@ Ce backlog est à confirmer avec l'utilisateur avant de lancer quoi que ce soit.
 | --- | --- |
 | `README.md` | Installation, variables d'environnement, tests, fonctionnalités, déploiement |
 | `docs/ARCHITECTURE.md` | Dossiers, « où trouver quoi », trajet d'une donnée, ajouter une fonctionnalité |
+| `docs/AUDIT-2026-11-27.md` | Audit complet du code : 30 problèmes et leur correctif, par priorité |
 | `docs/design-system.md` | Couleurs par rôle, composants, règles de contraste |
 | `docs/emails.md` | Emails Supabase Auth, SMTP, modèles français |
 | `docs/superpowers/specs/` | Specs : UI phase 2, recettes, eau, À propos, Guide, ajouts à la suite, nouveautés, produit similaire |
