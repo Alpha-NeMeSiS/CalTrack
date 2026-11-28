@@ -45,6 +45,72 @@ export function groupEntriesByMeal<T extends Pick<Entry, 'meal_type' | 'kcal'>>(
   }).filter((group) => group.entries.length > 0);
 }
 
+/** Calories et macros d'un repas ou de la journée (arrondies à l'unité) */
+export interface MealTotals {
+  kcal: number;
+  protein_g: number;
+  fat_g: number;
+  carbs_g: number;
+  fiber_g: number;
+}
+
+export interface MealSummary extends MealTotals {
+  meal: MealType | 'other';
+  label: string;
+  /** Part des kcal de la journée, en % entier (0 si la journée fait 0 kcal) */
+  sharePct: number;
+}
+
+/** Fenêtre « Détail par repas » : chaque repas et le total de la journée */
+export interface MealBreakdown {
+  meals: MealSummary[];
+  total: MealTotals;
+}
+
+type TotalsSource = Pick<Entry, 'meal_type' | 'kcal' | 'protein_g' | 'fat_g' | 'carbs_g' | 'fiber_g'>;
+
+/** Sommes brutes : les arrondis ne sont faits qu'à la fin, pour ne pas les cumuler. */
+function sumTotals(entries: readonly TotalsSource[]): MealTotals {
+  const sum = (field: keyof MealTotals) => entries.reduce((total, entry) => total + (Number(entry[field]) || 0), 0);
+  return { kcal: sum('kcal'), protein_g: sum('protein_g'), fat_g: sum('fat_g'), carbs_g: sum('carbs_g'), fiber_g: sum('fiber_g') };
+}
+
+const roundTotals = (totals: MealTotals): MealTotals => ({
+  kcal: Math.round(totals.kcal),
+  protein_g: Math.round(totals.protein_g),
+  fat_g: Math.round(totals.fat_g),
+  carbs_g: Math.round(totals.carbs_g),
+  fiber_g: Math.round(totals.fiber_g),
+});
+
+/**
+ * Ce que chaque repas a apporté dans la journée : kcal, macros et part des
+ * kcal. Seuls les repas qui ont des aliments, dans l'ordre de la journée.
+ * `getLabel` permet d'utiliser les noms de repas personnalisés.
+ */
+export function summarizeMeals(
+  entries: readonly TotalsSource[],
+  getLabel: (meal: MealType | 'other') => string = (meal) => MEAL_LABELS[meal]
+): MealBreakdown {
+  const dayTotals = sumTotals(entries);
+  const meals = MEAL_ORDER.map((meal) => ({
+    meal,
+    items: entries.filter((entry) => (entry.meal_type ?? 'other') === meal),
+  }))
+    .filter(({ items }) => items.length > 0)
+    .map(({ meal, items }) => {
+      const totals = sumTotals(items);
+      return {
+        meal,
+        label: getLabel(meal),
+        ...roundTotals(totals),
+        // Journée à 0 kcal (eau, café noir) : 0 %, jamais NaN
+        sharePct: dayTotals.kcal > 0 ? Math.round((totals.kcal / dayTotals.kcal) * 100) : 0,
+      };
+    });
+  return { meals, total: roundTotals(dayTotals) };
+}
+
 type NutrientFields = Pick<Entry, 'qty_grammes' | 'kcal' | 'protein_g' | 'fat_g' | 'carbs_g' | 'fiber_g'>;
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
