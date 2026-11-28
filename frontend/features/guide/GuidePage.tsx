@@ -75,8 +75,12 @@ const SECTIONS: InfoSectionDef<GuideSection>[] = [
     title: 'Pesée et composition',
     content: (
       <p className={text}>
-        Notez votre poids dans « Ma pesée », de préférence le matin. Avec une balance impédancemètre, ajoutez la
-        composition (masse grasse, muscles…) dans « Composition (facultatif) ». Les courbes sont dans Tendances.
+        Notez votre poids dans « Ma pesée » et indiquez le moment : le matin à jeun, après être passé aux toilettes,
+        c’est la pesée la plus fiable. Seule la pesée du matin sert à votre suivi (poids du profil, besoins, courbe) ;
+        une pesée faite plus tard reste visible sur la courbe sans compter. Pour reclasser une ancienne pesée du soir,
+        revenez sur ce jour dans le journal, choisissez « Plus tard dans la journée » puis « Mettre à jour ». Avec une
+        balance impédancemètre, ajoutez la composition (masse grasse, muscles…) dans « Composition (facultatif) ». Les
+        courbes sont dans Tendances.
       </p>
     ),
   },

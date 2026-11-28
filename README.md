@@ -4,7 +4,7 @@ Application web de suivi calorique construite avec **React + TypeScript + Vite**
 
 ## Version
 
-Version actuelle : **2.3.0** (V2 : nouvelle direction artistique, scanner de code-barres, recettes, eau, pesées… ; 2.1 : visite guidée, Guide, fenêtre « Quoi de neuf ? » ; 2.2 : estimation d'un produit scanné sans valeurs ; 2.3 : détail par repas). Le détail des évolutions est dans [CHANGELOG.md](CHANGELOG.md).
+Version actuelle : **2.4.0** (V2 : nouvelle direction artistique, scanner de code-barres, recettes, eau, pesées… ; 2.1 : visite guidée, Guide, fenêtre « Quoi de neuf ? » ; 2.2 : estimation d'un produit scanné sans valeurs ; 2.3 : détail par repas ; 2.4 : pesée du matin). Le détail des évolutions est dans [CHANGELOG.md](CHANGELOG.md).
 
 Pour une nouvelle version, mettre à jour `package.json` (`npm version minor --no-git-tag-version` pour une nouvelle fonctionnalité, `patch` pour un correctif, `major` pour une refonte) ajouter une entrée au CHANGELOG, et écrire les notes pour l'utilisateur dans `frontend/features/whats-new/releaseNotes.ts` (affichées par la fenêtre « Quoi de neuf ? » ; un test refuse une version sans notes). La version affichée dans l'app en découle automatiquement.
 
@@ -168,6 +168,7 @@ Les migrations SQL se trouvent dans `backend/supabase/migrations/`. Elles sont *
 | `20261128000101` | Audit : politiques RLS réécrites avec `(SELECT auth.uid())`, doublon supprimé sur `profiles`, index sur `entries.food_id` et `daily_targets.goal_id`, table `password_reset_tokens` (jamais utilisée) supprimée |
 | `20261128000412` | Audit : adresses d'abonnement push limitées aux services des navigateurs |
 | `20261128001654` | Audit : photos de profil privées (URL signées), URL existantes converties en chemins, `profile_picture_url` limité à un chemin dans le dossier du propriétaire |
+| `20261128124207` | Moment de la pesée (`weight_logs.moment` : `morning` par défaut, ou `later`) |
 
 Rejouer toutes les migrations sur une base vierge donne un schéma identique à la production (vérifié par empreinte des colonnes, contraintes, index, politiques RLS et buckets).
 
@@ -190,6 +191,7 @@ Rejouer toutes les migrations sur une base vierge donne un schéma identique à 
 | `09_tour_and_version.sql` | Visite guidée et version vue : vides par défaut, modifiables seulement sur son compte |
 | `10_foods_values_estimated.sql` | Valeurs estimées : `false` par défaut, modifiables seulement sur ses aliments |
 | `11_audit_2026_11_27.sql` | Audit : politiques RLS sans `auth.uid()` ligne par ligne, index, table supprimée, adresses push (dont 3 tentatives de contournement), photos privées et isolées |
+| `12_weigh_in_moment.sql` | Moment de la pesée : matin par défaut, valeur inconnue refusée, moment conservé sans envoi |
 
 Outils (`backend/supabase/tests/helpers.sql`) : `test.create_user('nom')`, `test.login(test.uid('nom'))` puis `SET ROLE authenticated` pour agir comme l'API, `test.ok(condition, 'message')`, `test.raises($$ SQL $$, 'SQLSTATE', 'message')`.
 
@@ -272,7 +274,8 @@ Les emails d'inscription, de mot de passe oublié et de changement d'adresse son
 
 ## Composition corporelle et ajustement des calories
 
-- **Composition avec la pesée** : la carte « Ma pesée » a une section « Composition (facultatif) » (masse grasse, muscles, os, eau, graisse viscérale), enregistrée dans `weight_logs`. Une mesure laissée vide ne remplace pas celle déjà saisie ce jour-là. Pour la pesée la plus récente, les valeurs mettent aussi à jour le profil (et donc le métabolisme de base et la cible du jour).
+- **Composition avec la pesée** : la carte « Ma pesée » a une section « Composition (facultatif) » (masse grasse, muscles, os, eau, graisse viscérale), enregistrée dans `weight_logs`. Une mesure laissée vide ne remplace pas celle déjà saisie ce jour-là. Pour la pesée la plus récente, si elle compte dans le suivi, les valeurs mettent aussi à jour le profil (et donc le métabolisme de base et la cible du jour).
+- **Pesée du matin** : chaque pesée a un moment, « Le matin, à jeun » ou « Plus tard dans la journée » (`weight_logs.moment`). Seules les pesées de référence (`referenceWeights` : matin, ou « plus tard » sans pesée du matin dans les 14 jours précédents) alimentent le poids du profil, la carte, la moyenne de la courbe et la dépense réelle. Une pesée « plus tard » avec un autre poids ne remplace pas celle du matin du même jour ; avec le même poids (ou sans poids saisi), elle corrige le moment.
 - **Tendances → Composition corporelle** : masse grasse et masse maigre de chaque pesée avec composition (`compositionPoints`, même estimation de la masse maigre que le profil), avec leur évolution sur 90 jours.
 - **Ajustement des calories** (`frontend/features/stats/calorieAdjustment.ts`) : à partir de la dépense réelle estimée sur 28 jours (`estimateExpenditure`), la cible qui garde le déficit ou le surplus de l'objectif est recalculée. Si elle s'écarte de plus de 100 kcal/j de la cible actuelle, Tendances propose de corriger : par pas de 300 kcal au plus, jamais sous le plancher de sécurité, au plus une fois par semaine. « Appliquer » enregistre `goals.calorie_adjustment_kcal` (ajouté aux calories calculées, protéines et lipides inchangés) et recalcule la cible du jour ; « Pas maintenant » masque la proposition 7 jours sur cet appareil. L'onglet Objectif affiche l'ajustement en cours et permet de l'annuler ; un nouvel objectif repart sans ajustement.
 
@@ -301,7 +304,7 @@ Onglet « Recettes » de « Ajouter un aliment » :
 
 ## Pied de page et page « À propos »
 
-- **Pied de page** sous chaque vue et sur l'écran de connexion : « CalTrack v2.3.0 · Guide · À propos · Vos données · Sources ». Une fois connecté, il cite aussi les sources nutritionnelles (Ciqual, Open Food Facts).
+- **Pied de page** sous chaque vue et sur l'écran de connexion : « CalTrack v2.4.0 · Guide · À propos · Vos données · Sources ». Une fois connecté, il cite aussi les sources nutritionnelles (Ciqual, Open Food Facts).
 - **Page « À propos »** en quatre sections : l'application (version), santé (estimations, pas un dispositif médical), vos données (ce qui est enregistré, où, qui y a accès, combien de temps ; liens vers l'export et la suppression une fois connecté) et sources (Ciqual sous Licence Ouverte 2.0, Open Food Facts sous ODbL, formules utilisées). Chaque lien du pied de page ouvre la page sur sa section.
 - **Version** : lue dans `package.json` au build (`__APP_VERSION__`, exposée par `frontend/app/appInfo.ts`) ; changer `version` suffit.
 

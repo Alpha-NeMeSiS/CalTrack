@@ -9,6 +9,19 @@ Toutes les évolutions notables de CalTrack. Les numéros suivent le
 
 La version affichée dans l'app (pied de page, page « À propos ») est lue dans `package.json`.
 
+## [2.4.0] — 28 novembre 2026
+
+### Nouveautés
+
+- **Pesée du matin** : la carte « Ma pesée » demande le moment, « Le matin, à jeun » ou « Plus tard dans la journée » (proposé selon l'heure aujourd'hui, repris de la pesée existante pour un jour passé), avec un conseil de pesée et le rappel de la pesée du jour.
+- **Seules les pesées de référence comptent** : pesées du matin, et pesées « plus tard » sans pesée du matin dans les 14 jours qui précèdent. Elles alimentent le poids du profil (besoins du jour, progression de l'objectif), « Dernière » et « sur 7 jours », la moyenne de la courbe et l'estimation de la dépense réelle. Calcul pur et testé : `referenceWeights` (`frontend/features/weight/weights.ts`).
+- **Le matin l'emporte** : une pesée « plus tard » avec un autre poids ne remplace pas la pesée du matin du même jour ; avec le même poids (ou sans poids saisi), elle corrige seulement le moment, ce qui permet de reclasser une ancienne pesée du soir.
+- **Courbe** : les pesées hors suivi restent visibles en point creux (légende « Plus tard, hors suivi »), les pesées de référence en point plein.
+
+### Base de données
+
+- Colonne `weight_logs.moment` (`morning` par défaut, ou `later`), migration `20261128124207_weigh_in_moment`, appliquée en production. Les pesées existantes comptent comme pesées du matin. Test SQL `12_weigh_in_moment.sql`.
+
 ## [2.3.0] — 28 novembre 2026
 
 ### Nouveautés

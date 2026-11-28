@@ -13,6 +13,15 @@ export interface ReleaseNote {
 
 export const RELEASES: readonly ReleaseNote[] = [
   {
+    version: '2.4.0',
+    date: '2026-11-28',
+    items: [
+      'Pesée du matin : dans « Ma pesée », indiquez si vous vous pesez le matin à jeun ou plus tard dans la journée. Seule la pesée du matin, la plus fiable, sert à votre suivi (poids du profil, besoins, objectif, courbe).',
+      'Une pesée du soir reste visible sur la courbe (point creux) sans fausser votre tendance, et ne remplace jamais la pesée du matin du même jour.',
+      'Une ancienne pesée faite le soir ? Revenez sur ce jour dans le journal, choisissez « Plus tard dans la journée » puis « Mettre à jour ».',
+    ],
+  },
+  {
     version: '2.3.0',
     date: '2026-11-28',
     items: [
