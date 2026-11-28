@@ -10,6 +10,7 @@ import { supabase, Goal, BodyComposition } from '../../shared/supabase';
 import { useAuth } from '../../app/contexts/useAuth';
 import { fetchActiveGoal, upsertDailyTargetForGoal } from '../goals/goals.service';
 import { recordWeight } from '../weight/weights.service';
+import type { WeighInMoment } from '../weight/weights';
 import { calculateAge, calculateBMR, calculateTDEE, estimateLeanMass, LeanMassSource } from '../goals/calculations';
 import { chooseBmrMethod } from '../goals/goals';
 import { getTodayDate } from '../../shared/date';
@@ -141,12 +142,18 @@ export function ProfilePage() {
     }
   };
 
-  // Pesée : si c'est la plus récente, le poids du profil et la cible du jour suivent
-  const handleSaveWeight = async (weightKg: number, date: string, composition?: BodyComposition) => {
+  // Pesée : le poids du profil et la cible du jour suivent la dernière pesée de référence (le matin)
+  const handleSaveWeight = async (
+    weightKg: number,
+    date: string,
+    moment: WeighInMoment,
+    composition?: BodyComposition
+  ) => {
     const profileUpdated = await recordWeight({
       userId: user.id,
       date,
       weightKg,
+      moment,
       composition,
       profile,
       goalForToday: activeGoal,
