@@ -31,15 +31,20 @@
 
 ALTER TABLE push_subscriptions DROP CONSTRAINT IF EXISTS push_subscriptions_endpoint_check;
 
+-- Expression régulière plutôt que LIKE : dans LIKE, « % » accepte aussi « / »,
+-- si bien que 'https://%.notify.windows.com/%' laissait passer
+-- 'https://site-malveillant.example/a.notify.windows.com/x'. Ici, le nom d'hôte
+-- est ancré entre « https:// » et le premier « / », et un sous-domaine ne peut
+-- contenir que des lettres, chiffres et tirets. Services acceptés :
+--   fcm.googleapis.com                  Chrome, Edge, Android
+--   updates.push.services.mozilla.com   Firefox
+--   *.push.apple.com                    Safari, iOS (web.push.apple.com…)
+--   *.notify.windows.com                Windows (WNS)
+-- Le motif est écrit en UNE chaîne : en SQL, « ~* » et « || » ont la même
+-- priorité, et « col ~* 'a' || 'b' » se lirait « (col ~* 'a') || 'b' ».
 ALTER TABLE push_subscriptions ADD CONSTRAINT push_subscriptions_endpoint_check CHECK (
   char_length(endpoint) <= 2048
-  AND (
-    endpoint LIKE 'https://fcm.googleapis.com/%'                   -- Chrome, Edge, Android
-    OR endpoint LIKE 'https://updates.push.services.mozilla.com/%' -- Firefox
-    OR endpoint LIKE 'https://web.push.apple.com/%'                -- Safari, iOS
-    OR endpoint LIKE 'https://%.notify.windows.com/%'              -- Windows (WNS)
-    OR endpoint LIKE 'https://%.push.apple.com/%'                  -- Apple, autres régions
-  )
+  AND endpoint ~* '^https://(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|([a-z0-9-]+\.)*push\.apple\.com|([a-z0-9-]+\.)+notify\.windows\.com)/'
 );
 
 COMMENT ON CONSTRAINT push_subscriptions_endpoint_check ON push_subscriptions IS

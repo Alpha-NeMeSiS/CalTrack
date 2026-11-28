@@ -13,6 +13,16 @@ export interface ReleaseNote {
 
 export const RELEASES: readonly ReleaseNote[] = [
   {
+    version: '2.2.3',
+    date: '2026-11-28',
+    items: [
+      'Votre objectif calorique ne descend plus jamais sous le seuil de sécurité, quel que soit le type d’objectif.',
+      'Votre photo de profil n’est plus visible que par vous.',
+      'Au clavier, la fenêtre d’ajout d’aliment garde le focus, et il revient au bon endroit quand on la ferme.',
+      'L’application s’ouvre plus vite, et une erreur affiche un message avec un bouton pour recharger au lieu d’une page blanche.',
+    ],
+  },
+  {
     version: '2.2.2',
     date: '2026-11-27',
     items: [

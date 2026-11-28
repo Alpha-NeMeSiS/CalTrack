@@ -1,6 +1,6 @@
 # Contexte pour le prochain agent
 
-> Dernière mise à jour : **27 novembre 2026**. Version en production : **2.2.2**.
+> Dernière mise à jour : **28 novembre 2026**. Version en production : **2.2.2** (2.2.3 dans la PR #63).
 > À tenir à jour à la fin de chaque session (section « État actuel » et « À faire »).
 
 Ce fichier résume tout ce qu'il faut savoir pour reprendre CalTrack : le projet,
@@ -220,6 +220,7 @@ docs/            ARCHITECTURE.md, design-system.md, emails.md, superpowers/ (spe
 | 2.2.0 | 22/11/2026 | Produit scanné sans valeurs : estimation d'après des produits similaires, badge « Estimé », « Corriger avec l'étiquette » (colonne `foods.values_estimated`) |
 | 2.2.1 | 23/11/2026 | Portions en ml/cl/l pour les boissons, nouvel essai automatique des appels Open Food Facts (`fetchWithRetry`) |
 | 2.2.2 | 27/11/2026 | Recherche Open Food Facts par nom réparée après le changement d'index (PR #61) |
+| 2.2.3 | 28/11/2026 | Correctifs de l'audit complet (PR #63) : plancher calorique, photos privées, CSP, accessibilité des fenêtres, bundle découpé |
 
 Autres changements sans version :
 - réorganisation en `frontend/` et `backend/` et `docs/ARCHITECTURE.md` (PR #56 à #58) ;
@@ -229,14 +230,15 @@ Le détail est dans `CHANGELOG.md`.
 
 ## 7. État actuel (27/11/2026)
 
-- `main` est en version **2.2.2** (fusion de la PR #62). `dev` porte en plus
-  l'audit et ses correctifs, sans changement de version : **la production est
-  toujours en 2.2.2**, les correctifs n'y sont pas.
+- `main` est en version **2.2.2** (fusion de la PR #62). `dev` porte l'audit,
+  ses correctifs et le passage en **2.2.3** (PR #63) : la fusion déclenchera le
+  déploiement en production. Les migrations A-04/16/17/18 sont déjà appliquées
+  à la base ; A-02 attend la mise en ligne de la 2.2.3.
 - Production vérifiée : « pastabox bolognaise » trouve le PastaBox à 127 kcal.
 - PR en cours : celle des correctifs de l'audit (`dev` → `main`). Vérifier si
   elle est fusionnée avant d'agir.
-- Tests : 90 fichiers et 965 tests Vitest, 64 tests Playwright, 160 vérifications
-  SQL, tous verts. Couverture : 93,73 %.
+- Tests : 90 fichiers et 966 tests Vitest, 64 tests Playwright, 160 vérifications
+  SQL (dont 24 pour l'audit), tous verts. Couverture : 93,73 %.
 
 ## 8. À faire
 
@@ -293,20 +295,22 @@ tête pour savoir où en est chaque point.
 
 Ce qui reste :
 
-1. **Appliquer les trois migrations SQL** de `backend/supabase/migrations/20261127*`
-   (A-02, A-04, A-16, A-17, A-18). Elles sont rejouées sur un Postgres vierge et
-   couvertes par `backend/supabase/tests/11_audit_2026_11_27.sql`, mais **pas
-   appliquées en production** : cela demande l'accord de l'utilisateur.
-   ⚠️ Pour A-02 (photos de profil privées), le code doit être déployé AVANT la
-   migration, et les photos déjà enregistrées devront être renvoyées.
+1. **Migrations** : A-04/16/17 (`20261128000101`) et A-18 (`20261128000412`)
+   sont **appliquées en production** (accord de l'utilisateur le 28/11).
+   **A-02 reste à appliquer** (`20261128100000_audit_private_profile_pictures.sql`,
+   version provisoire) **dès que la 2.2.3 est en production** : jamais avant,
+   car le code 2.2.2 ne saurait pas afficher une photo privée. Elle convertit
+   les URL publiques existantes en chemins (vérifié sur la photo réelle) :
+   personne n'a à renvoyer sa photo. Ensuite, renommer le fichier avec la
+   version enregistrée par Supabase.
 2. **A-08** : activer « Leaked password protection » et « Secure password
    change » dans Supabase. À faire par l'utilisateur, aucun code.
 3. **A-21** : passage à vitest 5 (changement majeur, 965 tests) — chantier à part.
 4. **A-25** : suivi des erreurs en production. Le point de branchement existe
    (`componentDidCatch` dans `AppErrorBoundary`).
 
-**Rien n'est en production** : la version de `package.json` n'a pas changé.
-Pour livrer, passer en **2.2.3** (CHANGELOG, « Quoi de neuf ? », test de version).
+**Version 2.2.3** préparée dans la PR #63 (CHANGELOG, « Quoi de neuf ? », test
+de version, README). La fusion déclenche le déploiement en production.
 
 Nouveautés introduites par les correctifs, utiles à connaître :
 

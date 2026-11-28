@@ -21,14 +21,25 @@
   La politique de suppression manquait aussi : sans elle, le remplacement d'une
   photo et le nettoyage avant suppression de compte échouaient en silence.
 
-  ## ⚠️ Ordre d'application
-  Le code doit être déployé AVANT cette migration :
-  `uploadProfilePhoto` enregistre désormais le CHEMIN du fichier et
-  `signedPhotoUrl` demande une URL signée. Les anciennes valeurs (URL publiques
-  complètes) sont encore acceptées par le code, mais elles cesseront de
-  fonctionner dès que le seau sera privé : les utilisateurs concernés devront
-  renvoyer leur photo. À annoncer dans les notes de version.
+  ## Photos déjà enregistrées
+  `profiles.profile_picture_url` contenait une URL publique complète. La
+  migration la remplace par le CHEMIN du fichier (`<user_id>/avatar-….jpg`),
+  que le code 2.2.3 signe à l'affichage : personne n'a à renvoyer sa photo.
+
+  ## ⚠️ NON APPLIQUÉE — à appliquer seulement quand la 2.2.3 est en production
+  La version de ce fichier est provisoire : la renommer avec celle que Supabase
+  enregistre (`list_migrations`) une fois appliquée.
+  Le code 2.2.2 affiche `profile_picture_url` tel quel dans un <img> : avec un
+  chemin et un seau privé, il n'afficherait plus aucune photo. Il faut donc que
+  la 2.2.3 (URL signées, signedPhotoUrl) soit déployée AVANT.
 */
+
+-- Photos déjà enregistrées : URL publique complète → chemin dans le seau
+UPDATE public.profiles
+   SET profile_picture_url = split_part(
+         substring(profile_picture_url from '/object/public/profile-pictures/(.*)$'),
+         '?', 1)
+ WHERE profile_picture_url LIKE '%/object/public/profile-pictures/%';
 
 -- Le seau n'est plus servi sans jeton
 UPDATE storage.buckets SET public = false WHERE id = 'profile-pictures';

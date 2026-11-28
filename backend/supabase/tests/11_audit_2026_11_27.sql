@@ -124,11 +124,53 @@ SELECT test.raises(
   'une adresse non chiffrée (http) est refusée'
 );
 
+-- Contournements qui passaient avec LIKE (« % » accepte « / ») : refusés
+SELECT test.raises(
+  $$ SELECT public.save_push_subscription('https://site-malveillant.example/a.notify.windows.com/x', repeat('k', 60), repeat('a', 16), 'X') $$,
+  '23514',
+  'un faux sous-domaine Windows caché dans le chemin est refusé'
+);
+
+SELECT test.raises(
+  $$ SELECT public.save_push_subscription('https://site-malveillant.example/x.push.apple.com/y', repeat('k', 60), repeat('a', 16), 'X') $$,
+  '23514',
+  'un faux sous-domaine Apple caché dans le chemin est refusé'
+);
+
+SELECT test.raises(
+  $$ SELECT public.save_push_subscription('https://fcm.googleapis.com.site-malveillant.example/x', repeat('k', 60), repeat('a', 16), 'X') $$,
+  '23514',
+  'un domaine qui commence comme Firebase est refusé'
+);
+
+-- Un vrai sous-domaine Windows reste accepté
+SELECT public.save_push_subscription(
+  'https://wns2-par02p.notify.windows.com/w/?token=abc', repeat('k', 60), repeat('a', 16), 'Edge'
+);
+SELECT test.ok(
+  (SELECT count(*) FROM public.push_subscriptions WHERE endpoint LIKE 'https://wns2-par02p.notify.windows.com/%') = 1,
+  'une adresse Windows (WNS) est acceptée'
+);
+
 RESET ROLE;
 
 -- ---------------------------------------------------------------------------
 -- A-02 : les photos de profil ne sont plus publiques
 -- ---------------------------------------------------------------------------
+-- La conversion URL → chemin est faite par la migration ; on vérifie ici
+-- l'expression utilisée, sur une URL réaliste (avec paramètre de cache).
+SELECT test.ok(
+  split_part(
+    substring('https://ieri.supabase.co/storage/v1/object/public/profile-pictures/abc-123/avatar-1732.jpg?v=2'
+              from '/object/public/profile-pictures/(.*)$'),
+    '?', 1) = 'abc-123/avatar-1732.jpg',
+  'une URL publique est convertie en chemin, sans le paramètre de cache'
+);
+SELECT test.ok(
+  NOT EXISTS (SELECT 1 FROM public.profiles WHERE profile_picture_url LIKE '%/object/public/%'),
+  'aucune URL publique ne subsiste dans les profils'
+);
+
 SELECT test.ok(
   (SELECT public FROM storage.buckets WHERE id = 'profile-pictures') = false,
   'le seau profile-pictures n''est plus public'
