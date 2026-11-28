@@ -196,13 +196,42 @@ SELECT test.ok(
 );
 
 SELECT test.ok(
-  EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE schemaname = 'storage' AND tablename = 'objects'
-      AND policyname = 'Users can delete own profile pictures'
-  ),
-  'la politique de suppression, qui manquait, existe désormais'
+  (
+    SELECT count(*) FROM pg_policies
+    WHERE schemaname = 'storage' AND tablename = 'objects' AND cmd = 'DELETE'
+      AND coalesce(qual, '') LIKE '%profile-pictures%'
+  ) = 1,
+  'une seule politique de suppression pour les photos (pas de doublon)'
 );
+
+-- Ce que le code 2.2.3 écrit (un chemin) doit être accepté par la base.
+-- C'est ce test qui manquait : la contrainte d'origine exigeait « https:// »,
+-- et l'envoi d'une photo échouait en production.
+SELECT test.login(test.uid('alice'));
+SET ROLE authenticated;
+SELECT test.ok(
+  test.affected(format(
+    $$ UPDATE public.profiles SET profile_picture_url = %L WHERE id = auth.uid() $$,
+    test.uid('alice')::text || '/avatar-1732000000000.jpg'
+  )) = 1,
+  'Alice enregistre le chemin de sa photo (ce qu''écrit le code 2.2.3)'
+);
+SELECT test.raises(
+  format($$ UPDATE public.profiles SET profile_picture_url = %L WHERE id = auth.uid() $$,
+         test.uid('bob')::text || '/avatar-1.jpg'),
+  '23514',
+  'un chemin dans le dossier de quelqu''un d''autre est refusé'
+);
+SELECT test.raises(
+  $$ UPDATE public.profiles SET profile_picture_url = 'https://site.example/photo.jpg' WHERE id = auth.uid() $$,
+  '23514',
+  'une URL externe est refusée'
+);
+SELECT test.ok(
+  test.affected($$ UPDATE public.profiles SET profile_picture_url = NULL WHERE id = auth.uid() $$) = 1,
+  'retirer la photo (NULL) reste possible'
+);
+RESET ROLE;
 
 -- Isolation réelle : Bob ne lit pas le fichier d'Alice
 INSERT INTO storage.objects (bucket_id, name)

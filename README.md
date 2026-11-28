@@ -167,7 +167,7 @@ Les migrations SQL se trouvent dans `backend/supabase/migrations/`. Elles sont *
 | `20261122205300` | Aliments personnels aux valeurs estimées : `foods.values_estimated` |
 | `20261128000101` | Audit : politiques RLS réécrites avec `(SELECT auth.uid())`, doublon supprimé sur `profiles`, index sur `entries.food_id` et `daily_targets.goal_id`, table `password_reset_tokens` (jamais utilisée) supprimée |
 | `20261128000412` | Audit : adresses d'abonnement push limitées aux services des navigateurs |
-| `20261128100000` | Audit : photos de profil privées (URL signées), URL existantes converties en chemins — **à appliquer après la mise en ligne de la 2.2.3**, version provisoire |
+| `20261128001654` | Audit : photos de profil privées (URL signées), URL existantes converties en chemins, `profile_picture_url` limité à un chemin dans le dossier du propriétaire |
 
 Rejouer toutes les migrations sur une base vierge donne un schéma identique à la production (vérifié par empreinte des colonnes, contraintes, index, politiques RLS et buckets).
 
