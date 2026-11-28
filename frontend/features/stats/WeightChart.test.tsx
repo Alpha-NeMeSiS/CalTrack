@@ -22,4 +22,27 @@ describe('WeightChart', () => {
     expect(screen.getByText('Cible 76,0 kg')).toBeInTheDocument();
     expect(document.querySelectorAll('circle')).toHaveLength(3);
   });
+
+  it('dessine en point creux une pesée plus tard hors suivi, avec sa légende', () => {
+    render(
+      <WeightChart
+        points={[
+          { date: '2025-01-20', weight_kg: 80, moment: 'morning' },
+          { date: '2025-01-21', weight_kg: 82, moment: 'later' },
+          { date: '2025-01-22', weight_kg: 79.8, moment: 'morning' },
+        ]}
+      />
+    );
+
+    expect(document.querySelectorAll('circle')).toHaveLength(3);
+    expect(screen.getByText('21 janv. : 82,0 kg, plus tard (hors suivi)')).toBeInTheDocument();
+    expect(screen.getByText('Plus tard, hors suivi')).toBeInTheDocument();
+    // La moyenne ne passe que par les deux pesées du matin
+    expect(document.querySelector('path')?.getAttribute('d')?.split('L')).toHaveLength(2);
+  });
+
+  it('pas de légende « hors suivi » quand toutes les pesées comptent', () => {
+    render(<WeightChart points={points} />);
+    expect(screen.queryByText('Plus tard, hors suivi')).not.toBeInTheDocument();
+  });
 });
