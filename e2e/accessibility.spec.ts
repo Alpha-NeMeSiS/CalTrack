@@ -137,6 +137,13 @@ for (const colorScheme of ['light', 'dark'] as const) {
         await page.getByRole('button', { name: 'Détail', exact: true }).click();
         const breakdown = page.getByRole('dialog', { name: 'Détail par repas' });
         await expect(breakdown.getByRole('row', { name: /Total/ })).toBeVisible();
+        // Toutes les colonnes tiennent sans défilement horizontal, même sur
+        // téléphone : sinon la colonne « Fibres » est coupée sans que rien ne
+        // l'indique (vu sur une capture Pixel 7).
+        const fitsWithoutScroll = await breakdown
+          .getByRole('table')
+          .evaluate((table) => table.parentElement!.scrollWidth <= table.parentElement!.clientWidth);
+        expect(fitsWithoutScroll).toBe(true);
         await expectNoViolations(page);
         await page.keyboard.press('Escape');
         await expect(breakdown).toBeHidden();

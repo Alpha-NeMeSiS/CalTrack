@@ -21,7 +21,9 @@ const MACRO_COLUMNS: { key: keyof Omit<MealTotals, 'kcal'>; short: string; full:
   { key: 'fiber_g', short: 'Fib.', full: 'Fibres' },
 ];
 
-const cell = 'px-2 py-2 text-right tabular-nums whitespace-nowrap';
+// Marges resserrées sur téléphone : les six colonnes doivent tenir sans
+// défilement horizontal (vérifié en e2e sur l'écran d'un Pixel 7).
+const cell = 'px-1.5 py-2 text-right tabular-nums whitespace-nowrap sm:px-2';
 
 export function MealBreakdownDialog({ breakdown, dateLabel, onClose }: MealBreakdownDialogProps) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -61,7 +63,7 @@ export function MealBreakdownDialog({ breakdown, dateLabel, onClose }: MealBreak
             <caption className="sr-only">Calories et macros de chaque repas de la journée</caption>
             <thead>
               <tr className="border-b border-line text-xs text-subtle">
-                <th scope="col" className="px-2 py-2 text-left font-medium">
+                <th scope="col" className="px-1.5 py-2 text-left font-medium sm:px-2">
                   Repas
                 </th>
                 <th scope="col" className={`${cell} font-medium`}>
@@ -78,11 +80,13 @@ export function MealBreakdownDialog({ breakdown, dateLabel, onClose }: MealBreak
             <tbody>
               {breakdown.meals.map((meal) => (
                 <tr key={meal.meal} className="border-b border-line-subtle">
-                  <th scope="row" className="px-2 py-2 text-left font-medium text-ink">
+                  <th scope="row" className="px-1.5 py-2 text-left font-medium text-ink sm:px-2">
                     {meal.label}
                   </th>
                   <td className={cell}>
-                    {meal.kcal} <span className="text-xs text-subtle">({meal.sharePct} %)</span>
+                    {meal.kcal}{' '}
+                    {/* Sous les kcal sur téléphone, à côté au-delà : la colonne reste étroite */}
+                    <span className="block text-xs text-subtle sm:inline">({meal.sharePct} %)</span>
                   </td>
                   {MACRO_COLUMNS.map((column) => (
                     <td key={column.key} className={cell}>
@@ -94,7 +98,7 @@ export function MealBreakdownDialog({ breakdown, dateLabel, onClose }: MealBreak
             </tbody>
             <tfoot>
               <tr className="font-semibold text-ink">
-                <th scope="row" className="px-2 py-2 text-left">
+                <th scope="row" className="px-1.5 py-2 text-left sm:px-2">
                   Total
                 </th>
                 <td className={cell}>{breakdown.total.kcal}</td>
