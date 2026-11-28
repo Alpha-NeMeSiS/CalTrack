@@ -381,3 +381,54 @@ describe('Dashboard', () => {
     });
   });
 });
+
+// Détail par repas et journal défilant (spec 2026-11-28-journal-detail-repas)
+describe('Dashboard : détail par repas et journal défilant', () => {
+  function loadDay(entries: Entry[]) {
+    mockedFetchUserGoals.mockResolvedValue([makeGoal()]);
+    mockedEnsureDailyTarget.mockResolvedValue(makeDailyTarget());
+    setEntries(entries);
+    render(<Dashboard activeDate="2025-01-10" />);
+  }
+
+  it('affiche « Détail » quand la journée a des aliments, et ouvre la fenêtre', async () => {
+    loadDay([
+      makeEntry({ id: 'b', meal_type: 'breakfast', kcal: 300 }),
+      makeEntry({ id: 'l', meal_type: 'lunch', kcal: 600 }),
+    ]);
+    await userEvent.click(await screen.findByRole('button', { name: 'Détail' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Détail par repas' });
+    expect(within(dialog).getByRole('row', { name: /Petit-déjeuner/ })).toHaveTextContent('33 %');
+    expect(within(dialog).getByRole('row', { name: /Déjeuner/ })).toHaveTextContent('67 %');
+  });
+
+  it("n'affiche pas « Détail » sur une journée vide", async () => {
+    loadDay([]);
+    await screen.findByText('Journal du jour');
+    expect(screen.queryByRole('button', { name: 'Détail' })).not.toBeInTheDocument();
+  });
+
+  it('rend le focus au bouton « Détail » à la fermeture', async () => {
+    loadDay([makeEntry()]);
+    const detail = await screen.findByRole('button', { name: 'Détail' });
+    await userEvent.click(detail);
+    await screen.findByRole('dialog', { name: 'Détail par repas' });
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(detail).toHaveFocus();
+  });
+
+  it('place les aliments dans une zone défilante nommée et atteignable au clavier', async () => {
+    loadDay([makeEntry({ label: 'Poulet rôti' })]);
+    const region = await screen.findByRole('region', { name: 'Journal du jour' });
+
+    expect(region).toHaveAttribute('tabindex', '0');
+    expect(region.className).toMatch(/max-h-\[60vh\]/);
+    expect(region.className).toMatch(/overflow-y-auto/);
+    expect(region).toHaveTextContent('Poulet rôti');
+    // L'en-tête du journal reste visible, hors de la zone qui défile
+    expect(region).not.toContainElement(screen.getByRole('button', { name: 'Copier les repas de la veille' }));
+  });
+});

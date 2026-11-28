@@ -5,14 +5,14 @@ import { Plus, Calendar } from 'lucide-react';
 import { supabase, DailyTarget, Entry, Goal, BodyComposition } from '../../shared/supabase';
 import { useAuth } from '../../app/contexts/useAuth';
 import { calculateDailySummary } from '../goals/calculations';
-import { addDaysToDateString, getTodayDate, isDateOnlyString, parseLocalDate } from '../../shared/date';
+import { addDaysToDateString, formatWeekdayDate, getTodayDate, isDateOnlyString, parseLocalDate } from '../../shared/date';
 import { findGoalForDate, isGoalEndedOn } from '../goals/goals';
 import { navigateTo } from '../../app/navigation';
 import { formatDateFR } from '../../shared/timeProgress';
 import { ensureDailyTargetForDate, fetchUserGoals } from '../goals/goals.service';
 import { recordWeight } from '../weight/weights.service';
 import { copyDayEntries, updateEntry } from './entries.service';
-import { groupEntriesByMeal, MealType } from './entries';
+import { groupEntriesByMeal, MealType, summarizeMeals } from './entries';
 import { usePreferences } from '../../app/contexts/usePreferences';
 import { getMealLabel, getVisibleMeals } from '../settings/preferences';
 import { WeightQuickLog } from '../weight/WeightQuickLog';
@@ -22,6 +22,7 @@ import { WaterCard } from '../water/WaterCard';
 import { waterGoal } from '../water/water';
 import { GoalProgressCard } from './GoalProgressCard';
 import { AddEntryModal } from './AddEntryModal';
+import { MealBreakdownDialog } from './MealBreakdownDialog';
 import { GuidedTour, TourFinishReason } from '../tour/GuidedTour';
 import { TOUR_STEPS } from '../tour/tour';
 
@@ -51,6 +52,8 @@ export function Dashboard({
   const [activeGoal, setActiveGoal] = useState<Goal | null>(null);
   const [goalForDate, setGoalForDate] = useState<Goal | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  // Fenêtre « Détail par repas » (bouton du bloc calories + macros)
+  const [showBreakdown, setShowBreakdown] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -420,6 +423,19 @@ export function Dashboard({
             />
           </div>
         </div>
+
+        {/* Ce que chaque repas a apporté : seulement si la journée a des aliments */}
+        {entries.length > 0 && (
+          <div className="flex justify-end px-2 pb-2 sm:px-6">
+            <button
+              type="button"
+              onClick={() => setShowBreakdown(true)}
+              className="rounded-md btn-secondary bg-surface px-3 py-1.5 text-sm"
+            >
+              Détail
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Eau du jour : objectif manuel (Paramètres) ou automatique d'après le poids */}
@@ -428,7 +444,7 @@ export function Dashboard({
       {/* 2. Journal du jour, regroupé par repas */}
       <div className="panel p-4">
         <div className="flex flex-wrap items-center justify-between gap-2 p-4 sm:p-6 border-b border-surface/20">
-          <h2 className="card-title">Journal du jour</h2>
+          <h2 id="journal-title" className="card-title">Journal du jour</h2>
           <button
             type="button"
             onClick={handleCopyPreviousDay}
@@ -454,7 +470,15 @@ export function Dashboard({
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-line-subtle">
+          /* Zone défilante : une journée chargée ne rallonge plus la page à l'infini.
+             Nommée par le titre et atteignable au clavier (flèches), comme
+             l'historique de 30 jours des Tendances. */
+          <div
+            role="region"
+            aria-labelledby="journal-title"
+            tabIndex={0}
+            className="max-h-[60vh] overflow-y-auto rounded-md divide-y divide-line-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+          >
             {groupEntriesByMeal(entries, (meal) => getMealLabel(preferences, meal)).map((group) => (
               <section key={group.meal} aria-label={group.label} className="py-2">
                 <div className="flex items-baseline justify-between px-4 pt-2 sm:px-6">
@@ -600,6 +624,14 @@ export function Dashboard({
           date={selectedDate}
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddEntry}
+        />
+      )}
+
+      {showBreakdown && (
+        <MealBreakdownDialog
+          breakdown={summarizeMeals(entries, (meal) => getMealLabel(preferences, meal))}
+          dateLabel={formatWeekdayDate(selectedDate)}
+          onClose={() => setShowBreakdown(false)}
         />
       )}
 

@@ -49,3 +49,8 @@ export function addDaysToDateString(dateStr: string, days: number): string {
 export function timestampToLocalDateString(timestamp: string): string {
   return toLocalDateString(new Date(timestamp));
 }
+
+/** Date YYYY-MM-DD en toutes lettres : « samedi 28 novembre » (titres de fenêtres). */
+export function formatWeekdayDate(value: string): string {
+  return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(parseLocalDate(value));
+}

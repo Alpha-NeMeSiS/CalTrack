@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   addDaysToDateString,
+  formatWeekdayDate,
   getTodayDate,
   isDateOnlyString,
   parseLocalDate,
@@ -74,5 +75,11 @@ describe('timestampToLocalDateString', () => {
   it('convertit un timestamp en date locale', () => {
     const local = new Date(2025, 6, 14, 22, 45);
     expect(timestampToLocalDateString(local.toISOString())).toBe('2025-07-14');
+  });
+});
+
+describe('formatWeekdayDate', () => {
+  it('affiche le jour de la semaine, le jour et le mois, en français', () => {
+    expect(formatWeekdayDate('2026-11-28')).toBe('samedi 28 novembre');
   });
 });
