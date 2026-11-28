@@ -45,7 +45,7 @@
 
   ```text
   ┌ Détail par repas ─────────────────────────────── ✕ ┐
-  │ vendredi 28 novembre                              │
+  │ samedi 28 novembre                              │
   │                  kcal       Prot.  Lip.  Gluc. Fib.│
   │ Petit-déjeuner    420 (21%)  18 g  12 g  58 g  6 g │
   │ Déjeuner          780 (38%)  42 g  28 g  85 g  9 g │

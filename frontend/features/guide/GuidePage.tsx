@@ -50,6 +50,10 @@ const SECTIONS: InfoSectionDef<GuideSection>[] = [
           la journée d’hier.
         </p>
         <p className={text}>
+          « Détail », sous vos macros, montre ce que chaque repas vous a apporté : calories, part de la journée et
+          macros. Le logo CalTrack, en haut, ramène toujours au journal du jour.
+        </p>
+        <p className={text}>
           Un produit scanné n’a pas de valeurs ? CalTrack propose une estimation d’après des produits proches :
           vérifiez-la avec l’étiquette.
         </p>

@@ -13,6 +13,15 @@ export interface ReleaseNote {
 
 export const RELEASES: readonly ReleaseNote[] = [
   {
+    version: '2.3.0',
+    date: '2026-11-28',
+    items: [
+      'Nouveau bouton « Détail » sous vos macros : voyez ce que chaque repas vous a apporté (calories, part de la journée, protéines, lipides, glucides, fibres).',
+      'Le journal du jour garde une taille raisonnable : une longue journée défile dans sa propre zone, la pesée reste à portée de main.',
+      'Touchez le logo CalTrack, en haut, pour revenir au journal du jour depuis n’importe où.',
+    ],
+  },
+  {
     version: '2.2.3',
     date: '2026-11-28',
     items: [

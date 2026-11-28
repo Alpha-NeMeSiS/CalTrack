@@ -9,6 +9,23 @@ Toutes les évolutions notables de CalTrack. Les numéros suivent le
 
 La version affichée dans l'app (pied de page, page « À propos ») est lue dans `package.json`.
 
+## [2.3.0] — 28 novembre 2026
+
+### Nouveautés
+
+- **Détail par repas** : bouton « Détail » sous les macros du journal (affiché dès qu'il y a un aliment). Il ouvre une fenêtre avec, pour chaque repas, les kcal, leur part dans la journée, les protéines, lipides, glucides et fibres, puis une ligne Total. Noms de repas personnalisés respectés. Calcul pur et testé : `summarizeMeals` (`frontend/features/journal/entries.ts`), fenêtre `MealBreakdownDialog`.
+- **Journal du jour défilant** : la liste des aliments a une hauteur maximale (60 % de l'écran) et sa propre barre de défilement ; une longue journée ne repousse plus la pesée et la progression tout en bas. Zone nommée et atteignable au clavier.
+- **Logo cliquable** : le logo et le nom CalTrack ramènent au tableau de bord, sur la date du jour, en haut de page.
+
+### Accessibilité
+
+- Le titre principal « CalTrack » est séparé du bouton du logo, et le nom du bouton reprend le texte visible (WCAG 2.5.3).
+- La fenêtre « Détail par repas » et la zone défilante du journal sont contrôlées par axe (mobile et ordinateur, thèmes clair et sombre).
+
+### Technique
+
+- `formatWeekdayDate` (`frontend/shared/date.ts`) : format « samedi 28 novembre », partagé par la fenêtre d'ajout et la fenêtre de détail.
+
 ## [2.2.3] — 28 novembre 2026
 
 Correctifs issus de l'audit complet du code : [docs/AUDIT-2026-11-27.md](docs/AUDIT-2026-11-27.md).

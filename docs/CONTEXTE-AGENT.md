@@ -1,6 +1,6 @@
 # Contexte pour le prochain agent
 
-> Dernière mise à jour : **28 novembre 2026**. Version en production : **2.2.3**.
+> Dernière mise à jour : **28 novembre 2026**. Version en production : **2.2.3** (2.3.0 dans la PR en cours).
 > À tenir à jour à la fin de chaque session (section « État actuel » et « À faire »).
 
 Ce fichier résume tout ce qu'il faut savoir pour reprendre CalTrack : le projet,
@@ -221,6 +221,7 @@ docs/            ARCHITECTURE.md, design-system.md, emails.md, superpowers/ (spe
 | 2.2.1 | 23/11/2026 | Portions en ml/cl/l pour les boissons, nouvel essai automatique des appels Open Food Facts (`fetchWithRetry`) |
 | 2.2.2 | 27/11/2026 | Recherche Open Food Facts par nom réparée après le changement d'index (PR #61) |
 | 2.2.3 | 28/11/2026 | Correctifs de l'audit complet (PR #63) : plancher calorique, photos privées, CSP, accessibilité des fenêtres, bundle découpé |
+| 2.3.0 | 28/11/2026 | Bouton « Détail » (kcal et macros par repas), journal du jour défilant, logo cliquable vers le journal du jour |
 
 Autres changements sans version :
 - réorganisation en `frontend/` et `backend/` et `docs/ARCHITECTURE.md` (PR #56 à #58) ;
@@ -230,17 +231,21 @@ Le détail est dans `CHANGELOG.md`.
 
 ## 7. État actuel (27/11/2026)
 
-- `main` est en version **2.2.3** (fusion de la PR #63, `cc5ed41`), en
-  production et vérifiée. Les trois migrations de l'audit sont appliquées.
-- PR en cours : celle qui renomme la migration A-02 et met la documentation à
-  jour (sans changement de version). Vérifier si elle est fusionnée.
-- Production vérifiée : « pastabox bolognaise » trouve le PastaBox à 127 kcal.
-- Tests : 90 fichiers et 966 tests Vitest, 64 tests Playwright, 160 vérifications
+- `main` est en version **2.2.3**, en production et vérifiée. Les trois
+  migrations de l'audit sont appliquées (PR #63 et #64 fusionnées).
+- PR en cours : **2.3.0** (`dev` → `main`) — détail par repas, journal
+  défilant, logo cliquable. Spec : `docs/superpowers/specs/2026-11-28-journal-detail-repas-design.md`.
+  Changer la version : la fusion déclenche le déploiement en production.
+- Tests : 93 fichiers et 989 tests Vitest, 64 tests Playwright, 160 vérifications
   SQL (dont 24 pour l'audit), tous verts. Couverture : 93,73 %.
 
 ## 8. À faire
 
-### Prochaine fonctionnalité : « Copier un repas d'un autre jour » (2.3.0)
+### Prochaine fonctionnalité : « Copier un repas d'un autre jour » (2.4.0)
+
+La 2.3.0 a été prise par le détail par repas. Pour la fenêtre de copie,
+réutiliser `useModalFocus` et, pour les totaux d'un repas, `summarizeMeals`
+(`frontend/features/journal/entries.ts`).
 
 La proposition a été présentée et l'utilisateur ne l'a pas encore validée :
 **attendre son « code »** (ou ses remarques) avant de commencer.
@@ -283,7 +288,7 @@ Elle ne touche pas à la base et réutilise l'existant :
    - fenêtre accessible (focus piégé, Échap, test axe) ;
    - tests unitaires et e2e ;
    - phrase du Guide mise à jour ;
-   - version 2.3.0 (CHANGELOG, « Quoi de neuf ? », test de version).
+   - version 2.4.0 (CHANGELOG, « Quoi de neuf ? », test de version).
 
 ### Audit complet du 27/11/2026 : correctifs appliqués
 
@@ -311,7 +316,7 @@ Nouveautés introduites par les correctifs, utiles à connaître :
 
 - `frontend/shared/ui/useModalFocus.ts` : accessibilité commune aux fenêtres
   modales (piège de focus, Échap, restauration du focus, verrou du défilement).
-  **À utiliser pour la fenêtre « Copier un repas »** de la 2.3.0.
+  **À utiliser pour la fenêtre « Copier un repas »** de la 2.4.0.
 - `frontend/app/AppErrorBoundary.tsx` : garde-fou d'erreurs de rendu.
 - `backend/netlify/lib/rateLimit.ts` : limite de débit des routes `/api/off/*`.
 - A-11 (retrait de `@netlify/blobs`) est **annulé** : voir les pièges, § 9.
