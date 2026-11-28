@@ -19,7 +19,7 @@ import { MealTypeSelector } from './MealTypeSelector';
 import { RecipesTab } from '../recipes/RecipesTab';
 import { useModalFocus } from '../../shared/ui/useModalFocus';
 import type { FoodDraft, NormalizedFood, NutritionPer100 } from '../foods/types';
-import { parseLocalDate } from '../../shared/date';
+import { formatWeekdayDate } from '../../shared/date';
 import { cleanBarcodeInput, isValidGtin } from '../foods/barcode';
 import { nutritionOf } from '../foods/similarProducts';
 import { foodLabel, nutritionForQuantity, QuickFood } from '../foods/foodLibrary';
@@ -67,10 +67,6 @@ const ADD_ERROR = "L'ajout a échoué. Vérifiez votre connexion puis réessayez
 
 function roundToOneDecimal(value: number) {
   return Math.round(value * 10) / 10;
-}
-
-function formatEntryDate(value: string) {
-  return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(parseLocalDate(value));
 }
 
 export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
@@ -893,7 +889,7 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
         <div className="flex items-center justify-between px-8 pt-8 pb-6 border-b border-line">
           <div>
             <h2 id="add-entry-title" className="card-title">Ajouter un aliment</h2>
-            <p className="mt-1 text-sm text-subtle first-letter:uppercase">{formatEntryDate(date)}</p>
+            <p className="mt-1 text-sm text-subtle first-letter:uppercase">{formatWeekdayDate(date)}</p>
           </div>
           <button onClick={onClose} className="text-subtle hover:text-muted transition-colors" aria-label="Fermer la fenêtre">
             <X className="w-6 h-6" />

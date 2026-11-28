@@ -126,6 +126,14 @@ function AppScreens() {
     preferences.tourCompletedAt !== null &&
     isNewerVersion(APP_VERSION, preferences.lastSeenVersion);
 
+  // Logo de l'en-tête : comme un bouton « Accueil », retour au tableau de bord
+  // sur la date du jour, en haut de page (même si la vue ne change pas).
+  const goHome = () => {
+    setCurrentView('dashboard');
+    setDashboardDate(getTodayDate());
+    window.scrollTo?.({ top: 0 });
+  };
+
   // « Revoir la visite » (Guide) : retour au journal, visite relancée sans rien enregistrer
   const startTourReplay = () => {
     setCurrentView('dashboard');
@@ -283,7 +291,7 @@ function AppScreens() {
   // Vue principale de l'application lorsque l'utilisateur est connecté et profil rempli
   return (
     <div className="min-h-screen bg-canvas">
-      <Header />
+      <Header onHome={goHome} />
       <Navigation currentView={currentView} onViewChange={setCurrentView} />
 
       {/* pb-28 sur mobile : place pour la barre d'onglets fixée en bas et le bouton « Ajouter » */}
