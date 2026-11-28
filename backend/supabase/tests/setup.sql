@@ -42,6 +42,13 @@ CREATE FUNCTION storage.foldername(name text) RETURNS text[]
 LANGUAGE sql IMMUTABLE
 AS $$ SELECT string_to_array(name, '/') $$;
 
+-- Comme chez Supabase : les rôles de l'API atteignent le schéma storage, la
+-- sécurité reposant sur les politiques RLS de storage.objects.
+GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO anon, authenticated, service_role;
+GRANT SELECT ON storage.buckets TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION storage.foldername(text) TO anon, authenticated, service_role;
+
 -- Extensions (gen_random_bytes, utilisé par une migration)
 CREATE SCHEMA IF NOT EXISTS extensions;
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ExpenditureEstimate } from './insights';
 import { suggestCalorieAdjustment } from './calorieAdjustment';
 import { computeTargetsForGoal, GoalLike } from '../goals/goals';
-import type { UserProfile } from '../goals/calculations';
+import { calculateBMR, getCalorieFloor, type UserProfile } from '../goals/calculations';
 
 const profile: UserProfile = { sexe: 'M', date_naissance: '1995-01-01', taille_cm: 178, poids_kg: 80 };
 
@@ -96,3 +96,47 @@ describe('suggestCalorieAdjustment', () => {
 function suggestSafe(goal: typeof lossGoal) {
   return suggestCalorieAdjustment({ profile, goal, expenditure: ok(formulaExpenditure + 1000), now });
 }
+
+// Garde-fou de cohérence (audit A-01).
+//
+// L'ajustement accepté est figé sur l'objectif (goals.calorie_adjustment_kcal),
+// mais les calories de la formule sont recalculées depuis le PROFIL. Quand le
+// profil change ensuite (poids perdu, activité revue), la cible baisse sans que
+// l'ajustement bouge. Avant le correctif, seul le type « loss » était protégé
+// par le plancher : un objectif « maintien » ou « prise » pouvait alors passer
+// sous le métabolisme de base.
+describe('le plancher protège tous les types après un changement de profil', () => {
+  const heavy: UserProfile = { sexe: 'F', date_naissance: '1960-01-01', taille_cm: 155, poids_kg: 95 };
+  // Même personne, bien plus légère : la formule donne beaucoup moins de calories
+  const light: UserProfile = { ...heavy, poids_kg: 42 };
+
+  // « loss » est exclu : le plancher s'y appliquait déjà, donc aucune baisse
+  // n'est jamais proposée pour ce profil (delta nul). Seuls « maintien » et
+  // « prise » étaient vulnérables.
+  for (const type of ['maintain', 'gain'] as const) {
+    it(`objectif « ${type} » : la cible reste au plancher`, () => {
+      const goal: GoalLike & { calorie_adjustment_at?: string | null } = {
+        id: `goal-${type}`,
+        type,
+        activity_level: 1.2,
+        method: 'mifflin',
+        deficit_or_surplus_pct: type === 'maintain' ? 0 : 20,
+        protein_g_per_kg: 1.6,
+        fat_g_per_kg_min: 0.8,
+      };
+
+      // 1. Dépense réelle bien plus basse que la formule : une baisse est proposée
+      const suggestion = suggestCalorieAdjustment({ profile: heavy, goal, expenditure: ok(1400, -0.9), now });
+      expect(suggestion).not.toBeNull();
+      expect(suggestion!.direction).toBe('less');
+
+      // 2. L'utilisateur accepte, puis maigrit beaucoup
+      const adjusted = { ...goal, calorie_adjustment_kcal: suggestion!.newAdjustmentKcal };
+      const targets = computeTargetsForGoal(light, adjusted);
+      const floor = getCalorieFloor(light, calculateBMR(light, 'mifflin'));
+
+      // 3. La cible ne descend jamais sous le plancher de sécurité
+      expect(targets.calories_kcal).toBeGreaterThanOrEqual(floor);
+    });
+  }
+});

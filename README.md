@@ -4,7 +4,7 @@ Application web de suivi calorique construite avec **React + TypeScript + Vite**
 
 ## Version
 
-Version actuelle : **2.2.2** (V2 : nouvelle direction artistique, scanner de code-barres, recettes, eau, pesées… ; 2.1 : visite guidée, Guide, fenêtre « Quoi de neuf ? » ; 2.2 : estimation d'un produit scanné sans valeurs). Le détail des évolutions est dans [CHANGELOG.md](CHANGELOG.md).
+Version actuelle : **2.2.3** (V2 : nouvelle direction artistique, scanner de code-barres, recettes, eau, pesées… ; 2.1 : visite guidée, Guide, fenêtre « Quoi de neuf ? » ; 2.2 : estimation d'un produit scanné sans valeurs). Le détail des évolutions est dans [CHANGELOG.md](CHANGELOG.md).
 
 Pour une nouvelle version, mettre à jour `package.json` (`npm version minor --no-git-tag-version` pour une nouvelle fonctionnalité, `patch` pour un correctif, `major` pour une refonte) ajouter une entrée au CHANGELOG, et écrire les notes pour l'utilisateur dans `frontend/features/whats-new/releaseNotes.ts` (affichées par la fenêtre « Quoi de neuf ? » ; un test refuse une version sans notes). La version affichée dans l'app en découle automatiquement.
 
@@ -37,7 +37,10 @@ Quand les crédits sont épuisés, Netlify ne publie plus rien jusqu'au mois sui
 - Ajustement des calories proposé d'après la dépense réelle (repas saisis et pesées), à accepter ou non.
 - Pied de page et page « À propos » (version, avertissement santé, données enregistrées, sources), accessibles aussi sans compte.
 - Visite guidée au premier lancement, page « Guide » et fenêtre « Quoi de neuf ? » à chaque mise à jour.
-- Persistance des données via Supabase (tables `profiles`, `goals`, `daily_targets`, `foods`, `entries`).
+- Persistance des données via Supabase : `profiles`, `goals`, `daily_targets`, `foods`,
+  `entries`, `favorite_foods`, `recipes` et `recipe_ingredients`, `water_logs`,
+  `weight_logs`, `user_preferences`, `push_subscriptions` — toutes isolées par
+  compte grâce aux politiques RLS.
 
 ## Stack technique
 
@@ -162,6 +165,9 @@ Les migrations SQL se trouvent dans `backend/supabase/migrations/`. Elles sont *
 | `20261108232714` | Suivi de l'eau (`water_logs`) et objectif manuel (`user_preferences.water_goal_ml`) |
 | `20261122192854` | Visite guidée et « Quoi de neuf ? » : `user_preferences.tour_completed_at` et `last_seen_version` |
 | `20261122205300` | Aliments personnels aux valeurs estimées : `foods.values_estimated` |
+| `20261128000101` | Audit : politiques RLS réécrites avec `(SELECT auth.uid())`, doublon supprimé sur `profiles`, index sur `entries.food_id` et `daily_targets.goal_id`, table `password_reset_tokens` (jamais utilisée) supprimée |
+| `20261128000412` | Audit : adresses d'abonnement push limitées aux services des navigateurs |
+| `20261128100000` | Audit : photos de profil privées (URL signées), URL existantes converties en chemins — **à appliquer après la mise en ligne de la 2.2.3**, version provisoire |
 
 Rejouer toutes les migrations sur une base vierge donne un schéma identique à la production (vérifié par empreinte des colonnes, contraintes, index, politiques RLS et buckets).
 
@@ -183,6 +189,7 @@ Rejouer toutes les migrations sur une base vierge donne un schéma identique à 
 | `08_water.sql` | Prises d'eau isolées par compte, quantités et objectif bornés |
 | `09_tour_and_version.sql` | Visite guidée et version vue : vides par défaut, modifiables seulement sur son compte |
 | `10_foods_values_estimated.sql` | Valeurs estimées : `false` par défaut, modifiables seulement sur ses aliments |
+| `11_audit_2026_11_27.sql` | Audit : politiques RLS sans `auth.uid()` ligne par ligne, index, table supprimée, adresses push (dont 3 tentatives de contournement), photos privées et isolées |
 
 Outils (`backend/supabase/tests/helpers.sql`) : `test.create_user('nom')`, `test.login(test.uid('nom'))` puis `SET ROLE authenticated` pour agir comme l'API, `test.ok(condition, 'message')`, `test.raises($$ SQL $$, 'SQLSTATE', 'message')`.
 
@@ -294,7 +301,7 @@ Onglet « Recettes » de « Ajouter un aliment » :
 
 ## Pied de page et page « À propos »
 
-- **Pied de page** sous chaque vue et sur l'écran de connexion : « CalTrack v2.2.2 · Guide · À propos · Vos données · Sources ». Une fois connecté, il cite aussi les sources nutritionnelles (Ciqual, Open Food Facts).
+- **Pied de page** sous chaque vue et sur l'écran de connexion : « CalTrack v2.2.3 · Guide · À propos · Vos données · Sources ». Une fois connecté, il cite aussi les sources nutritionnelles (Ciqual, Open Food Facts).
 - **Page « À propos »** en quatre sections : l'application (version), santé (estimations, pas un dispositif médical), vos données (ce qui est enregistré, où, qui y a accès, combien de temps ; liens vers l'export et la suppression une fois connecté) et sources (Ciqual sous Licence Ouverte 2.0, Open Food Facts sous ODbL, formules utilisées). Chaque lien du pied de page ouvre la page sur sa section.
 - **Version** : lue dans `package.json` au build (`__APP_VERSION__`, exposée par `frontend/app/appInfo.ts`) ; changer `version` suffit.
 

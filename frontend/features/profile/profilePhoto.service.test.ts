@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { deleteAllProfilePhotos, photoPathFromUrl, removeProfilePhoto, uploadProfilePhoto } from './profilePhoto.service';
+import {
+  deleteAllProfilePhotos,
+  photoPathFromUrl,
+  removeProfilePhoto,
+  signedPhotoUrl,
+  uploadProfilePhoto,
+} from './profilePhoto.service';
 import { getOperationArgs, supabaseMock } from '../../test/supabaseMock';
 
 const storage = vi.hoisted(() => ({
@@ -9,6 +15,12 @@ const storage = vi.hoisted(() => ({
   getPublicUrl: vi.fn((path: string) => ({
     data: { publicUrl: `https://x.supabase.co/storage/v1/object/public/profile-pictures/${path}` },
   })),
+  createSignedUrl: vi.fn(
+    (path: string): { data: { signedUrl: string } | null; error: Error | null } => ({
+      data: { signedUrl: `https://x.supabase.co/storage/v1/object/sign/profile-pictures/${path}?token=abc` },
+      error: null,
+    })
+  ),
 }));
 
 vi.mock('../../shared/supabase', async () => {
@@ -31,13 +43,22 @@ beforeEach(() => {
   storage.upload.mockReset().mockResolvedValue({ data: {}, error: null });
   storage.remove.mockReset().mockResolvedValue({ data: [], error: null });
   storage.list.mockReset().mockResolvedValue({ data: [{ name: 'avatar-1.jpg' }, { name: 'avatar-2.jpg' }], error: null });
+  storage.createSignedUrl.mockReset().mockImplementation((path: string) => ({
+    data: { signedUrl: `https://x.supabase.co/storage/v1/object/sign/profile-pictures/${path}?token=abc` },
+    error: null,
+  }));
 });
 
 describe('photo de profil', () => {
-  it('retrouve le chemin du fichier à partir de son URL publique', () => {
+  it('retrouve le chemin du fichier à partir de son URL publique (anciennes valeurs)', () => {
     expect(photoPathFromUrl(OLD_URL)).toBe('user-1/avatar-1.jpg');
     expect(photoPathFromUrl('https://ailleurs.example/photo.jpg')).toBeNull();
     expect(photoPathFromUrl(null)).toBeNull();
+  });
+
+  // Audit A-02 : on enregistre désormais le chemin, pas une URL
+  it('accepte directement un chemin', () => {
+    expect(photoPathFromUrl('user-1/avatar-9.jpg')).toBe('user-1/avatar-9.jpg');
   });
 
   it('envoie la photo réduite, l’associe au profil et supprime l’ancienne', async () => {
@@ -48,10 +69,14 @@ describe('photo de profil', () => {
     expect(path).toMatch(/^user-1\/avatar-\d+\.jpg$/);
     expect(blob).toBeInstanceOf(Blob);
     expect(options).toEqual({ contentType: 'image/jpeg', upsert: false });
-    expect(url).toContain(path);
+
+    // Audit A-02 : c'est le CHEMIN qui est enregistré, pas une URL publique
+    expect(url).toBe(path);
+    expect(url).not.toMatch(/^https?:\/\//);
+    expect(storage.getPublicUrl).not.toHaveBeenCalled();
 
     const [update] = supabaseMock.callsFor('profiles', 'update');
-    expect(getOperationArgs(update, 'update')?.[0]).toMatchObject({ profile_picture_url: url });
+    expect(getOperationArgs(update, 'update')?.[0]).toMatchObject({ profile_picture_url: path });
     expect(storage.remove).toHaveBeenCalledWith(['user-1/avatar-1.jpg']);
   });
 
@@ -80,5 +105,38 @@ describe('photo de profil', () => {
     await deleteAllProfilePhotos('user-1');
     expect(storage.list).toHaveBeenCalledWith('user-1', { limit: 100 });
     expect(storage.remove).toHaveBeenCalledWith(['user-1/avatar-1.jpg', 'user-1/avatar-2.jpg']);
+  });
+
+  // Audit A-26 : un échec ne doit plus être avalé, sinon la suppression du
+  // compte laisse un fichier sans propriétaire dans le stockage (RGPD).
+  it('signale un échec de suppression avant la suppression du compte', async () => {
+    storage.remove.mockResolvedValue({ data: null, error: new Error('réseau') });
+    await expect(deleteAllProfilePhotos('user-1')).rejects.toThrow('pas pu être supprimées');
+  });
+
+  it('signale un échec de lecture de la liste', async () => {
+    storage.list.mockResolvedValue({ data: null, error: new Error('réseau') });
+    await expect(deleteAllProfilePhotos('user-1')).rejects.toThrow("pas pu être lue");
+  });
+});
+
+// Audit A-02 : affichage d'une photo qui n'est plus publique
+describe('signedPhotoUrl', () => {
+  it('signe un chemin', async () => {
+    const url = await signedPhotoUrl('user-1/avatar-9.jpg');
+    expect(storage.createSignedUrl).toHaveBeenCalledWith('user-1/avatar-9.jpg', 3600);
+    expect(url).toContain('token=abc');
+  });
+
+  it('renvoie telle quelle une ancienne URL complète', async () => {
+    expect(await signedPhotoUrl(OLD_URL)).toBe(OLD_URL);
+    expect(storage.createSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it('renvoie null sans valeur, ou si la signature échoue', async () => {
+    expect(await signedPhotoUrl(null)).toBeNull();
+    expect(await signedPhotoUrl('')).toBeNull();
+    storage.createSignedUrl.mockResolvedValue({ data: null, error: new Error('refusé') });
+    expect(await signedPhotoUrl('user-1/avatar-9.jpg')).toBeNull();
   });
 });

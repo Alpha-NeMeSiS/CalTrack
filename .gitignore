@@ -20,7 +20,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Variables d'environnement : aucune ne doit entrer dans le dépôt (audit A-24).
+# `.env` seul laissait passer .env.production et .env.development.
 .env
+.env.*
+!.env.example
 
 # Rapports de couverture de tests
 coverage

@@ -27,10 +27,29 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim())
+    (async () => {
+      // Caches laissés par une ancienne version du service worker
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)));
+
+      // Audit A-14 : les fichiers de /assets/ sont versionnés par Vite (leur nom
+      // change à chaque déploiement) et servis « cache d'abord ». Comme
+      // CACHE_NAME ne bouge pas, rien ne les supprimait jamais : le cache
+      // grossissait sans limite sur l'appareil. On retire ceux que la page
+      // d'accueil ne référence plus.
+      const cache = await caches.open(CACHE_NAME);
+      const shell = await cache.match('/');
+      if (shell) {
+        const html = await shell.clone().text();
+        const stale = (await cache.keys()).filter((request) => {
+          const { pathname } = new URL(request.url);
+          return pathname.startsWith('/assets/') && !html.includes(pathname);
+        });
+        await Promise.all(stale.map((request) => cache.delete(request)));
+      }
+
+      await self.clients.claim();
+    })()
   );
 });
 
@@ -56,7 +75,7 @@ async function cacheFirst(request) {
   return response;
 }
 
-async function staleWhileRevalidate(request) {
+async function staleWhileRevalidate(request, event) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
   const network = fetch(request)
@@ -65,7 +84,13 @@ async function staleWhileRevalidate(request) {
       return response;
     })
     .catch(() => cached);
-  return cached || network;
+  // Audit A-14 : sans waitUntil, le navigateur peut arrêter le service worker
+  // avant la fin de l'écriture en cache quand la réponse vient du cache.
+  if (cached) {
+    event?.waitUntil(network);
+    return cached;
+  }
+  return network;
 }
 
 self.addEventListener('fetch', (event) => {
@@ -81,7 +106,7 @@ self.addEventListener('fetch', (event) => {
   } else if (url.pathname.startsWith('/assets/')) {
     event.respondWith(cacheFirst(request));
   } else {
-    event.respondWith(staleWhileRevalidate(request));
+    event.respondWith(staleWhileRevalidate(request, event));
   }
 });
 
@@ -105,7 +130,13 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin).href;
+  // Audit A-14 : une URL absolue l'emporterait sur l'origine passée en base
+  // (new URL('https://ailleurs/x', origine) → ailleurs). Les notifications sont
+  // signées par VAPID et n'arrivent que de notre Edge Function, mais on
+  // n'accepte qu'un chemin interne : cela ne coûte rien.
+  const raw = (event.notification.data && event.notification.data.url) || '/';
+  const path = typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//') ? raw : '/';
+  const url = new URL(path, self.location.origin).href;
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
       const existing = windows.find((client) => client.url.startsWith(self.location.origin));

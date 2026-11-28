@@ -9,6 +9,7 @@
 // { products: [{ code, product_name, product_name_fr, brands, image_small_url, nutriments }] }
 
 import { fetchWithRetry } from '../lib/fetchWithRetry';
+import { clientIp, isRateLimited, TOO_MANY_REQUESTS } from '../lib/rateLimit';
 import { ENRICH_LIMIT, getProductNutrition, hasNutriments, OFF_USER_AGENT } from '../lib/productNutrition';
 
 const OFF_SEARCH_ENDPOINT = 'https://search.openfoodfacts.org/search';
@@ -31,7 +32,10 @@ type NetlifyEvent = {
   queryStringParameters?: {
     q?: string;
     size?: string;
+    /** 'advanced' : requête construite par l'application (produits similaires) */
+    mode?: string;
   } | null;
+  headers?: Record<string, string | undefined> | null;
 };
 
 type NetlifyResponse = {
@@ -79,11 +83,20 @@ const ADVANCED_QUERY = /[:"()]|\b(?:AND|OR)\b/;
 /**
  * Requête envoyée à l'index. Depuis fin novembre 2026, il combine les mots en
  * ET et ne cherche plus le texte dans la marque : chaque mot doit donc figurer
- * dans le nom ou la marque (« jus multifruits paquito »). Une requête avancée
- * (produits similaires) passe telle quelle.
+ * dans le nom ou la marque (« jus multifruits paquito »).
+ *
+ * Audit A-28 : une requête contenant « : », « ( » ou « OR » partait auparavant
+ * telle quelle, quelle que soit son origine. N'importe qui pouvait donc
+ * injecter une requête arbitraire dans l'index (sans risque de fuite, l'API
+ * étant publique et en lecture seule, mais avec des erreurs 400
+ * incompréhensibles pour l'utilisateur). La syntaxe avancée n'est désormais
+ * acceptée que si l'appelant la demande explicitement : c'est le cas des
+ * « produits similaires » (frontend/features/foods/similarProducts.ts).
+ *
+ * @param allowAdvanced true quand la requête est construite par l'application
  */
-export function buildSearchQuery(input: string): string {
-  if (ADVANCED_QUERY.test(input)) return input;
+export function buildSearchQuery(input: string, allowAdvanced = false): string {
+  if (allowAdvanced && ADVANCED_QUERY.test(input)) return input;
   const words = input
     .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
@@ -121,6 +134,10 @@ function normalizeBrands(brands: SearchHit['brands']): string | undefined {
 }
 
 export async function handler(event: NetlifyEvent): Promise<NetlifyResponse> {
+  // Garde-fou de débit (audit A-10) : une recherche peut déclencher jusqu'à 11
+  // appels vers Open Food Facts, et la route est publique.
+  if (isRateLimited(clientIp(event.headers))) return TOO_MANY_REQUESTS;
+
   const q = event.queryStringParameters?.q?.trim() ?? '';
 
   // Ignore les recherches trop courtes.
@@ -129,7 +146,7 @@ export async function handler(event: NetlifyEvent): Promise<NetlifyResponse> {
   }
 
   const params = new URLSearchParams({
-    q: buildSearchQuery(q),
+    q: buildSearchQuery(q, event.queryStringParameters?.mode === 'advanced'),
     langs: 'fr',
     page_size: pageSize(event.queryStringParameters?.size),
     fields: OFF_FIELDS,

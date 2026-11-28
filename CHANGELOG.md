@@ -9,6 +9,45 @@ Toutes les évolutions notables de CalTrack. Les numéros suivent le
 
 La version affichée dans l'app (pied de page, page « À propos ») est lue dans `package.json`.
 
+## [2.2.3] — 28 novembre 2026
+
+Correctifs issus de l'audit complet du code : [docs/AUDIT-2026-11-27.md](docs/AUDIT-2026-11-27.md).
+
+### Corrections
+
+- **Plancher calorique** (A-01) : le seuil de sécurité (jamais sous le métabolisme de base, ni sous 1 200 kcal pour une femme / 1 500 pour un homme) n'était appliqué qu'aux objectifs de perte. Après l'acceptation d'un ajustement des calories, un changement de profil pouvait faire tomber un objectif de maintien ou de prise à moins de 1 000 kcal/jour. Il s'applique désormais à tous les types d'objectif.
+- **Macros** (A-15) : leur somme pouvait dépasser la cible calorique (cas trouvés par un test de balayage, à des âges élevés avec protéines à 2,5 g/kg). La règle « 25 % des calories en lipides » cède d'abord, puis les protéines, jamais le minimum de lipides lié au poids. Le drapeau `macros_reduced_to_fit` signale la réduction.
+- **Aliment personnel avec code-barres** (A-09) : un double appui sur « Enregistrer » pouvait afficher une erreur Postgres brute. Un seul `upsert` remplace « lire puis insérer ».
+- **Suppression du compte** (A-26) : un échec de suppression des photos était ignoré, laissant un fichier sans propriétaire. La suppression s'arrête maintenant, avec un message exact.
+- **Onboarding** : l'erreur de création du compte n'était pas annoncée aux lecteurs d'écran (`role="alert"` manquant).
+
+### Sécurité
+
+- **Photos de profil** (A-02) : le seau de stockage était public et sa politique de lecture n'avait aucune restriction (photos lisibles et listables sans être connecté). Le code enregistre le chemin du fichier et l'affiche par une URL signée d'une heure. La migration qui rend le seau privé convertit les photos existantes : personne n'a à les renvoyer.
+- **En-têtes HTTP** (A-07) : Content-Security-Policy (vérifiée sur la prévisualisation : aucune violation), `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS. L'empreinte du script en ligne de `index.html` est contrôlée par un test.
+- **Proxy Open Food Facts** (A-10) : limite de 30 requêtes par minute et par adresse sur `/api/off/*`. La syntaxe avancée de l'index n'est plus acceptée que si l'application la demande (A-28).
+- **Abonnements push** (A-18) : l'adresse doit appartenir à un service de push de navigateur.
+
+### Accessibilité
+
+- **Fenêtres** (A-05) : la fenêtre d'ajout d'aliment laissait le focus s'échapper vers la page derrière. Nouveau hook `useModalFocus` (piège de focus, Échap, retour du focus, page figée), appliqué aux trois fenêtres.
+- **Contrôle statique** (A-22) : `eslint-plugin-jsx-a11y`, qui a trouvé 15 problèmes invisibles pour axe, dont 6 libellés qui n'étiquetaient rien.
+
+### Performance
+
+- **Chargement** (A-12) : les écrans secondaires sont téléchargés à la demande. Fichier principal : 550 → 448 ko (158 → 133 ko compressé).
+- **Re-rendus** (A-20) : la valeur d'`AuthContext` est mémoïsée.
+- **Service worker** (A-14) : les anciens fichiers de chaque déploiement sont purgés du cache.
+- **Base de données** (A-04, A-16) : 24 politiques RLS évaluées une fois par requête au lieu d'une fois par ligne, une politique en double supprimée, deux clés étrangères indexées.
+
+### Technique
+
+- Garde-fou React (`AppErrorBoundary`, A-03) : une erreur affiche un message et un bouton de rechargement au lieu d'une page blanche.
+- Table `password_reset_tokens`, jamais utilisée, supprimée (A-17).
+- Node 22 figé pour Netlify (`.nvmrc`, `NODE_VERSION`, A-19). `.bolt/` supprimé (A-13). `.gitignore` couvre `.env.*` (A-24).
+- `@netlify/blobs` est conservée : une extension Netlify installée sur le site en dépend (son retrait faisait échouer le build).
+- Tests : 888 → 966 Vitest, couverture 90,71 % → 93,73 % (onboarding : 6 % → 93 %), 24 nouvelles vérifications SQL.
+
 ## [2.2.2] — 27 novembre 2026
 
 ### Corrections

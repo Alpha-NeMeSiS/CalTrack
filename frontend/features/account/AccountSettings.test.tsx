@@ -88,7 +88,11 @@ describe('AccountSettings', () => {
     await user.type(screen.getByLabelText(/Pour confirmer/), DELETE_CONFIRMATION_WORD);
     await user.click(screen.getByRole('button', { name: 'Supprimer définitivement mon compte' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent("Aucune donnée n'a été effacée");
+    // Audit A-26 : les photos sont supprimées AVANT le compte, le message ne peut
+    // donc plus prétendre qu'aucune donnée n'a été effacée.
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'La suppression du compte a échoué. Vos données de suivi sont intactes.'
+    );
     expect(screen.getByRole('button', { name: 'Supprimer définitivement mon compte' })).toBeEnabled();
   });
 });

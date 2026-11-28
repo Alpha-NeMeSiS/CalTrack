@@ -151,8 +151,8 @@ export function OnboardingForm() {
 
         <div className="space-y-6">
           <div>
-            <label className="field-label mb-2">Sexe</label>
-            <div className="flex gap-4">
+            <span id="onboarding-sexe-label" className="field-label mb-2 block">Sexe</span>
+            <div className="flex gap-4" role="group" aria-labelledby="onboarding-sexe-label">
               <button
                 type="button"
                 onClick={() => updateFormData('sexe', 'M')}
@@ -275,16 +275,25 @@ export function OnboardingForm() {
     <div className="w-full max-w-2xl mx-auto p-8 panel">
       <h2 className="page-title mb-6">Votre objectif</h2>
 
+      {/* role="alert" : sans lui, l'échec de la création du compte n'était jamais
+          annoncé aux lecteurs d'écran (contrairement aux erreurs de l'étape 1).
+          Trouvé en écrivant les tests de l'audit A-06. */}
       {error && (
-        <div className="mb-6 p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded-md text-sm">
+        <div
+          role="alert"
+          className="mb-6 p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded-md text-sm"
+        >
           {error}
         </div>
       )}
 
       <div className="space-y-6">
         <div>
-          <label className="field-label mb-2">Niveau d'activité</label>
+          <label className="field-label mb-2" htmlFor="onboarding-activity">
+            Niveau d'activité
+          </label>
           <select
+            id="onboarding-activity"
             value={formData.activity_level}
             onChange={(e) => updateFormData('activity_level', Number(e.target.value))}
             className="w-full px-3 py-2 field-input"
@@ -298,8 +307,8 @@ export function OnboardingForm() {
         </div>
 
         <div>
-          <label className="field-label mb-2">Objectif</label>
-          <div className="grid grid-cols-3 gap-4">
+          <span id="onboarding-goal-label" className="field-label mb-2 block">Objectif</span>
+          <div className="grid grid-cols-3 gap-4" role="group" aria-labelledby="onboarding-goal-label">
             <button
               type="button"
               onClick={() => updateFormData('goal_type', 'loss')}

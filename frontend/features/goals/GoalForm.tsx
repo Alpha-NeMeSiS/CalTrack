@@ -102,8 +102,8 @@ export function GoalForm({ activeGoal, onSaved }: GoalFormProps) {
         </div>
 
         <div>
-          <label className="field-label mb-2">Type d'objectif</label>
-          <div className="grid grid-cols-3 gap-4">
+          <span id="goal-type-label" className="field-label mb-2 block">Type d'objectif</span>
+          <div className="grid grid-cols-3 gap-4" role="group" aria-labelledby="goal-type-label">
             <button
               type="button"
               aria-pressed={goalData.goal_type === 'loss'}

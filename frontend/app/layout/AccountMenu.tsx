@@ -127,6 +127,7 @@ export function AccountMenu({ identity, onNavigate, onSignOut }: AccountMenuProp
               ref={menuRef}
               id={menuId}
               role="menu"
+              tabIndex={-1}
               aria-label="Compte"
               onKeyDown={handleMenuKeyDown}
               style={{ '--menu-top': `${position.top}px`, '--menu-right': `${position.right}px` } as CSSProperties}

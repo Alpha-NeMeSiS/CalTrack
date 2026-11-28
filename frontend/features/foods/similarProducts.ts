@@ -194,7 +194,11 @@ export async function findSimilarProducts(target: SimilarTarget, signal?: AbortS
   const brand = brandFilter(target.brand);
   const queries = brand ? [`${brand} AND (${terms})`, terms] : [terms];
 
-  const results = await Promise.allSettled(queries.map((query) => searchOFF(query, signal, SEARCH_SIZE)));
+  // `advanced` : ces requêtes utilisent la syntaxe de l'index (OR, AND,
+  // brands:"…"), contrairement à une saisie libre (voir audit A-28).
+  const results = await Promise.allSettled(
+    queries.map((query) => searchOFF(query, signal, SEARCH_SIZE, true))
+  );
   if (signal?.aborted) {
     const rejected = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
     throw rejected ? rejected.reason : new DOMException('Aborted', 'AbortError');

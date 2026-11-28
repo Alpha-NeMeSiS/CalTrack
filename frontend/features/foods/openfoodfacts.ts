@@ -89,14 +89,25 @@ function normalizeOFFProduct(product: OFFProduct): NormalizedFood {
 /** Un produit sans calories ni macros ne peut pas être ajouté au journal */
 const hasNutrition = (food: NormalizedFood) => Boolean(food.kcal_per_100g || food.protein_g || food.fat_g || food.carbs_g);
 
-/** `size` : nombre de résultats voulu (1 à 30, 10 par défaut côté proxy). */
-export async function searchOFF(term: string, signal?: AbortSignal, size?: number): Promise<NormalizedFood[]> {
+/**
+ * `size` : nombre de résultats voulu (1 à 30, 10 par défaut côté proxy).
+ * `advanced` : true pour une requête construite par l'application avec la
+ * syntaxe de l'index (OR, AND, brands:"…"). Une saisie libre de l'utilisateur
+ * est toujours nettoyée par le proxy (voir buildSearchQuery, audit A-28).
+ */
+export async function searchOFF(
+  term: string,
+  signal?: AbortSignal,
+  size?: number,
+  advanced = false,
+): Promise<NormalizedFood[]> {
   const trimmed = term.trim();
   if (trimmed.length < MIN_QUERY_LENGTH) return [];
 
   const sizeParam = size === undefined ? '' : `&size=${size}`;
+  const modeParam = advanced ? '&mode=advanced' : '';
   const response = await fetch(
-    `${OFF_PROXY_SEARCH}?q=${encodeURIComponent(trimmed)}${sizeParam}`,
+    `${OFF_PROXY_SEARCH}?q=${encodeURIComponent(trimmed)}${sizeParam}${modeParam}`,
     { signal },
   );
   if (!response.ok) {

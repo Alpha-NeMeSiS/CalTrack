@@ -2,12 +2,15 @@
 // Placé hors de backend/netlify/functions/ : Netlify y traiterait chaque fichier comme une fonction.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handler } from '../functions/off-product';
+import { resetRateLimit } from '../lib/rateLimit';
 
 const fetchMock = vi.fn();
 
 afterEach(() => {
   vi.unstubAllGlobals();
   fetchMock.mockReset();
+  // Voir off-search.test.ts : le compteur de débit est en mémoire.
+  resetRateLimit();
 });
 
 const call = (code?: string) => {

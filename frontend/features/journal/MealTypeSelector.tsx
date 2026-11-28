@@ -15,8 +15,8 @@ export function MealTypeSelector({
   const mealOptions = getVisibleMeals(preferences).map((meal) => ({ value: meal, label: getMealLabel(preferences, meal) }));
   return (
     <div>
-      <label className="field-label mb-2">Type de repas (optionnel)</label>
-      <div className="grid grid-cols-2 gap-2">
+      <span id="meal-type-label" className="field-label mb-2 block">Type de repas (optionnel)</span>
+      <div className="grid grid-cols-2 gap-2" role="group" aria-labelledby="meal-type-label">
         {mealOptions.map((meal) => (
           <button
             key={meal.value}

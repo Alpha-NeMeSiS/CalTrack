@@ -62,24 +62,19 @@ export async function savePersonalFood(
 ): Promise<Food> {
   const payload = buildPersonalFoodPayload(userId, values, barcode, estimated);
 
+  // Audit A-09 : auparavant on lisait l'aliment existant puis on insérait. Entre
+  // les deux, un second enregistrement (double appui sur « Enregistrer », deux
+  // onglets) pouvait créer la ligne : l'insertion échouait alors sur l'index
+  // unique foods_user_barcode_key, avec une erreur Postgres brute à l'écran.
+  // `upsert` laisse Postgres arbitrer en une seule requête.
   if (payload.barcode) {
-    const { data: existing, error: lookupError } = await supabase
+    const { data, error } = await supabase
       .from('foods')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('barcode', payload.barcode)
-      .maybeSingle();
-    if (lookupError) throw lookupError;
-    if (existing) {
-      const { data, error } = await supabase
-        .from('foods')
-        .update(payload)
-        .eq('id', (existing as { id: string }).id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as Food;
-    }
+      .upsert(payload, { onConflict: 'user_id,barcode' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data as Food;
   }
 
   const { data, error } = await supabase.from('foods').insert(payload).select().single();

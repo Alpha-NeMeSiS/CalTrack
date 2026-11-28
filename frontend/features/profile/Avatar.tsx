@@ -1,6 +1,7 @@
 // Avatar : photo de profil, sinon initiales sur fond vert foncé (contraste AA).
 import { useState } from 'react';
 import { getInitials, IdentityLike } from './avatar';
+import { useProfilePhotoUrl } from './useProfilePhotoUrl';
 
 interface AvatarProps {
   identity: IdentityLike & { profile_picture_url?: string | null };
@@ -10,7 +11,9 @@ interface AvatarProps {
 
 export function Avatar({ identity, className = 'h-9 w-9 text-sm' }: AvatarProps) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  const url = identity.profile_picture_url;
+  // La photo est désignée par son chemin dans le stockage : il faut une URL
+  // signée pour l'afficher (audit A-02). null tant qu'elle n'est pas obtenue.
+  const url = useProfilePhotoUrl(identity.profile_picture_url);
 
   if (url && url !== failedUrl) {
     return (

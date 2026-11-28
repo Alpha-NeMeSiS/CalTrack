@@ -17,6 +17,7 @@ import type { AddEntryPayload, MealType } from './entries';
 import { servingUnit } from './entries';
 import { MealTypeSelector } from './MealTypeSelector';
 import { RecipesTab } from '../recipes/RecipesTab';
+import { useModalFocus } from '../../shared/ui/useModalFocus';
 import type { FoodDraft, NormalizedFood, NutritionPer100 } from '../foods/types';
 import { parseLocalDate } from '../../shared/date';
 import { cleanBarcodeInput, isValidGtin } from '../foods/barcode';
@@ -438,16 +439,10 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     }
   };
 
-  useEffect(() => {
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape' && !submitting) {
-        onClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, submitting]);
+  // Échap, piège de focus (Tab reste dans la fenêtre), restauration du focus au
+  // bouton d'origine et verrou du défilement de la page. Échap est désactivé
+  // pendant un enregistrement, pour ne pas fermer la fenêtre au milieu.
+  useModalFocus(dialogRef, onClose, { closeOnEscape: !submitting });
 
   const libraryAlert = libraryMessage && (
     <p role="alert" className="rounded-md border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
@@ -460,7 +455,8 @@ export function AddEntryModal({ date, onClose, onAdd }: AddEntryModalProps) {
     return (
       <form onSubmit={handleSearchSubmit} className="space-y-6">
         <div>
-          <label className="field-label mb-2">Aliment</label>
+          {/* Titre visuel : le champ de FoodSearch porte son propre aria-label */}
+          <span className="field-label mb-2 block">Aliment</span>
           <FoodSearch
             onSelect={(food) => selectFood(food)}
             focusKey={searchFocusKey}

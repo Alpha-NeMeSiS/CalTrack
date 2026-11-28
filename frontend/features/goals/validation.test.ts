@@ -164,3 +164,26 @@ describe('validateBodyComposition', () => {
     ]);
   });
 });
+
+// Audit A-27 : les protéines étaient bornées côté client, les lipides non,
+// alors que la base impose CHECK (fat_g_per_kg_min BETWEEN 0.3 AND 3.0).
+describe('validateGoalInput : lipides', () => {
+  const base = { type: 'loss' as const, activity_level: 1.5, deficit_or_surplus_pct: 20 };
+
+  it('accepte une valeur dans les bornes de la base', () => {
+    expect(validateGoalInput({ ...base, fat_g_per_kg_min: 0.8 }, 80)).toEqual([]);
+    expect(validateGoalInput({ ...base, fat_g_per_kg_min: 0.3 }, 80)).toEqual([]);
+    expect(validateGoalInput({ ...base, fat_g_per_kg_min: 3 }, 80)).toEqual([]);
+  });
+
+  it('refuse une valeur hors bornes avec un message clair', () => {
+    expect(validateGoalInput({ ...base, fat_g_per_kg_min: 0.2 }, 80)).toEqual([
+      'Les lipides doivent être comprises entre 0,3 et 3 g/kg.',
+    ]);
+    expect(validateGoalInput({ ...base, fat_g_per_kg_min: 3.5 }, 80)).toHaveLength(1);
+  });
+
+  it('ignore le champ quand il n’est pas renseigné', () => {
+    expect(validateGoalInput(base, 80)).toEqual([]);
+  });
+});

@@ -4,6 +4,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handler } from '../functions/off-search';
 import { clearNutritionCache } from '../lib/productNutrition';
+import { resetRateLimit } from '../lib/rateLimit';
 
 function mockFetchJson(body: unknown, status = 200) {
   const fetchMock = vi.fn().mockResolvedValue({
@@ -19,6 +20,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   clearNutritionCache();
+  // Le garde-fou de débit (audit A-10) garde son compteur en mémoire entre les
+  // appels : sans remise à zéro, les tests finiraient par recevoir un 429.
+  resetRateLimit();
 });
 
 describe('fonction Netlify off-search (proxy Open Food Facts)', () => {
@@ -142,9 +146,9 @@ describe('fonction Netlify off-search (proxy Open Food Facts)', () => {
   });
 
   describe('requête envoyée à l’index (mots combinés en ET depuis novembre 2026)', () => {
-    async function sentQuery(q: string) {
+    async function sentQuery(q: string, mode?: string) {
       const fetchMock = mockFetchJson({ hits: [] });
-      await handler({ queryStringParameters: { q } });
+      await handler({ queryStringParameters: mode ? { q, mode } : { q } });
       return new URL(fetchMock.mock.calls[0][0]).searchParams.get('q');
     }
 
@@ -163,10 +167,22 @@ describe('fonction Netlify off-search (proxy Open Food Facts)', () => {
       );
     });
 
-    it('laisse passer une requête avancée (produits similaires)', async () => {
+    it('laisse passer une requête avancée demandée par l’application (mode=advanced)', async () => {
       const advanced = '(brands:"Sodebo" OR brands:"xx:sodebo") AND (pastabox OR fusilli)';
-      expect(await sentQuery(advanced)).toBe(advanced);
-      expect(await sentQuery('pastabox OR fusilli OR bolognaise')).toBe('pastabox OR fusilli OR bolognaise');
+      expect(await sentQuery(advanced, 'advanced')).toBe(advanced);
+      expect(await sentQuery('pastabox OR fusilli OR bolognaise', 'advanced')).toBe(
+        'pastabox OR fusilli OR bolognaise'
+      );
+    });
+
+    // Audit A-28 : sans mode=advanced, la syntaxe de l'index est nettoyée.
+    // Sinon n'importe qui pouvait injecter une requête arbitraire via /api/off/search.
+    it('nettoie une syntaxe avancée venue d’une saisie libre', async () => {
+      const injected = 'brands:"x" OR (nutriments.salt_100g:[0 TO 999])';
+      const sent = await sentQuery(injected);
+      expect(sent).not.toBe(injected);
+      expect(sent).not.toContain('nutriments.salt_100g');
+      expect(sent).toContain(' AND ');
     });
 
     it('garde la saisie si elle ne contient que des petits mots', async () => {

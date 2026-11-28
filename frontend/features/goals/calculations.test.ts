@@ -161,6 +161,84 @@ describe('calculateMacros', () => {
   it('ne renvoie jamais de glucides négatifs', () => {
     expect(calculateMacros(1000, 100, 3, 1).carbs_g).toBe(0);
   });
+
+  // Audit A-15 : les glucides étaient bornés à 0 mais protéines et lipides ne
+  // bougeaient pas, donc la somme des macros pouvait dépasser les calories
+  // annoncées (l'application affichait alors des cibles incohérentes).
+  it('réduit les protéines plutôt que de dépasser la cible, et le signale', () => {
+    // Protéines : 2 g × 60 kg = 120 g (480 kcal). Minimum lipides selon le
+    // poids : 0,8 × 60 = 48 g (432 kcal) → 912 kcal pour une cible de 900.
+    // Les lipides ne descendent pas sous leur minimum physiologique : ce sont
+    // donc les protéines qui cèdent, à (900 − 432) / 4 = 117 g.
+    const macros = calculateMacros(900, 60, 2, 0.8);
+    expect(macros.fat_g).toBe(48);
+    expect(macros.protein_g).toBe(117);
+    expect(macros.carbs_g).toBe(0);
+    expect(macros.macros_reduced_to_fit).toBe(true);
+    expect(macros.protein_g * 4 + macros.fat_g * 9).toBe(900);
+  });
+
+  it("n'ajoute aucun signalement quand tout tient dans la cible", () => {
+    expect(calculateMacros(2000, 70, 2.0, 0.8).macros_reduced_to_fit).toBeUndefined();
+  });
+
+  it('ramène les lipides sous la règle des 25 % si celle-ci fait dépasser la cible', () => {
+    // Protéines 2,5 × 70 = 175 g (700 kcal) sur une cible de 1 000 kcal.
+    // 25 % de 1 000 / 9 = 27,8 g (250 kcal) → 950 kcal, ça tient.
+    // Minimum du poids : 0,3 × 70 = 21 g. On garde donc 27,8 g.
+    const macros = calculateMacros(1000, 70, 2.5, 0.3);
+    const sum = macros.protein_g * 4 + macros.fat_g * 9 + macros.carbs_g * 4;
+    expect(sum).toBeLessThanOrEqual(macros.calories_kcal + 1);
+  });
+});
+
+// Audit A-15 : invariant général, sur tout l'espace de saisie autorisé.
+describe('invariant : la somme des macros ne dépasse jamais la cible', () => {
+  it('tient pour tous les profils et objectifs valides', () => {
+    const failures: string[] = [];
+    for (const sexe of ['F', 'M'] as const) {
+      for (const taille_cm of [100, 155, 175, 250]) {
+        for (const poids_kg of [30, 50, 80, 300]) {
+          for (const age of [10, 40, 120]) {
+            for (const type of ['loss', 'maintain', 'gain'] as const) {
+              for (const activity_level of [1.2, 1.9]) {
+                for (const protein_g_per_kg of [1.2, 2.5]) {
+                  for (const adjustment of [0, -1000, 1000]) {
+                    const profile: UserProfile = {
+                      sexe,
+                      date_naissance: `${new Date().getFullYear() - age}-06-15`,
+                      taille_cm,
+                      poids_kg,
+                    };
+                    const targets = calculateCompleteTargets(profile, {
+                      type,
+                      activity_level,
+                      method: 'mifflin',
+                      deficit_or_surplus_pct: type === 'maintain' ? 0 : 30,
+                      protein_g_per_kg,
+                      fat_g_per_kg_min: 0.8,
+                      calorie_adjustment_kcal: adjustment,
+                    });
+                    const sum =
+                      targets.protein_g * 4 + targets.fat_g * 9 + targets.carbs_g * 4;
+                    // Tolérance de 1 kcal : les macros sont arrondies à 0,1 g
+                    if (sum > targets.calories_kcal + 1) {
+                      failures.push(
+                        `${sexe} ${taille_cm}cm ${poids_kg}kg ${age}ans ${type} ` +
+                          `act=${activity_level} prot=${protein_g_per_kg} adj=${adjustment} : ` +
+                          `${Math.round(sum)} kcal de macros pour ${targets.calories_kcal} kcal de cible`
+                      );
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    expect(failures).toEqual([]);
+  });
 });
 
 describe('calculateCompleteTargets', () => {
@@ -346,6 +424,7 @@ describe('libellés', () => {
 describe('règles nutritionnelles V2', () => {
   const thirtyYearsAgo = `${new Date().getFullYear() - 30}-01-01`;
   const fortyYearsAgo = `${new Date().getFullYear() - 40}-01-01`;
+  const sixtyYearsAgo = `${new Date().getFullYear() - 60}-01-01`;
 
   describe('getCalorieFloor', () => {
     it('ne descend jamais sous 1 200 kcal (femme) / 1 500 kcal (homme)', () => {
@@ -395,6 +474,40 @@ describe('règles nutritionnelles V2', () => {
       );
       expect(targets.calorie_floor_applied).toBeUndefined();
       expect(targets.calories_kcal).toBeGreaterThan(1500);
+    });
+
+    // Le plancher protège aussi « maintien » et « prise » : l'ajustement des
+    // calories (jusqu'à −1 000 kcal, voir ADJUSTMENT_LIMIT_KCAL) pouvait sinon
+    // faire tomber la cible sous le métabolisme de base.
+    const smallProfile: UserProfile = { sexe: 'F', date_naissance: sixtyYearsAgo, taille_cm: 155, poids_kg: 50 };
+
+    it('applique le plancher à un objectif de maintien avec un ajustement très négatif', () => {
+      const floor = getCalorieFloor(smallProfile, calculateBMR(smallProfile));
+      const targets = calculateCompleteTargets(smallProfile, {
+        type: 'maintain', activity_level: 1.2, method: 'mifflin', deficit_or_surplus_pct: 0,
+        protein_g_per_kg: 1.6, fat_g_per_kg_min: 0.8, calorie_adjustment_kcal: -1000,
+      });
+      expect(targets.calories_kcal).toBe(floor);
+      expect(targets.calorie_floor_applied).toBe(true);
+    });
+
+    it('applique le plancher à un objectif de prise avec un ajustement très négatif', () => {
+      const floor = getCalorieFloor(smallProfile, calculateBMR(smallProfile));
+      const targets = calculateCompleteTargets(smallProfile, {
+        type: 'gain', activity_level: 1.2, method: 'mifflin', deficit_or_surplus_pct: 20,
+        protein_g_per_kg: 1.6, fat_g_per_kg_min: 0.8, calorie_adjustment_kcal: -1000,
+      });
+      expect(targets.calories_kcal).toBe(floor);
+      expect(targets.calorie_floor_applied).toBe(true);
+    });
+
+    it("ne change rien à une prise de poids sans ajustement (non-régression)", () => {
+      const targets = calculateCompleteTargets(
+        { sexe: 'M', date_naissance: thirtyYearsAgo, taille_cm: 178, poids_kg: 80 },
+        { type: 'gain', activity_level: 1.55, method: 'mifflin', deficit_or_surplus_pct: 10, protein_g_per_kg: 2, fat_g_per_kg_min: 0.8 }
+      );
+      expect(targets.calorie_floor_applied).toBeUndefined();
+      expect(targets.calories_kcal).toBeGreaterThan(2500);
     });
 
     it('calcule les protéines sur le poids de référence en cas de surpoids (exemple : 120 kg)', () => {

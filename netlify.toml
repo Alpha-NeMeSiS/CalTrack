@@ -5,6 +5,13 @@
 [build]
   ignore = "bash backend/netlify/ignore-build.sh"
 
+# Version de Node figée (audit A-19), alignée sur la CI (.github/workflows/ci.yml)
+# et sur .nvmrc. Le code des fonctions utilise AbortSignal.timeout (Node 17.3+) :
+# sans cet épinglage, un changement de version par défaut chez Netlify pourrait
+# casser la recherche d'aliments sans que la CI le voie.
+[build.environment]
+  NODE_VERSION = "22"
+
 [functions]
   directory = "backend/netlify/functions"
 
@@ -17,6 +24,33 @@
   from = "/api/off/product"
   to = "/.netlify/functions/off-product"
   status = 200
+
+# En-têtes de sécurité (audit A-07). Défense en profondeur : le jeton de session
+# Supabase vit dans localStorage, une CSP limite donc fortement ce qu'une
+# injection de script pourrait en faire.
+#
+# ⚠️ L'empreinte sha256 ci-dessous est celle du <script> en ligne de index.html
+# (le thème appliqué avant l'affichage, pour éviter un flash clair en mode
+# sombre). SI CE SCRIPT EST MODIFIÉ, il faut recalculer l'empreinte, sinon le
+# navigateur le bloque et le flash revient :
+#   python3 -c "import re,hashlib,base64;b=re.search(r'<script>(.*?)</script>',open('index.html').read(),re.S).group(1);print('sha256-'+base64.b64encode(hashlib.sha256(b.encode()).digest()).decode())"
+# Le test « en-têtes de sécurité » (backend/netlify/tests) vérifie l'empreinte.
+#
+# frame-src https://app.netlify.com : la barre de revue que Netlify injecte dans
+# les prévisualisations de PR s'affiche dans un iframe de app.netlify.com. Sans
+# cette directive, la CSP la bloquait. frame-src ne règle que ce que NOTRE page
+# embarque (pas qui peut nous embarquer : c'est frame-ancestors 'none') ; la
+# production n'embarque rien de Netlify, donc aucun effet sur elle.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # Le scanner de code-barres a besoin de la caméra ; rien d'autre.
+    Permissions-Policy = "camera=(self), microphone=(), geolocation=(), payment=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-KBZ3SZLCRiaxvAre9Sxj299h4CiabYI1gfJ3eADdoTc='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://images.openfoodfacts.org https://*.supabase.co; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; frame-src 'self' https://app.netlify.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 
 # PWA : le service worker et le manifeste doivent toujours être revalidés,
 # sinon une ancienne version du service worker resterait active.

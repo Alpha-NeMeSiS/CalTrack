@@ -37,7 +37,8 @@ describe('App (écran de connexion)', () => {
 
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Sources' }));
-    expect(screen.getByRole('heading', { level: 1, name: 'À propos' })).toBeInTheDocument();
+    // Écran différé (audit A-12) : on attend le chargement du module
+    expect(await screen.findByRole('heading', { level: 1, name: 'À propos' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Se connecter' })).not.toBeInTheDocument();
     // Pas de compte : pas d'accès à l'export ni à la suppression
     expect(screen.queryByRole('button', { name: 'Télécharger mes données' })).not.toBeInTheDocument();
@@ -50,7 +51,7 @@ describe('App (écran de connexion)', () => {
     render(<App />);
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Guide' }));
-    expect(screen.getByRole('heading', { level: 1, name: 'Guide' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Guide' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Revoir la visite' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Retour à la connexion' }));
     expect(screen.getByRole('button', { name: 'Se connecter' })).toBeInTheDocument();

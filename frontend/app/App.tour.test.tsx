@@ -102,7 +102,8 @@ describe('App : visite guidée et « Quoi de neuf ? » au lancement', () => {
     for (let round = 0; round < 2; round++) {
       await user.click(screen.getByRole('button', { name: /Menu du compte/ }));
       await user.click(screen.getByRole('menuitem', { name: 'Guide' }));
-      expect(screen.getByRole('heading', { level: 1, name: 'Guide' })).toBeInTheDocument();
+      // Écran différé (audit A-12) : on attend le chargement du module
+      expect(await screen.findByRole('heading', { level: 1, name: 'Guide' })).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: 'Revoir la visite' }));
       // Relancée à chaque fois (Review Focus 5)
       expect(await screen.findByText('Visite en cours')).toBeInTheDocument();
