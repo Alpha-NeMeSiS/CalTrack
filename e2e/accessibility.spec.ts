@@ -133,6 +133,13 @@ for (const colorScheme of ['light', 'dark'] as const) {
         // Journal défilant : la zone est nommée et atteignable au clavier
         await expect(page.getByRole('region', { name: 'Journal du jour' })).toBeVisible();
 
+        // Carte « Ma pesée » : moment de la pesée (le matin, à jeun ou plus tard)
+        const weighIn = page.getByRole('group', { name: 'Moment de la pesée' });
+        await expect(weighIn.getByRole('radio', { name: 'Le matin, à jeun' })).toBeVisible();
+        await weighIn.getByRole('radio', { name: 'Plus tard dans la journée' }).check();
+        await expect(weighIn.getByRole('radio', { name: 'Plus tard dans la journée' })).toBeChecked();
+        await expectNoViolations(page);
+
         // Fenêtre « Détail par repas » (bouton du bloc calories + macros)
         await page.getByRole('button', { name: 'Détail', exact: true }).click();
         const breakdown = page.getByRole('dialog', { name: 'Détail par repas' });

@@ -5,7 +5,7 @@
 import { KCAL_PER_KG_BODY_WEIGHT } from '../goals/calculations';
 import { addDaysToDateString, parseLocalDate } from '../../shared/date';
 import type { DayStatus } from '../journal/dayStatus';
-import { sortWeights, WeightPoint } from '../weight/weights';
+import { referenceWeights, WeightPoint } from '../weight/weights';
 
 /** Données d'une journée du journal */
 export interface DayIntake {
@@ -137,8 +137,9 @@ export function estimateExpenditure(
 ): ExpenditureEstimate {
   const from = addDaysToDateString(today, -windowDays);
   const logged = days.filter((d) => d.date >= from && d.date < today && d.entryCount > 0);
-  // La pesée du jour compte (le matin, avant les repas)
-  const windowWeights = sortWeights(weights).filter((w) => w.date >= from && w.date <= today);
+  // La pesée du jour compte (le matin, avant les repas). Seules les pesées de
+  // référence (matin à jeun) : une pesée du soir, plus lourde, fausserait la pente.
+  const windowWeights = referenceWeights(weights).filter((w) => w.date >= from && w.date <= today);
   const weightSpanDays =
     windowWeights.length > 1 ? daysBetween(windowWeights[0].date, windowWeights[windowWeights.length - 1].date) : 0;
 

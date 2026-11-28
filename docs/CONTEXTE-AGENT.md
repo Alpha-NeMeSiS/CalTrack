@@ -1,6 +1,6 @@
 # Contexte pour le prochain agent
 
-> Dernière mise à jour : **28 novembre 2026**. Version en production : **2.2.3** (2.3.0 dans la PR en cours).
+> Dernière mise à jour : **28 novembre 2026**. Version en production : **2.3.0** (2.4.0 dans la PR en cours).
 > À tenir à jour à la fin de chaque session (section « État actuel » et « À faire »).
 
 Ce fichier résume tout ce qu'il faut savoir pour reprendre CalTrack : le projet,
@@ -81,6 +81,9 @@ npm run test:a11y -- --trace off
 
 `npm run test:db` demande un Postgres local (variables `PGHOST`, `PGUSER`,
 `PGPASSWORD`). La CI le lance avec un service `postgres:17`.
+Dans un conteneur neuf (session cloud) : `service postgresql start`, puis
+`su postgres -c "psql -c \"ALTER USER postgres PASSWORD 'postgres'\""`, puis
+`PGHOST=localhost PGUSER=postgres PGPASSWORD=postgres npm run test:db`.
 
 ## 3. Règles à ne jamais enfreindre
 
@@ -222,6 +225,7 @@ docs/            ARCHITECTURE.md, design-system.md, emails.md, superpowers/ (spe
 | 2.2.2 | 27/11/2026 | Recherche Open Food Facts par nom réparée après le changement d'index (PR #61) |
 | 2.2.3 | 28/11/2026 | Correctifs de l'audit complet (PR #63) : plancher calorique, photos privées, CSP, accessibilité des fenêtres, bundle découpé |
 | 2.3.0 | 28/11/2026 | Bouton « Détail » (kcal et macros par repas), journal du jour défilant, logo cliquable vers le journal du jour |
+| 2.4.0 | 28/11/2026 | Pesée du matin : moment de chaque pesée (colonne `weight_logs.moment`), seules les pesées de référence comptent dans le suivi |
 
 Autres changements sans version :
 - réorganisation en `frontend/` et `backend/` et `docs/ARCHITECTURE.md` (PR #56 à #58) ;
@@ -229,21 +233,27 @@ Autres changements sans version :
 
 Le détail est dans `CHANGELOG.md`.
 
-## 7. État actuel (27/11/2026)
+## 7. État actuel (28/11/2026)
 
-- `main` est en version **2.2.3**, en production et vérifiée. Les trois
-  migrations de l'audit sont appliquées (PR #63 et #64 fusionnées).
-- PR en cours : **2.3.0** (`dev` → `main`) — détail par repas, journal
-  défilant, logo cliquable. Spec : `docs/superpowers/specs/2026-11-28-journal-detail-repas-design.md`.
+- `main` est en version **2.3.0**, en production et vérifiée (PR #65).
+- PR en cours : **2.4.0** (`dev` → `main`) — pesée du matin. Spec :
+  `docs/superpowers/specs/2026-11-28-pesee-du-matin-design.md`. La migration
+  `20261128124207_weigh_in_moment` est **déjà appliquée en production**
+  (colonne avec valeur par défaut, compatible avec la 2.3.0 en ligne).
   Changer la version : la fusion déclenche le déploiement en production.
-- Tests : 93 fichiers et 989 tests Vitest, 64 tests Playwright, 160 vérifications
-  SQL (dont 24 pour l'audit), tous verts. Couverture : 93,73 %.
+- Règle de la pesée du matin (`referenceWeights`, `frontend/features/weight/weights.ts`) :
+  une pesée compte si elle est du matin, ou « plus tard » sans pesée du matin
+  dans les 14 jours précédents. Une pesée par jour : une pesée « plus tard »
+  avec un autre poids ne remplace pas celle du matin (refus dans la carte) ;
+  avec le même poids ou sans poids saisi, elle corrige le moment.
+- Tests : 93 fichiers et 1013 tests Vitest, 64 tests Playwright, 173 vérifications
+  SQL, tous verts.
 
 ## 8. À faire
 
-### Prochaine fonctionnalité : « Copier un repas d'un autre jour » (2.4.0)
+### Prochaine fonctionnalité : « Copier un repas d'un autre jour » (2.5.0)
 
-La 2.3.0 a été prise par le détail par repas. Pour la fenêtre de copie,
+La 2.3.0 et la 2.4.0 ont été prises (détail par repas, pesée du matin). Pour la fenêtre de copie,
 réutiliser `useModalFocus` et, pour les totaux d'un repas, `summarizeMeals`
 (`frontend/features/journal/entries.ts`).
 
@@ -288,7 +298,7 @@ Elle ne touche pas à la base et réutilise l'existant :
    - fenêtre accessible (focus piégé, Échap, test axe) ;
    - tests unitaires et e2e ;
    - phrase du Guide mise à jour ;
-   - version 2.4.0 (CHANGELOG, « Quoi de neuf ? », test de version).
+   - version 2.5.0 (CHANGELOG, « Quoi de neuf ? », test de version).
 
 ### Audit complet du 27/11/2026 : correctifs appliqués
 
@@ -316,7 +326,7 @@ Nouveautés introduites par les correctifs, utiles à connaître :
 
 - `frontend/shared/ui/useModalFocus.ts` : accessibilité commune aux fenêtres
   modales (piège de focus, Échap, restauration du focus, verrou du défilement).
-  **À utiliser pour la fenêtre « Copier un repas »** de la 2.4.0.
+  **À utiliser pour la fenêtre « Copier un repas »** de la 2.5.0.
 - `frontend/app/AppErrorBoundary.tsx` : garde-fou d'erreurs de rendu.
 - `backend/netlify/lib/rateLimit.ts` : limite de débit des routes `/api/off/*`.
 - A-11 (retrait de `@netlify/blobs`) est **annulé** : voir les pièges, § 9.

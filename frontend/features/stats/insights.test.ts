@@ -100,6 +100,19 @@ describe('estimateExpenditure', () => {
     });
   });
 
+  it('ignore les pesées « plus tard » hors suivi (2 kg au-dessus des pesées du matin)', () => {
+    const { days, weights } = scenario(2000, -0.5);
+    const morning = weights.map((w) => ({ ...w, moment: 'morning' as const }));
+    // Pesées du soir les jours suivants, plus lourdes : elles faussaient la tendance
+    const evenings = [26, 19, 12, 5].map((n) => ({ date: daysAgo(n), weight_kg: 83, moment: 'later' as const }));
+
+    expect(estimateExpenditure(days, [...morning, ...evenings], TODAY)).toMatchObject({
+      status: 'ok',
+      weeklyWeightChangeKg: -0.5,
+      weighIns: 5,
+    });
+  });
+
   it('égale les apports quand le poids est stable', () => {
     const { days, weights } = scenario(2400, 0);
     expect(estimateExpenditure(days, weights, TODAY)).toMatchObject({ status: 'ok', expenditureKcal: 2400 });

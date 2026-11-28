@@ -197,5 +197,7 @@ export interface WeightLog extends BodyComposition {
   user_id: string;
   date: string;
   weight_kg: number;
+  /** Le matin, à jeun (référence du suivi) ou plus tard dans la journée */
+  moment: 'morning' | 'later';
   created_at: string;
 }

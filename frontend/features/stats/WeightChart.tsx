@@ -1,12 +1,14 @@
 // Courbe de poids (SVG, sans dépendance) : pesées, moyenne glissante sur 7 jours
-// et ligne du poids cible.
+// et ligne du poids cible. Seules les pesées de référence (le matin, à jeun)
+// comptent dans la moyenne et l'évolution ; une pesée « plus tard » hors suivi
+// reste visible en point creux.
 // Le repère SVG prend la largeur réelle du conteneur : les textes gardent leur
 // taille (11 px) sur mobile comme sur grand écran, au lieu d'être agrandis ou
 // réduits avec le dessin.
 import { useEffect, useState } from 'react';
 import { parseLocalDate } from '../../shared/date';
 import { formatNumber } from '../../shared/format';
-import { movingAverage, sortWeights, WeightPoint } from '../weight/weights';
+import { movingAverage, referenceWeights, sortWeights, WeightPoint } from '../weight/weights';
 
 interface WeightChartProps {
   points: readonly WeightPoint[];
@@ -52,9 +54,16 @@ export function WeightChart({ points, targetWeight }: WeightChartProps) {
     );
   }
 
-  const average = movingAverage(sorted, 7);
+  const references = referenceWeights(sorted);
+  const referenceDates = new Set(references.map((p) => p.date));
+  const hasOutsideTracking = references.length < sorted.length;
+  const average = movingAverage(references, 7);
+  // L'axe couvre toutes les pesées ; le résumé et l'évolution, les pesées de référence
   const first = sorted[0];
   const last = sorted[sorted.length - 1];
+  const summary = references.length >= 2 ? references : sorted;
+  const summaryFirst = summary[0];
+  const summaryLast = summary[summary.length - 1];
 
   // Échelles
   const firstTime = parseLocalDate(first.date).getTime();
@@ -77,7 +86,7 @@ export function WeightChart({ points, targetWeight }: WeightChartProps) {
   const yTicks = [maxY, (maxY + minY) / 2, minY];
 
   const averagePath = average.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.date).toFixed(1)},${y(p.weight_kg).toFixed(1)}`).join(' ');
-  const change = Math.round((last.weight_kg - first.weight_kg) * 10) / 10;
+  const change = Math.round((summaryLast.weight_kg - summaryFirst.weight_kg) * 10) / 10;
 
   return (
     <figure ref={setContainer} className="space-y-2">
@@ -85,7 +94,7 @@ export function WeightChart({ points, targetWeight }: WeightChartProps) {
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="block h-auto w-full"
         role="img"
-        aria-label={`Poids passé de ${formatKg(first.weight_kg)} kg le ${formatDate(first.date)} à ${formatKg(last.weight_kg)} kg le ${formatDate(last.date)}`}
+        aria-label={`Poids passé de ${formatKg(summaryFirst.weight_kg)} kg le ${formatDate(summaryFirst.date)} à ${formatKg(summaryLast.weight_kg)} kg le ${formatDate(summaryLast.date)}`}
       >
         {yTicks.map((tick) => (
           <g key={tick}>
@@ -114,11 +123,26 @@ export function WeightChart({ points, targetWeight }: WeightChartProps) {
         )}
 
         <path d={averagePath} fill="none" className="stroke-brand-600" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-        {sorted.map((p) => (
-          <circle key={p.date} cx={x(p.date)} cy={y(p.weight_kg)} r="3.5" className="fill-surface stroke-brand-700" strokeWidth="1.5">
-            <title>{`${formatDate(p.date)} : ${formatKg(p.weight_kg)} kg`}</title>
-          </circle>
-        ))}
+        {sorted.map((p) =>
+          referenceDates.has(p.date) ? (
+            <circle key={p.date} cx={x(p.date)} cy={y(p.weight_kg)} r="3.5" className="fill-brand-700 stroke-brand-700" strokeWidth="1.5">
+              <title>{`${formatDate(p.date)} : ${formatKg(p.weight_kg)} kg`}</title>
+            </circle>
+          ) : (
+            // Pesée plus tard dans la journée, hors suivi : point creux en pointillés
+            <circle
+              key={p.date}
+              cx={x(p.date)}
+              cy={y(p.weight_kg)}
+              r="3.5"
+              className="fill-surface stroke-brand-700"
+              strokeWidth="1.5"
+              strokeDasharray="2 1.5"
+            >
+              <title>{`${formatDate(p.date)} : ${formatKg(p.weight_kg)} kg, plus tard (hors suivi)`}</title>
+            </circle>
+          )
+        )}
 
         <text x={PAD.left} y={HEIGHT - 6} fontSize="11" className="fill-subtle">{formatDate(first.date)}</text>
         <text x={WIDTH - PAD.right} y={HEIGHT - 6} textAnchor="end" fontSize="11" className="fill-subtle">{formatDate(last.date)}</text>
@@ -126,10 +150,15 @@ export function WeightChart({ points, targetWeight }: WeightChartProps) {
 
       <figcaption className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
         <span className="flex items-center gap-1.5"><span className="inline-block h-0.5 w-5 bg-brand-600" /> Moyenne 7 jours</span>
-        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full border border-brand-700 bg-surface" /> Pesées</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full border border-brand-700 bg-brand-700" /> Pesées</span>
+        {hasOutsideTracking && (
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2.5 w-2.5 rounded-full border border-dashed border-brand-700 bg-surface" /> Plus tard, hors suivi
+          </span>
+        )}
         {showTarget && <span className="flex items-center gap-1.5"><span className="inline-block w-5 border-t-2 border-dashed border-info-600" /> Poids cible</span>}
         <span className="ml-auto font-medium text-ink" data-testid="weight-change">
-          {change > 0 ? '+' : ''}{formatKg(change)} kg depuis le {formatDate(first.date)}
+          {change > 0 ? '+' : ''}{formatKg(change)} kg depuis le {formatDate(summaryFirst.date)}
         </span>
       </figcaption>
     </figure>

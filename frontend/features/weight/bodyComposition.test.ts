@@ -7,6 +7,7 @@ const log = (date: string, weight: number, extra: Partial<WeightLog> = {}): Weig
   user_id: 'u',
   date,
   weight_kg: weight,
+  moment: 'morning',
   created_at: `${date}T07:00:00Z`,
   ...extra,
 });

@@ -11,6 +11,7 @@ import { navigateTo } from '../../app/navigation';
 import { formatDateFR } from '../../shared/timeProgress';
 import { ensureDailyTargetForDate, fetchUserGoals } from '../goals/goals.service';
 import { recordWeight } from '../weight/weights.service';
+import type { WeighInMoment } from '../weight/weights';
 import { copyDayEntries, updateEntry } from './entries.service';
 import { groupEntriesByMeal, MealType, summarizeMeals } from './entries';
 import { usePreferences } from '../../app/contexts/usePreferences';
@@ -136,14 +137,20 @@ export function Dashboard({
     loadDayData({ silent });
   }, [loadDayData, user?.id, selectedDate]);
 
-  // Enregistre une pesée ; si c'est la plus récente, le poids du profil et la
-  // cible du jour sont mis à jour.
-  const handleSaveWeight = async (weightKg: number, date: string, composition?: BodyComposition) => {
+  // Enregistre une pesée avec son moment ; le poids du profil et la cible du
+  // jour suivent la dernière pesée de référence (le matin, à jeun).
+  const handleSaveWeight = async (
+    weightKg: number,
+    date: string,
+    moment: WeighInMoment,
+    composition?: BodyComposition
+  ) => {
     if (!user || !profile) return;
     const profileUpdated = await recordWeight({
       userId: user.id,
       date,
       weightKg,
+      moment,
       composition,
       profile,
       goalForToday: activeGoal,

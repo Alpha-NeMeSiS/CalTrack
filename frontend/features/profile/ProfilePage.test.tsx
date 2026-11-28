@@ -187,7 +187,10 @@ describe('ProfilePage', () => {
     await user.type(screen.getByLabelText("Poids aujourd'hui (kg)"), '59,4');
     await user.click(within(screen.getByRole('region', { name: 'Ma pesée' })).getByRole('button', { name: 'Enregistrer' }));
 
-    expect(recordWeight).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-1', weightKg: 59.4, goalForToday: goal }));
+    expect(recordWeight).toHaveBeenCalledWith(
+      // Moment proposé selon l'heure du test : on vérifie seulement qu'il est transmis
+      expect.objectContaining({ userId: 'user-1', weightKg: 59.4, goalForToday: goal, moment: expect.stringMatching(/^(morning|later)$/) })
+    );
     await vi.waitFor(() => expect(refreshProfile).toHaveBeenCalled());
   });
 });
