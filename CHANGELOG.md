@@ -46,6 +46,7 @@ Correctifs issus de l'audit complet du code : [docs/AUDIT-2026-11-27.md](docs/AU
 - Table `password_reset_tokens`, jamais utilisée, supprimée (A-17).
 - Node 22 figé pour Netlify (`.nvmrc`, `NODE_VERSION`, A-19). `.bolt/` supprimé (A-13). `.gitignore` couvre `.env.*` (A-24).
 - `@netlify/blobs` est conservée : une extension Netlify installée sur le site en dépend (son retrait faisait échouer le build).
+- Mise en production : la contrainte `profiles_profile_picture_url_check` exigeait une URL `https://…` et refusait le chemin enregistré par la 2.2.3. L'envoi d'une nouvelle photo a donc échoué pendant quelques minutes, jusqu'à l'application de la migration `20261128001654`, qui la remplace par un chemin obligatoirement situé dans le dossier du propriétaire.
 - Tests : 888 → 966 Vitest, couverture 90,71 % → 93,73 % (onboarding : 6 % → 93 %), 24 nouvelles vérifications SQL.
 
 ## [2.2.2] — 27 novembre 2026

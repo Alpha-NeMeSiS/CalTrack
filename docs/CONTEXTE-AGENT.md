@@ -1,6 +1,6 @@
 # Contexte pour le prochain agent
 
-> Dernière mise à jour : **28 novembre 2026**. Version en production : **2.2.2** (2.2.3 dans la PR #63).
+> Dernière mise à jour : **28 novembre 2026**. Version en production : **2.2.3**.
 > À tenir à jour à la fin de chaque session (section « État actuel » et « À faire »).
 
 Ce fichier résume tout ce qu'il faut savoir pour reprendre CalTrack : le projet,
@@ -230,13 +230,11 @@ Le détail est dans `CHANGELOG.md`.
 
 ## 7. État actuel (27/11/2026)
 
-- `main` est en version **2.2.2** (fusion de la PR #62). `dev` porte l'audit,
-  ses correctifs et le passage en **2.2.3** (PR #63) : la fusion déclenchera le
-  déploiement en production. Les migrations A-04/16/17/18 sont déjà appliquées
-  à la base ; A-02 attend la mise en ligne de la 2.2.3.
+- `main` est en version **2.2.3** (fusion de la PR #63, `cc5ed41`), en
+  production et vérifiée. Les trois migrations de l'audit sont appliquées.
+- PR en cours : celle qui renomme la migration A-02 et met la documentation à
+  jour (sans changement de version). Vérifier si elle est fusionnée.
 - Production vérifiée : « pastabox bolognaise » trouve le PastaBox à 127 kcal.
-- PR en cours : celle des correctifs de l'audit (`dev` → `main`). Vérifier si
-  elle est fusionnée avant d'agir.
 - Tests : 90 fichiers et 966 tests Vitest, 64 tests Playwright, 160 vérifications
   SQL (dont 24 pour l'audit), tous verts. Couverture : 93,73 %.
 
@@ -295,22 +293,19 @@ tête pour savoir où en est chaque point.
 
 Ce qui reste :
 
-1. **Migrations** : A-04/16/17 (`20261128000101`) et A-18 (`20261128000412`)
-   sont **appliquées en production** (accord de l'utilisateur le 28/11).
-   **A-02 reste à appliquer** (`20261128100000_audit_private_profile_pictures.sql`,
-   version provisoire) **dès que la 2.2.3 est en production** : jamais avant,
-   car le code 2.2.2 ne saurait pas afficher une photo privée. Elle convertit
-   les URL publiques existantes en chemins (vérifié sur la photo réelle) :
-   personne n'a à renvoyer sa photo. Ensuite, renommer le fichier avec la
-   version enregistrée par Supabase.
+1. **Migrations** : les trois sont **appliquées en production** (A-04/16/17
+   `20261128000101`, A-18 `20261128000412`, A-02 `20261128001654`). La
+   photo existante a été convertie en chemin, le seau est privé, l'ancienne
+   URL publique répond 400. Reste à faire vérifier par l'utilisateur que sa
+   photo s'affiche toujours et qu'il peut en envoyer une nouvelle (la session
+   ne peut pas se connecter à son compte).
 2. **A-08** : activer « Leaked password protection » et « Secure password
    change » dans Supabase. À faire par l'utilisateur, aucun code.
 3. **A-21** : passage à vitest 5 (changement majeur, 965 tests) — chantier à part.
 4. **A-25** : suivi des erreurs en production. Le point de branchement existe
    (`componentDidCatch` dans `AppErrorBoundary`).
 
-**Version 2.2.3** préparée dans la PR #63 (CHANGELOG, « Quoi de neuf ? », test
-de version, README). La fusion déclenche le déploiement en production.
+**Version 2.2.3 en production** depuis le 28/11 (PR #63).
 
 Nouveautés introduites par les correctifs, utiles à connaître :
 
@@ -375,6 +370,13 @@ Ce backlog est à confirmer avec l'utilisateur avant de lancer quoi que ce soit.
 ## 9. Pièges déjà rencontrés
 
 - **Fusion annoncée trop tôt** : toujours vérifier l'état réel de la PR.
+- **Changer le format d'une colonne : chercher ses contraintes CHECK.** La
+  2.2.3 enregistre un chemin dans `profiles.profile_picture_url`, mais une
+  contrainte de 20261108125514 exigeait `https://…` : l'envoi de photo a été
+  cassé quelques minutes en production. Les tests SQL ne l'ont pas vu, faute de
+  test « ce que le code écrit est accepté par la base ». Avant un tel
+  changement : `SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE
+  conrelid = 'public.<table>'::regclass;` sur la base de production.
 - **Une dépendance « inutilisée » peut servir à Netlify** : le site a des
   extensions qui injectent du code au build (edge function, plugin). Un
   `grep` dans le dépôt ne suffit pas pour retirer une dépendance : il faut une
