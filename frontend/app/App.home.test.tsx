@@ -67,7 +67,7 @@ describe('App : le logo ramène au tableau de bord du jour', () => {
     await user.click(screen.getAllByRole('button', { name: /Tendances/ })[0]);
     expect(await screen.findByText('Tendances simulées')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'CalTrack, retour au tableau de bord' }));
+    await user.click(screen.getByRole('button', { name: /^CalTrack\s+Suivi calorique personnalisé\s*,\s*retour au tableau de bord$/ }));
     expect(await screen.findByText(`Journal du ${getTodayDate()}`)).toBeInTheDocument();
   });
 
@@ -77,7 +77,7 @@ describe('App : le logo ramène au tableau de bord du jour', () => {
     await user.click(await screen.findByRole('button', { name: 'Aller au 1er janvier 2020' }));
     expect(screen.getByText('Journal du 2020-01-01')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'CalTrack, retour au tableau de bord' }));
+    await user.click(screen.getByRole('button', { name: /^CalTrack\s+Suivi calorique personnalisé\s*,\s*retour au tableau de bord$/ }));
     expect(screen.getByText(`Journal du ${getTodayDate()}`)).toBeInTheDocument();
   });
 });

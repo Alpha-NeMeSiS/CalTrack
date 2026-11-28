@@ -129,6 +129,17 @@ for (const colorScheme of ['light', 'dark'] as const) {
         await page.getByRole('button', { name: 'Autre…' }).click();
         await expect(page.getByLabel('Quantité (ml)')).toBeVisible();
         await expectNoViolations(page);
+
+        // Journal défilant : la zone est nommée et atteignable au clavier
+        await expect(page.getByRole('region', { name: 'Journal du jour' })).toBeVisible();
+
+        // Fenêtre « Détail par repas » (bouton du bloc calories + macros)
+        await page.getByRole('button', { name: 'Détail', exact: true }).click();
+        const breakdown = page.getByRole('dialog', { name: 'Détail par repas' });
+        await expect(breakdown.getByRole('row', { name: /Total/ })).toBeVisible();
+        await expectNoViolations(page);
+        await page.keyboard.press('Escape');
+        await expect(breakdown).toBeHidden();
       });
 
       test('ajout d’un aliment', async ({ page }) => {

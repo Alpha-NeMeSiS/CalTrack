@@ -12,14 +12,15 @@ describe('Header', () => {
     const onHome = vi.fn();
     render(<Header onHome={onHome} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'CalTrack, retour au tableau de bord' }));
+    await userEvent.click(screen.getByRole('button', { name: /^CalTrack\s+Suivi calorique personnalisé\s*,\s*retour au tableau de bord$/ }));
     expect(onHome).toHaveBeenCalledTimes(1);
   });
 
-  it('garde le nom de l’app comme titre principal (le bouton est dans le titre)', () => {
+  it('garde « CalTrack », et seulement lui, comme titre principal', () => {
     render(<Header onHome={vi.fn()} />);
-    // HTML valide : un bouton peut être dans un <h1>, pas l'inverse
-    const heading = screen.getByRole('heading', { level: 1, name: /CalTrack/ });
-    expect(heading).toContainElement(screen.getByRole('button', { name: 'CalTrack, retour au tableau de bord' }));
+    // Le libellé du bouton ne doit pas devenir celui du titre : « retour au
+    // tableau de bord » polluait la navigation par titres des lecteurs
+    // d'écran (et « tableau » contient « eau », titre de la carte Eau).
+    expect(screen.getByRole('heading', { level: 1 })).toHaveAccessibleName('CalTrack');
   });
 });
